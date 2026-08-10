@@ -2,9 +2,21 @@
 
 Pythonの練習用プロジェクト。パッケージ管理・実行は [uv](https://docs.astral.sh/uv/) を前提とする。
 
-## 実行方法
+## セットアップ
 
-devcontainer（Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo`）を開くと、`uv` が使える状態になる（Pythonランタイムはdistroのapt版ではなく `uv python install` で導入したものを使う）。
+`uv` が未導入の場合は公式インストーラーで導入する。
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Pythonランタイムはdistroのパッケージではなく `uv` に導入・管理させる。
+
+```bash
+uv python install 3.12
+```
+
+## 実行方法
 
 ```bash
 uv run main.py
