@@ -1,0 +1,11 @@
+[project]
+name = "python-practice"
+version = "0.1.0"
+description = "Pythonの練習用プロジェクト"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+# サプライチェーン攻撃対策: 公開されたばかりのパッケージバージョンは
+# 悪意あるものが検知・撤回される猶予を確保するため、7日間はインストール対象から除外する
+exclude-newer = "7 days"
