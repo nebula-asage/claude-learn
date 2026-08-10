@@ -1,11 +1,11 @@
 ---
-name: devcontainer-ubuntu-ja
-description: Ubuntu 24.04ベース・ロケール日本語(ja_JP.UTF-8)・タイムゾーンAsia/Tokyoのdevcontainer環境を配置するときに使う。「devcontainer作って」「開発コンテナ環境作って」「このプロジェクト用にコンテナ環境を用意して」など、このリポジトリでUbuntu24.04/日本語ロケール/東京タイムゾーンのdevcontainerを新規作成・再作成したい場合にトリガーする。汎用的な他OS/他ロケール向けdevcontainerの相談には使わない。
+name: devcontainer-rockylinux9-ja
+description: Rocky Linux 9ベース・ロケール日本語(ja_JP.UTF-8)・タイムゾーンAsia/Tokyoのdevcontainer環境を配置するときに使う。「Rocky Linuxのdevcontainer作って」「RockyLinux9のコンテナ環境用意して」「このプロジェクト用にRockyLinux9の開発コンテナを作って」など、このリポジトリでRockyLinux9/日本語ロケール/東京タイムゾーンのdevcontainerを新規作成・再作成したい場合にトリガーする。Ubuntu版が欲しい場合はdevcontainer-ubuntu-jaスキルを使うこと。汎用的な他OS・他ロケール向けdevcontainerの相談には使わない。
 ---
 
-# devcontainer-ubuntu-ja
+# devcontainer-rockylinux9-ja
 
-Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式（`Dockerfile` + `devcontainer.json`）を配置するスキル。このリポジトリのルートで一度検証済みの構成をテンプレート化したもので、他OS・他ロケールへの一般化は行わない。
+Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式（`Dockerfile` + `devcontainer.json`）を配置するスキル。[[devcontainer-ubuntu-ja]] のRocky Linux 9版で、パッケージマネージャ（dnf）とロケール導入方法（glibc-langpack-ja、locale-genは不要）のみディストリビューション差分に合わせて調整している。他OS・他ロケールへの一般化は行わない。
 
 ## 手順
 
@@ -15,8 +15,8 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
    - 既に `.devcontainer/` が存在する場合は上書きしてよいか必ず確認する。
 
 2. **テンプレートをコピーする**
-   - `.claude/skills/devcontainer-ubuntu-ja/templates/Dockerfile` → `<配置先>/.devcontainer/Dockerfile`
-   - `.claude/skills/devcontainer-ubuntu-ja/templates/devcontainer.json` → `<配置先>/.devcontainer/devcontainer.json`
+   - `.claude/skills/devcontainer-rockylinux9-ja/templates/Dockerfile` → `<配置先>/.devcontainer/Dockerfile`
+   - `.claude/skills/devcontainer-rockylinux9-ja/templates/devcontainer.json` → `<配置先>/.devcontainer/devcontainer.json`
 
 3. **`devcontainer.json` の `name` を調整する**
    - `__CONTAINER_NAME__` を配置先ディレクトリ名（リポジトリルートなら親ディレクトリ名、`projects/<name>/` ならそのプロジェクト名）に置き換える。
@@ -33,8 +33,8 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
 
 6. **（追加要求があった場合）追加プログラムのbash補完を有効化する**
    - ユーザーから追加のプログラム導入を頼まれたら、その都度そのプログラムがbash補完に対応しているか確認し、対応していれば必ず有効化する。
-   - aptパッケージの場合: `bash-completion` が導入済みであれば、パッケージが `/usr/share/bash-completion/completions/` 等に配置する補完スクリプトはインストールするだけで自動的に有効になる（追加作業は基本的に不要）。
-   - 単体バイナリ導入やnpm/pip/go installなどapt以外の方法で導入する場合: そのプログラムが `<コマンド> completion bash` のようなサブコマンド／`--completion bash` オプションを持つか確認し、持っていれば `Dockerfile` の `USER $USERNAME` より前（root権限）で
+   - dnfパッケージの場合: `bash-completion` が導入済みであれば、パッケージが `/usr/share/bash-completion/completions/` 等に配置する補完スクリプトはインストールするだけで自動的に有効になる（追加作業は基本的に不要）。
+   - 単体バイナリ導入やnpm/pip/go installなどdnf以外の方法で導入する場合: そのプログラムが `<コマンド> completion bash` のようなサブコマンド／`--completion bash` オプションを持つか確認し、持っていれば `Dockerfile` の `USER $USERNAME` より前（root権限）で
      ```
      RUN <コマンド> completion bash > /etc/bash_completion.d/<コマンド>
      ```
@@ -43,10 +43,10 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
 
 ## 固定構成の内容（変更しない前提）
 
-- ベースイメージ: `ubuntu:24.04`
-- ロケール: `ja_JP.UTF-8`（`LANG`/`LANGUAGE`/`LC_ALL` すべて設定）
+- ベースイメージ: `rockylinux:9`
+- ロケール: `ja_JP.UTF-8`（`LANG`/`LANGUAGE`/`LC_ALL` すべて設定。`glibc-langpack-ja` を導入すればRHEL系ではlocale-gen不要で使えるようになる）
 - タイムゾーン: `Asia/Tokyo`
 - 非rootユーザー `vscode`（UID/GID 1000、パスワードなしsudo）。ベースイメージに同じUID/GIDが既にある場合はリネームして再利用する（`useradd`の重複エラー回避）
-- 導入パッケージ: `locales` `tzdata` `sudo` `git` `curl` `ca-certificates` `build-essential` `bash-completion`（すべて必須。`bash-completion` を外さない）
+- 導入パッケージ: `glibc-langpack-ja` `tzdata` `sudo` `git` `curl` `ca-certificates` `gcc` `gcc-c++` `make` `bash-completion`（すべて必須。`gcc`/`gcc-c++`/`make` はUbuntu版の`build-essential`相当、`bash-completion` を外さない）
 
 言語ランタイム（Node/Python/Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
