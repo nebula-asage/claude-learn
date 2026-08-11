@@ -15,3 +15,6 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+
+# Claude Code 会話ログ（個人の作業ログ、共有対象外）
+.claude/conversations/
