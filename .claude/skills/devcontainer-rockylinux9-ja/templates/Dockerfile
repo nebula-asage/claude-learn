@@ -1,4 +1,4 @@
-FROM rockylinux:9
+FROM rockylinux/rockylinux:9
 
 ARG USERNAME=vscode
 ARG USER_UID=1000
@@ -19,9 +19,6 @@ RUN dnf install -y --allowerasing \
     git \
     curl \
     ca-certificates \
-    gcc \
-    gcc-c++ \
-    make \
     bash-completion \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
