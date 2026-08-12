@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>markdown-element-clipper 動作確認用ページ</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 16px 24px 400px;
+      line-height: 1.6;
+    }
+    header.fixed-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #111827;
+      color: #fff;
+      padding: 8px 16px;
+      z-index: 1000;
+    }
+    main {
+      margin-top: 48px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+    }
+    pre {
+      background: #f5f5f5;
+      padding: 8px;
+      overflow: auto;
+    }
+    .scroll-box {
+      height: 120px;
+      overflow: auto;
+      border: 1px solid #999;
+      padding: 8px;
+    }
+    .hidden-style {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header class="fixed-header">
+    position: fixed のヘッダー（z-indexが勝ってオーバーレイの下に隠れないことを確認）
+  </header>
+
+  <main id="article">
+    <h1>Markdown Element Clipper 確認用記事</h1>
+    <p>この段落は <strong>強調</strong> と <em>斜体</em> 、<code>インラインコード</code> を含みます。</p>
+
+    <blockquote>これは引用文です。</blockquote>
+
+    <h2>リスト</h2>
+    <ul>
+      <li>親アイテム1
+        <ul>
+          <li>子アイテムA</li>
+          <li>子アイテムB</li>
+        </ul>
+      </li>
+      <li>親アイテム2</li>
+    </ul>
+
+    <h3>タスクリスト</h3>
+    <ul>
+      <li><input type="checkbox" checked disabled> 完了したタスク</li>
+      <li><input type="checkbox" disabled> 未完了のタスク</li>
+    </ul>
+
+    <h2>テーブル</h2>
+    <table>
+      <thead>
+        <tr><th>項目</th><th>値</th><th>備考</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>名前</td><td>Alice</td><td><a href="./profile.html">プロフィール</a></td></tr>
+        <tr><td>年齢</td><td>30</td><td></td></tr>
+      </tbody>
+    </table>
+
+    <h2>コードブロック</h2>
+    <p>言語クラス付き:</p>
+    <pre><code class="language-typescript">function greet(name: string): string {
+  return `Hello, ${name}!`;
+}</code></pre>
+
+    <p>言語クラスなし:</p>
+    <pre><code>plain text block</code></pre>
+
+    <p>highlight-source系のラッパー:</p>
+    <div class="highlight-source-python">
+      <pre>def greet(name):
+    return f"Hello, {name}!"</pre>
+    </div>
+
+    <h2>リンクと画像（相対パス）</h2>
+    <p>
+      <a href="./other.html">相対リンク</a> /
+      <a href="https://example.com/absolute.html">絶対リンク</a>
+    </p>
+    <img src="./img/sample.png" alt="サンプル画像" width="120" height="80">
+
+    <h2>非表示要素（Markdownに含まれないことを確認）</h2>
+    <p class="hidden-style">display:noneで非表示</p>
+    <p hidden>hidden属性で非表示</p>
+    <script>console.log("このscriptの中身はMarkdownに含まれない");</script>
+    <noscript>noscriptの中身も含まれない</noscript>
+
+    <h2>クリックを抑止できているかの確認</h2>
+    <p>
+      <a href="https://example.com/should-not-navigate">このリンクをクリックしても遷移しないこと</a><br>
+      <button type="button" onclick="location.href='https://example.com/should-not-navigate'">
+        このボタンをクリックしても遷移しないこと
+      </button>
+    </p>
+
+    <h2>内部スクロールコンテナ（追従確認）</h2>
+    <div class="scroll-box">
+      <p>スクロールしてハイライトが追従するか確認する用の段落1</p>
+      <p>スクロールしてハイライトが追従するか確認する用の段落2</p>
+      <p>スクロールしてハイライトが追従するか確認する用の段落3</p>
+      <p>スクロールしてハイライトが追従するか確認する用の段落4</p>
+      <p>スクロールしてハイライトが追従するか確認する用の段落5</p>
+    </div>
+  </main>
+</body>
+</html>
