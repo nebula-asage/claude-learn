@@ -1,0 +1,28 @@
+# gitlab-mcp-server の動作確認用に投入するテストパイプライン。
+# gitlab_get_job_log の検証対象として、成功ジョブと失敗ジョブの両方を用意する。
+stages:
+  - build
+  - test
+
+build_job:
+  stage: build
+  image: alpine:3
+  script:
+    - echo "building..."
+    - echo "build finished successfully"
+
+test_job_pass:
+  stage: test
+  image: alpine:3
+  script:
+    - echo "running passing test..."
+    - echo "PASS"
+
+test_job_fail:
+  stage: test
+  image: alpine:3
+  script:
+    - echo "running failing test..."
+    - echo "intentional failure for gitlab_get_job_log verification"
+    - exit 1
+  allow_failure: true
