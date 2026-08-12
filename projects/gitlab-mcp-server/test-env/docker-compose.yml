@@ -1,0 +1,53 @@
+name: gitlab-mcp-test
+
+networks:
+  default:
+    name: gitlab-mcp-test # gitlab-mcp-server コンテナが --network で参加できるよう固定名にする
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:17.5.2-ce.0
+    hostname: gitlab
+    restart: unless-stopped
+    shm_size: 256m
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://localhost:8929'
+        gitlab_rails['initial_root_password'] = 'Xk9vQ2mBt8pLwZr4!'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2224
+        # 検証用途では不要なコンポーネントを止めてメモリ消費と起動時間を削る
+        prometheus_monitoring['enable'] = false
+        gitlab_kas['enable'] = false
+        registry['enable'] = false
+        puma['worker_processes'] = 2
+    ports:
+      - "127.0.0.1:8929:8929"
+      - "127.0.0.1:2224:22"
+    volumes:
+      - gitlab-config:/etc/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-data:/var/opt/gitlab
+      - ./scripts:/scripts:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8929/-/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 40
+      start_period: 300s
+
+  runner:
+    image: gitlab/gitlab-runner:latest
+    restart: unless-stopped
+    # GitLab CEは初回起動時にPostgreSQL/Redis/Gitalyの初期化順序で一時的に再起動することがあり、
+    # depends_on: condition: service_healthy を使うと `docker compose up -d` がその一時的な
+    # unhealthy状態を検知して即座に失敗してしまう。setup.sh側で明示的にヘルスチェック完了を
+    # 待ってからrunnerサービスを起動するため、ここでは依存関係の同期待ちを行わない。
+    volumes:
+      - runner-config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  gitlab-config:
+  gitlab-logs:
+  gitlab-data:
+  runner-config:
