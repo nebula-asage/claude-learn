@@ -1,0 +1,48 @@
+# __PROJECT_NAME__
+
+Node.jsの練習用プロジェクト。ランタイムは [nvm](https://github.com/nvm-sh/nvm)、パッケージ管理は [pnpm](https://pnpm.io/) を前提とする。
+
+## セットアップ
+
+`nvm` が未導入の場合は公式インストーラーで導入する。
+
+```bash
+NVM_LATEST=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest \
+  | grep -m1 '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_LATEST}/install.sh" | bash
+```
+
+Node.jsランタイムはdistroのパッケージではなく `nvm` に導入・管理させる。
+
+```bash
+nvm install --lts
+nvm alias default 'lts/*'
+```
+
+pnpmはcorepackを使わず、npm経由で10系に固定して導入する（理由は `.claude/skills/pnpm-nvm-project/SKILL.md` を参照）。
+
+```bash
+npm install -g pnpm@^10
+```
+
+## 実行方法
+
+```bash
+pnpm install
+pnpm start
+```
+
+## 依存パッケージの追加
+
+```bash
+pnpm add <パッケージ名>
+```
+
+`pnpm install` / `pnpm add` を実行すると `pnpm-lock.yaml` が生成・更新される。このファイルはコミットしてバージョンを固定する。
+
+## サプライチェーン攻撃対策
+
+`.npmrc` に以下を設定している。
+
+- `ignore-scripts=true`: postinstallなどのライフサイクルスクリプトを実行しない
+- `min-release-age=7` / `minimum-release-age=10080`: 公開から7日間は新しいバージョンのインストールをスキップする（npmとpnpmでキー名・単位が異なるため両方指定している）

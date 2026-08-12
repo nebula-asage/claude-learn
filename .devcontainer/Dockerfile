@@ -3,6 +3,9 @@ FROM ubuntu:24.04
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
+ARG NVM_VERSION=v0.40.6
+ARG NODE_MAJOR=24
+ARG PNPM_VERSION=10.34.5
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -51,3 +54,29 @@ RUN if getent group $USER_GID >/dev/null; then \
 #   のように生成物を /etc/bash_completion.d/ に配置する（このRUNは USER 切り替えより前、root権限で行う）
 
 USER $USERNAME
+
+# Node.js / npm はLinuxで標準的なnvm(Node Version Manager)で導入する
+# (corepackは将来Node.js本体から切り離される方針のため、pnpmの導入手段としては使わない)
+# nvmのインストーラーが ~/.bashrc に自動でnvm.sh/bash補完の読み込みを追記するため、
+# インタラクティブなbashシェルではnode/npm/pnpmが自動でPATHに載る
+ENV NVM_DIR=/home/$USERNAME/.nvm
+RUN curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash \
+    && . "$NVM_DIR/nvm.sh" \
+    && nvm install $NODE_MAJOR \
+    && nvm alias default $NODE_MAJOR \
+    && npm install -g npm@latest
+
+# pnpmの導入
+# pnpmは11系だとユーザー単位のグローバル設定ファイル(config.yaml)の一部設定が
+# 未文書化の破壊的変更で効かなくなっているため、.npmrcでの設定が確実に効く
+# 10系の最新版にバージョンを固定してインストールする
+RUN . "$NVM_DIR/nvm.sh" \
+    && npm install -g pnpm@${PNPM_VERSION} \
+    && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
+    && pnpm completion bash > /home/$USERNAME/.local/share/bash-completion/completions/pnpm
+
+# npm/pnpmのサプライチェーン攻撃対策（デフォルトで有効化）
+# - min-release-age (npm) / minimum-release-age (pnpm): 公開から7日間は
+#   新しいバージョンのインストールをスキップする
+# - ignore-scripts: postinstallなどのライフサイクルスクリプトを実行しない
+RUN printf 'ignore-scripts=true\nmin-release-age=7\nminimum-release-age=10080\n' > /home/$USERNAME/.npmrc
