@@ -86,7 +86,7 @@ pnpm run build
 GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start
 ```
 
-型チェックのみ行う場合は `pnpm run typecheck`。
+型チェックのみ行う場合は `pnpm run typecheck`。リグレッションテストは `pnpm test`（vitest）で実行する。
 
 ## Dockerビルド
 

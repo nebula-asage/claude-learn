@@ -11,12 +11,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 pnpm install
 pnpm run build       # tsc でビルド（distへ出力）
-pnpm run typecheck    # 型チェックのみ（--noEmit）
+pnpm run typecheck    # 型チェックのみ（--noEmit）。src と test の両方を対象にする
 pnpm run dev          # tsc --watch
+pnpm test             # vitest run（リグレッションテスト一式を実行）
 GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start   # dist/index.js を起動
 ```
 
-テスト用のセルフホストGitLab（GitLab CE + GitLab Runner）環境を `test-env/` にDocker Composeで用意している。詳細は `test-env/README.md` を参照。ユニットテストのフレームワークは未導入。
+テスト用のセルフホストGitLab（GitLab CE + GitLab Runner）環境を `test-env/` にDocker Composeで用意している。詳細は `test-env/README.md` を参照。これは手動E2E確認用であり、`pnpm test` のユニットテストはこの環境に依存しない。
+
+### ユニットテスト（`test/`）
+
+vitest ^4 を使用。`test/` 配下にドメインごとにテストファイルを置く（`test/config.test.ts`、`test/gitlab/client.test.ts`、`test/tools/*.test.ts`、`test/invariants.test.ts`、`test/transports/http.test.ts`）。fetchは `test/helpers/fetchMock.ts` の `vi.stubGlobal` ベースのモックで差し替える（`test/transports/http.test.ts` だけは実HTTPサーバーを検証するため本物のfetchを使う）。MCPツールの統合テストは `test/helpers/mcp.ts` の `InMemoryTransport` ハーネス経由で `createServer()` に対して行う。
+
+- **不変条件を変更する場合は `test/invariants.test.ts` を必ず更新すること**（トークン非漏洩・`console.log`不使用・URLエンコード・破壊的操作の非対応を固定している）
+- **新規ツールを追加した場合は `test/invariants.test.ts` の `MINIMAL_ARGS` テーブルと `test/tools/surface.test.ts` のツール名一覧を更新すること**（更新を忘れるとテストが自動的に失敗する設計）
+- プロダクションコード側の非exportヘルパー（`issueSummary`等の整形関数、`config.ts`/`client.ts`/`http.ts`の内部関数）はテストのためにexport化しない。公開API（`loadConfig`・`GitLabClient`のpublicメソッド・`tools/call`・実HTTPリクエスト）経由で検証する方針を維持すること
 
 ## アーキテクチャ
 

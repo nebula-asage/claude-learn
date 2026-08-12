@@ -4,3 +4,6 @@ dist
 test-env
 *.md
 .git
+test
+vitest.config.ts
+tsconfig.test.json
