@@ -28,6 +28,7 @@ cd test-env
    - Issue 3件（open×2、うち1件にコメント / closed×1）
    - `.gitlab-ci.yml`（`seed/gitlab-ci.yml`）をmainに追加 → パイプラインが自動実行される（成功ジョブ・失敗ジョブの両方を含む）
    - ブランチ `feature/demo` と、mainへのマージリクエスト1件
+   - グループメンバー管理系ツール（`gitlab_add_group_member`等）検証用のユーザー `mcp-e2e-member`（`mcp-test`グループには未所属の状態で用意する）
 6. `.env.test` に接続情報を書き出す
 
 完了すると、以下のような接続情報が表示される（`.env.test` にも保存される）。
@@ -37,6 +38,7 @@ GITLAB_BASE_URL=http://localhost:8929           # ホストから使う場合
 GITLAB_BASE_URL_INTERNAL=http://gitlab:8929      # gitlab-mcp-serverコンテナから使う場合
 GITLAB_TOKEN=glpat-mcptestonly0000000000
 GITLAB_DEFAULT_PROJECT=mcp-test/demo
+GITLAB_TEST_MEMBER_USER_ID=<mcp-e2e-memberのユーザーID>
 ```
 
 root のログイン情報: `root` / `Xk9vQ2mBt8pLwZr4!`（`http://localhost:8929` のWeb UIから確認可能）。
@@ -74,7 +76,7 @@ cd test-env
 
 ## 注意事項
 
-- `.env.test` と発行されるPATはローカル検証専用の固定値。**実際のGitLabに対しては絶対に使わない**こと
+- `.env.test` と発行されるPAT、および `mcp-e2e-member` ユーザーの固定パスワードはローカル検証専用の固定値。**実際のGitLabに対しては絶対に使わない**こと
 - `.env.test` は `.gitignore` で除外されている（コミットしないこと）
 - GitLab Runnerの docker executor はホストの `/var/run/docker.sock` をマウントする。これはホストへの実質root相当のアクセスを与えるため、この test-env に限定した構成であることを理解した上で使うこと
 - `docker-compose.yml` の GitLab CE イメージタグは `latest` ではなく固定バージョンを使っている。更新する場合は明示的にタグを変更すること

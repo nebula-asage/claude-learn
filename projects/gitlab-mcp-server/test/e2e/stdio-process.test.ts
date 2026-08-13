@@ -1,67 +1,47 @@
 /**
- * dist/index.js を実子プロセスとして起動し、実stdioパイプ越しにMCPプロトコルで疎通確認する。
+ * dist/index.js を実子プロセスとして起動し、test-env/ の実GitLab CEに対して
+ * 実stdio JSON-RPC + 実HTTPで疎通確認する（読取系ツール中心）。書込系ツールの検証は
+ * test/e2e/write-tools.test.ts を参照。
  *
  * test/helpers/mcp.ts の InMemoryTransport ハーネスは createServer() を同一プロセス内で
- * 直接呼び出すため、config.ts の環境変数読込・index.ts の起動シーケンス・OSパイプ越しの
- * JSON-RPCフレーミングは一切検証されない。このファイルはそのプロセス境界を実際に跨ぐことで、
- * それらを検証する（GitLab API側はモック。実GitLabに対する検証は test-env/ 参照）。
+ * 直接呼び出し、GitLab側も test/helpers/fetchMock.ts でモックするため、プロセス境界も
+ * 実GitLab APIとの疎通も検証しない。このファイルはその両方を実際に跨ぐ。
  *
+ * 前提: test-env/setup.sh で起動したセルフホストGitLab（test-env/.env.test の接続情報）が
+ * 必要。未起動の場合は明確なエラーメッセージで失敗する（詳細は test-env/README.md）。
  * 実行前に `pnpm run build` で dist/index.js が生成されている必要がある。
  * `pnpm run test:e2e` がビルドしてから実行するため、通常はそちらを使う。
+ *
+ * ここでのアサーションは test-env/setup.sh が投入するseedデータ（グループ mcp-test /
+ * プロジェクト mcp-test/demo、Issue 3件、feature/demo からmainへのMR）に依存する。
+ * seedデータの内容を変えた場合はこのファイルも合わせて更新すること。
  *
  * 注意: このプロジェクトは module: NodeNext のため、相対importは必ず `.js` 拡張子を付ける。
  */
 
-import path from "node:path";
-import fs from "node:fs";
-import { fileURLToPath } from "node:url";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { beforeAll, describe, expect, it } from "vitest";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { startMockGitLabServer, type MockGitLabServer } from "./helpers/mockGitLabServer.js";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import {
+  callTool,
+  connectRealProcess,
+  ensureServerBuilt,
+  firstJson,
+  loadTestEnvConnection,
+  SERVER_ENTRY,
+  type TestEnvConnection,
+} from "./helpers/testEnv.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SERVER_ENTRY = path.resolve(__dirname, "../../dist/index.js");
+let conn: TestEnvConnection;
 
-let mockGitLab: MockGitLabServer;
-
-beforeAll(async () => {
-  if (!fs.existsSync(SERVER_ENTRY)) {
-    throw new Error(
-      `dist/index.js が見つかりません（${SERVER_ENTRY}）。先に \`pnpm run build\` を実行してください（\`pnpm run test:e2e\` は自動で実行する）。`,
-    );
-  }
-  mockGitLab = await startMockGitLabServer();
+beforeAll(() => {
+  ensureServerBuilt();
+  conn = loadTestEnvConnection();
 });
 
-afterAll(async () => {
-  await mockGitLab.close();
-});
-
-afterEach(() => {
-  mockGitLab.requests.length = 0;
-});
-
-async function connectRealProcess(
-  env: Record<string, string>,
-): Promise<{ client: Client; transport: StdioClientTransport }> {
-  const transport = new StdioClientTransport({
-    command: process.execPath,
-    args: [SERVER_ENTRY],
-    env,
-    stderr: "pipe",
-  });
-  const client = new Client({ name: "e2e-process-client", version: "0.0.0" });
-  await client.connect(transport);
-  return { client, transport };
-}
-
-describe("実子プロセス（stdio）とのE2E疎通", () => {
+describe("実子プロセス（stdio）× test-env実GitLab とのE2E疎通", () => {
   it("dist/index.js を子プロセスとして起動し、tools/list に29ツールが並ぶ", async () => {
-    const { client, transport } = await connectRealProcess({
-      GITLAB_BASE_URL: mockGitLab.baseUrl,
-      GITLAB_TOKEN: "e2e-test-token",
-    });
+    const { client, transport } = await connectRealProcess(conn);
     try {
       const { tools } = await client.listTools();
       expect(tools).toHaveLength(29);
@@ -72,25 +52,66 @@ describe("実子プロセス（stdio）とのE2E疎通", () => {
     }
   });
 
-  it("gitlab_list_projects が 実プロセス→実HTTP→モックGitLab まで貫通し、PRIVATE-TOKENヘッダが実際に送られる", async () => {
-    const { client, transport } = await connectRealProcess({
-      GITLAB_BASE_URL: mockGitLab.baseUrl,
-      GITLAB_TOKEN: "e2e-test-token",
+  it("gitlab_get_project がGITLAB_DEFAULT_PROJECT（引数省略）で実GitLabのseedプロジェクトを返す", async () => {
+    const { client, transport } = await connectRealProcess(conn);
+    try {
+      const result = await callTool(client, "gitlab_get_project");
+      expect(result.isError).toBeFalsy();
+      const project = firstJson<{ path_with_namespace: string; default_branch: string }>(result);
+      expect(project.path_with_namespace).toBe(conn.defaultProject);
+      expect(project.default_branch).toBe("main");
+    } finally {
+      await client.close();
+      await transport.close();
+    }
+  });
+
+  it("gitlab_list_issues と gitlab_list_issue_notes が test-env/setup.sh のseedデータと一致する", async () => {
+    const { client, transport } = await connectRealProcess(conn);
+    try {
+      const issuesResult = await callTool(client, "gitlab_list_issues", { state: "opened" });
+      const issuesPayload = firstJson<{
+        items: Array<{ iid: number; title: string; labels: string[] }>;
+      }>(issuesResult);
+      const bugIssue = issuesPayload.items.find((i) => i.labels.includes("bug"));
+      expect(bugIssue?.title).toBe("サンプルIssue: バグ報告");
+
+      const notesResult = await callTool(client, "gitlab_list_issue_notes", {
+        issue_iid: bugIssue!.iid,
+      });
+      const notesPayload = firstJson<{ items: Array<{ body: string }> }>(notesResult);
+      expect(notesPayload.items.some((n) => n.body === "検証用コメントです。")).toBe(true);
+    } finally {
+      await client.close();
+      await transport.close();
+    }
+  });
+
+  it("gitlab_list_merge_requests が test-env/setup.sh のseed MRを返す", async () => {
+    const { client, transport } = await connectRealProcess(conn);
+    try {
+      const result = await callTool(client, "gitlab_list_merge_requests", { state: "opened" });
+      const payload = firstJson<{
+        items: Array<{ title: string; source_branch: string; target_branch: string }>;
+      }>(result);
+      const demoMr = payload.items.find((mr) => mr.source_branch === "feature/demo");
+      expect(demoMr?.target_branch).toBe("main");
+      expect(demoMr?.title).toBe("Demo MR: READMEを更新");
+    } finally {
+      await client.close();
+      await transport.close();
+    }
+  });
+
+  it("GITLAB_TOKENが誤っていると実GitLabが401を返し、ツール呼び出しがisErrorになる（トークンは含まれない）", async () => {
+    const { client, transport } = await connectRealProcess(conn, {
+      GITLAB_TOKEN: "glpat-wrong-token",
     });
     try {
-      const result = await client.callTool({ name: "gitlab_list_projects", arguments: {} });
-      expect(result.isError).toBeFalsy();
-
-      const content = result.content as Array<{ type: string; text: string }>;
-      const payload = JSON.parse(content[0]!.text) as {
-        items: Array<{ path_with_namespace: string }>;
-      };
-      expect(payload.items).toHaveLength(1);
-      expect(payload.items[0]?.path_with_namespace).toBe("mcp-test/demo");
-
-      expect(mockGitLab.requests).toHaveLength(1);
-      expect(mockGitLab.requests[0]?.path).toBe("/api/v4/projects");
-      expect(mockGitLab.requests[0]?.privateToken).toBe("e2e-test-token");
+      const result = await callTool(client, "gitlab_get_project");
+      expect(result.isError).toBe(true);
+      const content = result.content as Array<{ text: string }>;
+      expect(content[0]!.text).not.toContain("glpat-wrong-token");
     } finally {
       await client.close();
       await transport.close();
@@ -101,7 +122,7 @@ describe("実子プロセス（stdio）とのE2E疎通", () => {
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [SERVER_ENTRY],
-      env: { GITLAB_BASE_URL: mockGitLab.baseUrl },
+      env: { GITLAB_BASE_URL: conn.baseUrl },
       stderr: "pipe",
     });
     const client = new Client({ name: "e2e-process-client", version: "0.0.0" });

@@ -104,55 +104,81 @@ log "  グループID: ${GROUP_ID}"
 PROJECT_FULL_PATH="${GROUP_PATH}%2F${PROJECT_PATH}"
 PROJECT_JSON=$(api GET "/projects/${PROJECT_FULL_PATH}" 2>/dev/null || true)
 PROJECT_ID=$(echo "$PROJECT_JSON" | jq -r '.id // empty' 2>/dev/null || true)
+PROJECT_IS_NEW=false
 if [ -z "$PROJECT_ID" ]; then
   PROJECT_JSON=$(api POST "/projects" \
     "{\"name\":\"${PROJECT_PATH}\",\"namespace_id\":${GROUP_ID},\"initialize_with_readme\":true,\"default_branch\":\"main\",\"visibility\":\"public\"}")
   PROJECT_ID=$(echo "$PROJECT_JSON" | jq -r '.id')
+  PROJECT_IS_NEW=true
   # プロジェクト作成直後はGitalyでのリポジトリ初期化が非同期のため少し待つ
   sleep 5
 fi
 log "  プロジェクトID: ${PROJECT_ID} (${GROUP_PATH}/${PROJECT_PATH})"
 
-# ラベル
-api POST "/projects/${PROJECT_ID}/labels" '{"name":"bug","color":"#d9534f"}' >/dev/null 2>&1 || true
-api POST "/projects/${PROJECT_ID}/labels" '{"name":"enhancement","color":"#5bc0de"}' >/dev/null 2>&1 || true
+# 以下のIssue/CIファイル/ブランチ+MRの投入は、プロジェクトを新規作成した場合のみ行う。
+# 既存プロジェクトに対して無条件で再実行すると、Issueが呼ぶたびに複製され、
+# .gitlab-ci.ymlの追加は「同名ファイルが既に存在する」で400エラーになるため。
+if [ "$PROJECT_IS_NEW" = "true" ]; then
+  # ラベル
+  api POST "/projects/${PROJECT_ID}/labels" '{"name":"bug","color":"#d9534f"}' >/dev/null 2>&1 || true
+  api POST "/projects/${PROJECT_ID}/labels" '{"name":"enhancement","color":"#5bc0de"}' >/dev/null 2>&1 || true
 
-# Issue（open x2、うち1件にコメント / closed x1）
-ISSUE1=$(api POST "/projects/${PROJECT_ID}/issues" '{"title":"サンプルIssue: バグ報告","description":"検証用のopenなIssueです。","labels":"bug"}' | jq -r '.iid')
-api POST "/projects/${PROJECT_ID}/issues/${ISSUE1}/notes" '{"body":"検証用コメントです。"}' >/dev/null
-api POST "/projects/${PROJECT_ID}/issues" '{"title":"サンプルIssue: 機能要望","description":"検証用のopenなIssueです。","labels":"enhancement"}' >/dev/null
-ISSUE3=$(api POST "/projects/${PROJECT_ID}/issues" '{"title":"サンプルIssue: 完了済みタスク","description":"検証用のclosedなIssueです。"}' | jq -r '.iid')
-api PUT "/projects/${PROJECT_ID}/issues/${ISSUE3}" '{"state_event":"close"}' >/dev/null
-log "  Issueを3件作成しました。"
+  # Issue（open x2、うち1件にコメント / closed x1）
+  ISSUE1=$(api POST "/projects/${PROJECT_ID}/issues" '{"title":"サンプルIssue: バグ報告","description":"検証用のopenなIssueです。","labels":"bug"}' | jq -r '.iid')
+  api POST "/projects/${PROJECT_ID}/issues/${ISSUE1}/notes" '{"body":"検証用コメントです。"}' >/dev/null
+  api POST "/projects/${PROJECT_ID}/issues" '{"title":"サンプルIssue: 機能要望","description":"検証用のopenなIssueです。","labels":"enhancement"}' >/dev/null
+  ISSUE3=$(api POST "/projects/${PROJECT_ID}/issues" '{"title":"サンプルIssue: 完了済みタスク","description":"検証用のclosedなIssueです。"}' | jq -r '.iid')
+  api PUT "/projects/${PROJECT_ID}/issues/${ISSUE3}" '{"state_event":"close"}' >/dev/null
+  log "  Issueを3件作成しました。"
 
-# .gitlab-ci.yml をmainに追加（Runner登録済みなのでパイプラインが自動実行される）
-CI_CONTENT=$(base64 -w0 seed/gitlab-ci.yml)
-api POST "/projects/${PROJECT_ID}/repository/commits" \
-  "{\"branch\":\"main\",\"commit_message\":\"Add .gitlab-ci.yml for testing\",\"actions\":[{\"action\":\"create\",\"file_path\":\".gitlab-ci.yml\",\"content\":\"${CI_CONTENT}\",\"encoding\":\"base64\"}]}" >/dev/null
-log "  .gitlab-ci.yml を追加しました（パイプラインが起動します）。"
+  # .gitlab-ci.yml をmainに追加（Runner登録済みなのでパイプラインが自動実行される）
+  CI_CONTENT=$(base64 -w0 seed/gitlab-ci.yml)
+  api POST "/projects/${PROJECT_ID}/repository/commits" \
+    "{\"branch\":\"main\",\"commit_message\":\"Add .gitlab-ci.yml for testing\",\"actions\":[{\"action\":\"create\",\"file_path\":\".gitlab-ci.yml\",\"content\":\"${CI_CONTENT}\",\"encoding\":\"base64\"}]}" >/dev/null
+  log "  .gitlab-ci.yml を追加しました（パイプラインが起動します）。"
 
-# ブランチ + MR
-api POST "/projects/${PROJECT_ID}/repository/branches" "{\"branch\":\"feature/demo\",\"ref\":\"main\"}" >/dev/null
-UPDATED_CONTENT=$(printf '# demo\n\n検証用に変更したREADMEです。\n' | base64 -w0)
-api POST "/projects/${PROJECT_ID}/repository/commits" \
-  "{\"branch\":\"feature/demo\",\"commit_message\":\"Update README for demo MR\",\"actions\":[{\"action\":\"update\",\"file_path\":\"README.md\",\"content\":\"${UPDATED_CONTENT}\",\"encoding\":\"base64\"}]}" >/dev/null
-api POST "/projects/${PROJECT_ID}/merge_requests" \
-  '{"source_branch":"feature/demo","target_branch":"main","title":"Demo MR: READMEを更新","description":"検証用のマージリクエストです。"}' >/dev/null
-log "  ブランチ feature/demo とマージリクエストを作成しました。"
+  # ブランチ + MR
+  api POST "/projects/${PROJECT_ID}/repository/branches" "{\"branch\":\"feature/demo\",\"ref\":\"main\"}" >/dev/null
+  UPDATED_CONTENT=$(printf '# demo\n\n検証用に変更したREADMEです。\n' | base64 -w0)
+  api POST "/projects/${PROJECT_ID}/repository/commits" \
+    "{\"branch\":\"feature/demo\",\"commit_message\":\"Update README for demo MR\",\"actions\":[{\"action\":\"update\",\"file_path\":\"README.md\",\"content\":\"${UPDATED_CONTENT}\",\"encoding\":\"base64\"}]}" >/dev/null
+  api POST "/projects/${PROJECT_ID}/merge_requests" \
+    '{"source_branch":"feature/demo","target_branch":"main","title":"Demo MR: READMEを更新","description":"検証用のマージリクエストです。"}' >/dev/null
+  log "  ブランチ feature/demo とマージリクエストを作成しました。"
+else
+  log "  プロジェクトは既存のため、Issue/CIファイル/ブランチ+MRの投入をスキップします。"
+fi
 
-log "パイプラインの完了を待っています（最大10分）..."
-elapsed=0
-timeout=600
-pipeline_status=""
-while [ "$elapsed" -lt "$timeout" ]; do
-  pipeline_status=$(api GET "/projects/${PROJECT_ID}/pipelines?ref=main&order_by=id&sort=desc&per_page=1" | jq -r '.[0].status // empty')
-  case "$pipeline_status" in
-    success|failed) break ;;
-  esac
-  sleep 10
-  elapsed=$((elapsed + 10))
-done
-log "  パイプラインステータス: ${pipeline_status:-不明（タイムアウト）}"
+# グループメンバー管理系ツール（gitlab_add_group_member / gitlab_update_group_member）の
+# 検証用に、グループにまだ所属していない状態のユーザーを1人用意しておく。
+MEMBER_USERNAME="mcp-e2e-member"
+MEMBER_USER_ID=$(api GET "/users?username=${MEMBER_USERNAME}" 2>/dev/null | jq -r '.[0].id // empty' || true)
+if [ -z "$MEMBER_USER_ID" ]; then
+  # GitLabのパスワード強度チェック（辞書語の組み合わせ禁止）に引っかからないよう、
+  # 意味を持たない文字列にしている。
+  MEMBER_USER_ID=$(api POST "/users" \
+    "{\"username\":\"${MEMBER_USERNAME}\",\"name\":\"MCP E2E Member\",\"email\":\"${MEMBER_USERNAME}@example.invalid\",\"password\":\"qX7!vR2z-Kt9#mN4wL\",\"skip_confirmation\":true}" \
+    | jq -r '.id')
+fi
+# 冪等性のため、既にグループメンバーになっていたら外しておく（add系テストが「新規追加」を検証できるように）。
+api DELETE "/groups/${GROUP_ID}/members/${MEMBER_USER_ID}" >/dev/null 2>&1 || true
+log "  グループメンバーテスト用ユーザーを用意しました: ${MEMBER_USERNAME} (ID: ${MEMBER_USER_ID})"
+
+if [ "$PROJECT_IS_NEW" = "true" ]; then
+  log "パイプラインの完了を待っています（最大10分）..."
+  elapsed=0
+  timeout=600
+  pipeline_status=""
+  while [ "$elapsed" -lt "$timeout" ]; do
+    pipeline_status=$(api GET "/projects/${PROJECT_ID}/pipelines?ref=main&order_by=id&sort=desc&per_page=1" | jq -r '.[0].status // empty')
+    case "$pipeline_status" in
+      success|failed) break ;;
+    esac
+    sleep 10
+    elapsed=$((elapsed + 10))
+  done
+  log "  パイプラインステータス: ${pipeline_status:-不明（タイムアウト）}"
+fi
 
 cat > "$ENV_FILE" <<EOF
 # test-env/setup.sh が生成した接続情報。gitignore対象。ローカル検証専用のためコミットしないこと。
@@ -160,6 +186,7 @@ GITLAB_BASE_URL=${HOST_URL}
 GITLAB_BASE_URL_INTERNAL=${INTERNAL_URL}
 GITLAB_TOKEN=${TOKEN}
 GITLAB_DEFAULT_PROJECT=${GROUP_PATH}/${PROJECT_PATH}
+GITLAB_TEST_MEMBER_USER_ID=${MEMBER_USER_ID}
 EOF
 
 log ""
@@ -169,5 +196,6 @@ log "コンテナからのURL:     ${INTERNAL_URL}（--network ${NETWORK_NAME} �
 log "root ログイン:         root / Xk9vQ2mBt8pLwZr4!"
 log "テスト用PAT:           ${TOKEN}（scope: api, 有効期限365日）"
 log "テストプロジェクト:     ${GROUP_PATH}/${PROJECT_PATH}"
+log "グループメンバーテスト用ユーザー: ${MEMBER_USERNAME} (ID: ${MEMBER_USER_ID})"
 log "接続情報を ${ENV_FILE} に書き出しました。"
 log "片付ける場合は ./teardown.sh を実行してください。"

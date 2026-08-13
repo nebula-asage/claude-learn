@@ -26,7 +26,7 @@ GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start   
 
 ESLint（flat config, `eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecked` をベースに、`tsconfig.json` と `tsconfig.test.json` の両方を型情報のソースとして使う。テストコード（`test/**/*.ts`）はモック・フィクスチャで `any` や型アサーションを扱うことが多いため、`no-unsafe-*` 系など一部ルールを緩めている。フォーマットはPrettier（`.prettierrc.json`）で、既存コードに合わせてダブルクォート・セミコロンあり。新規コードを追加したら `pnpm run lint` と `pnpm run format:check` を通すこと。
 
-テスト用のセルフホストGitLab（GitLab CE + GitLab Runner）環境を `test-env/` にDocker Composeで用意している。詳細は `test-env/README.md` を参照。これは手動E2E確認用（実GitLabに対する動作確認）であり、`pnpm test` のユニットテストも `pnpm run test:e2e` の自動E2Eもこの環境に依存しない。
+テスト用のセルフホストGitLab（GitLab CE + GitLab Runner）環境を `test-env/` にDocker Composeで用意している。詳細は `test-env/README.md` を参照。起動は `cd test-env && ./setup.sh`（手動、初回5〜10分）。`pnpm test` のユニットテストはこの環境に依存しないが、`pnpm run test:e2e` の自動E2Eはこの環境（`test-env/.env.test` の接続情報とseedデータ）に依存する。
 
 ### ユニットテスト（`test/`、`test/e2e/` を除く）
 
@@ -38,7 +38,13 @@ vitest ^4 を使用。`test/` 配下にドメインごとにテストファイ�
 
 ### 自動E2Eテスト（`test/e2e/`）
 
-`vitest.e2e.config.ts` で別実行（`pnpm run test:e2e`。build込みで、`pnpm test` には含まれない）。`test/e2e/stdio-process.test.ts` が `dist/index.js` を `StdioClientTransport` 経由で実子プロセスとして起動し、本物のstdio JSON-RPCで疎通確認する。GitLab API側は `test/e2e/helpers/mockGitLabServer.ts`（127.0.0.1の空きポートで起動する軽量HTTPスタブ）で代替し、実GitLabには依存しない（実GitLabに対する検証は上記の `test-env/` を使った手動確認が対象）。config.ts の環境変数読込ミスや起動シーケンスの崩れなど、InMemoryTransport ハーネスでは検出できないプロセス境界の不具合を検出するのが目的。ツール総数（29）をハードコードしたアサーションがあるため、新規ツールを追加した場合は `test/invariants.test.ts` / `test/tools/surface.test.ts` と同様にこのテストの件数も更新すること。
+`vitest.e2e.config.ts` で別実行（`pnpm run test:e2e`。build込みで、`pnpm test` には含まれない）。共通ヘルパーは `test/e2e/helpers/testEnv.ts`（`.env.test`読込、実子プロセス起動、`callTool`/`firstJson`、後始末用の直接GitLab APIリクエスト）に集約している。`dist/index.js` を `StdioClientTransport` 経由で実子プロセスとして起動し、本物のstdio JSON-RPC + 実HTTPで上記の `test-env/`（実GitLab CE）に対して疎通確認する。接続情報は `test-env/.env.test` から読む。**実行前に `cd test-env && ./setup.sh` でGitLabを起動しておくこと**（未起動・`.env.test`欠落時は明確なエラーメッセージで失敗する。無言でスキップはしない）。config.ts の環境変数読込ミスや起動シーケンスの崩れなど、InMemoryTransport ハーネスでは検出できないプロセス境界の不具合に加え、実GitLab APIとの疎通そのものを検証するのが目的。
+
+- `test/e2e/stdio-process.test.ts`: 読取系ツールと起動時エラー系の疎通確認
+- `test/e2e/write-tools.test.ts`: 書込系8ツール（create/update/note追加・グループメンバー追加更新）を実際にGitLabへ反映させて検証する。グループメンバー系は `test-env/setup.sh` が用意する `mcp-e2e-member` ユーザー（`GITLAB_TEST_MEMBER_USER_ID`、グループ未所属の状態で用意される）を使う。gitlab-mcp-server自体は削除系ツールを意図的に持たないため、各テストが作った使い捨てのIssue/MR/ブランチ/グループメンバーは、MCPツールではなく `testEnv.ts` の `gitlabCleanup`（直接GitLab APIを叩く）で`afterEach`ごとに後始末し、`test-env/`にゴミが積み上がらないようにしている
+- アサーションは `test-env/setup.sh` が投入するseedデータ（グループ `mcp-test`、プロジェクト `mcp-test/demo`、Issue 3件、`feature/demo`→`main`のMR、メンバーテスト用ユーザー`mcp-e2e-member`等）に依存する。**seedデータを変更したらこれらのテストも合わせて更新すること**
+- ツール総数（29）をハードコードしたアサーションがあるため、新規ツールを追加した場合は `test/invariants.test.ts` / `test/tools/surface.test.ts` と同様にこのテストの件数も更新すること
+- `test-env/setup.sh` は冪等に作られているが、Issue/CIファイル/ブランチ+MRの投入は「プロジェクトを新規作成した場合のみ」行う設計（既存プロジェクトに対して無条件で再実行するとIssueが複製され、`.gitlab-ci.yml`追加が400エラーになるため）。seedデータの内容自体を変えたい場合は、一度 `./teardown.sh` してから `./setup.sh` を実行し直すこと
 
 ## アーキテクチャ
 
