@@ -8,6 +8,8 @@ import type {
   GitLabBranch,
   GitLabCommit,
   GitLabFile,
+  GitLabGroup,
+  GitLabGroupMember,
   GitLabIssue,
   GitLabJob,
   GitLabMergeRequest,
@@ -178,6 +180,33 @@ export function pipelineFixture(overrides: Partial<GitLabPipeline> = {}): GitLab
     web_url: "https://gitlab.example.com/grp/sub/proj/-/pipelines/5001",
     created_at: "2026-01-06T00:00:00Z",
     updated_at: "2026-01-06T01:00:00Z",
+    ...overrides,
+  };
+}
+
+export function groupFixture(overrides: Partial<GitLabGroup> = {}): GitLabGroup {
+  return {
+    id: 100,
+    name: "grp",
+    path: "grp",
+    full_path: "top/grp",
+    description: "説明文",
+    visibility: "private",
+    web_url: "https://gitlab.example.com/groups/top/grp",
+    parent_id: null,
+    ...overrides,
+  };
+}
+
+export function groupMemberFixture(overrides: Partial<GitLabGroupMember> = {}): GitLabGroupMember {
+  return {
+    id: 7,
+    username: "alice",
+    name: "Alice",
+    state: "active",
+    access_level: 30,
+    expires_at: null,
+    web_url: "https://gitlab.example.com/alice",
     ...overrides,
   };
 }

@@ -5,6 +5,7 @@ import { registerRepositoryTools } from "./tools/repository.js";
 import { registerIssueTools } from "./tools/issues.js";
 import { registerMergeRequestTools } from "./tools/mergeRequests.js";
 import { registerPipelineTools } from "./tools/pipelines.js";
+import { registerGroupTools } from "./tools/groups.js";
 
 /** MCPサーバを構築し、GitLab操作ツールを全て登録する。 */
 export function createServer(config: Config): McpServer {
@@ -19,6 +20,7 @@ export function createServer(config: Config): McpServer {
   registerIssueTools(server, client, config);
   registerMergeRequestTools(server, client, config);
   registerPipelineTools(server, client);
+  registerGroupTools(server, client, config);
 
   return server;
 }

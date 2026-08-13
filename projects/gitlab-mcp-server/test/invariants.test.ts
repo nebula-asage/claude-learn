@@ -13,7 +13,7 @@ import { connect, errText } from "./helpers/mcp.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SRC_DIR = path.resolve(__dirname, "../src");
 
-/** 全24ツールを最小限の引数で1回ずつ呼べるようにするテーブル。project は encodeId 検証を兼ねて / とスペースを含む値にする。 */
+/** 全29ツールを最小限の引数で1回ずつ呼べるようにするテーブル。project/group は encodeId 検証を兼ねて / とスペースを含む値にする。 */
 const MINIMAL_ARGS: Record<string, Record<string, unknown>> = {
   gitlab_list_projects: {},
   gitlab_get_project: { project: "grp/sub proj" },
@@ -44,10 +44,15 @@ const MINIMAL_ARGS: Record<string, Record<string, unknown>> = {
   gitlab_get_pipeline: { project: "grp/sub proj", pipeline_id: 5001 },
   gitlab_list_pipeline_jobs: { project: "grp/sub proj", pipeline_id: 5001 },
   gitlab_get_job_log: { project: "grp/sub proj", job_id: 6001 },
+  gitlab_list_groups: {},
+  gitlab_get_group: { group: "top/sub grp" },
+  gitlab_list_group_members: { group: "top/sub grp" },
+  gitlab_add_group_member: { group: "top/sub grp", user_id: 7, access_level: 30 },
+  gitlab_update_group_member: { group: "top/sub grp", user_id: 7, access_level: 30 },
 };
 
-/** /projects/{id} セグメントのエンコード検証から除外するツール（project 引数自体を持たない）。 */
-const ENCODE_CHECK_EXCLUDED = new Set(["gitlab_list_projects"]);
+/** /projects/{id} または /groups/{id} セグメントのエンコード検証から除外するツール（project/group 引数自体を持たない）。 */
+const ENCODE_CHECK_EXCLUDED = new Set(["gitlab_list_projects", "gitlab_list_groups"]);
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -75,7 +80,7 @@ describe("不変条件1: GitLabApiError のメッセージにトークンを含�
         throw timeoutError();
       },
     ],
-  ])("%s のとき、全24ツールの出力にトークンが混入しない", async (_label, responder) => {
+  ])("%s のとき、全29ツールの出力にトークンが混入しない", async (_label, responder) => {
     installFetchMock(responder as () => Response);
     const harness = await connect();
     for (const [name, args] of Object.entries(MINIMAL_ARGS)) {
@@ -89,7 +94,7 @@ describe("不変条件1: GitLabApiError のメッセージにトークンを含�
 });
 
 describe("不変条件3: URLパスへの埋め込みは必ずエンコードを通す", () => {
-  it("project引数を持つ全ツールで /projects/ 直後のセグメントが正しくエンコードされる", async () => {
+  it("project/group引数を持つ全ツールで /projects/ または /groups/ 直後のセグメントが正しくエンコードされる", async () => {
     // レスポンス形状の正しさは他のテストで検証済み。ここでは fetch に渡された URL だけを見るため、
     // 常に空配列を返す寛容なレスポンダで十分（後続の整形処理が失敗しても記録済みのURLは変わらない）。
     const mock = installFetchMock(() => jsonResponse([]));
@@ -106,10 +111,11 @@ describe("不変条件3: URLパスへの埋め込みは必ずエンコードを�
       const name = names[i]!;
       if (ENCODE_CHECK_EXCLUDED.has(name)) continue;
       const pathname = mock.calls[i]!.url.pathname;
-      const match = /^\/api\/v4\/projects\/([^/]+)/.exec(pathname);
+      const match = /^\/api\/v4\/(projects|groups)\/([^/]+)/.exec(pathname);
       expect(match, `${name}: ${pathname}`).not.toBeNull();
-      const segment = match![1]!;
-      expect(segment, name).toBe("grp%2Fsub%20proj");
+      const [, resource, segment] = match!;
+      const expected = resource === "groups" ? "top%2Fsub%20grp" : "grp%2Fsub%20proj";
+      expect(segment, name).toBe(expected);
       expect(segment, name).not.toContain("/");
       expect(segment, name).not.toContain(" ");
     }
@@ -167,7 +173,7 @@ describe("不変条件5: 破壊的操作（マージ・削除）はスコープ�
     await harness.close();
   });
 
-  it("全24ツール実行時、fetchのHTTPメソッドは GET/POST/PUT のみで DELETE/PATCH は発生しない", async () => {
+  it("全29ツール実行時、fetchのHTTPメソッドは GET/POST/PUT のみで DELETE/PATCH は発生しない", async () => {
     const mock = installFetchMock(() => jsonResponse([]));
     const harness = await connect();
     for (const [name, args] of Object.entries(MINIMAL_ARGS)) {

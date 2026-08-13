@@ -60,6 +60,13 @@ export const projectArg = {
     ),
 };
 
+/** `group` 引数の共通スキーマ断片。プロジェクトと異なり既定値が無いため必須にする。 */
+export const groupArg = {
+  group: z
+    .string()
+    .describe("対象グループ（'group' または 'group/subgroup' 形式のパス、または数値ID）。"),
+};
+
 /** 一覧系ツール共通のページング引数スキーマ断片。 */
 export const pagingArgs = {
   page: z.number().int().min(1).optional().describe("取得するページ番号（1始まり）。省略時は1。"),

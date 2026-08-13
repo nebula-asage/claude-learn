@@ -26,6 +26,11 @@ const ALL_TOOL_NAMES = [
   "gitlab_get_pipeline",
   "gitlab_list_pipeline_jobs",
   "gitlab_get_job_log",
+  "gitlab_list_groups",
+  "gitlab_get_group",
+  "gitlab_list_group_members",
+  "gitlab_add_group_member",
+  "gitlab_update_group_member",
 ];
 
 const WRITE_TOOL_NAMES = [
@@ -35,9 +40,15 @@ const WRITE_TOOL_NAMES = [
   "gitlab_create_merge_request",
   "gitlab_update_merge_request",
   "gitlab_create_merge_request_note",
+  "gitlab_add_group_member",
+  "gitlab_update_group_member",
 ];
 
-const UPDATE_TOOL_NAMES = ["gitlab_update_issue", "gitlab_update_merge_request"];
+const UPDATE_TOOL_NAMES = [
+  "gitlab_update_issue",
+  "gitlab_update_merge_request",
+  "gitlab_update_group_member",
+];
 const CREATE_TOOL_NAMES = WRITE_TOOL_NAMES.filter((n) => !UPDATE_TOOL_NAMES.includes(n));
 
 afterEach(() => {
@@ -45,19 +56,19 @@ afterEach(() => {
 });
 
 describe("tools/list - ツール表面", () => {
-  it("全24ツールが名前完全一致で登録されている", async () => {
+  it("全29ツールが名前完全一致で登録されている", async () => {
     const harness = await connect();
     const tools = await harness.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([...ALL_TOOL_NAMES].sort());
-    expect(tools).toHaveLength(24);
+    expect(tools).toHaveLength(29);
     await harness.close();
   });
 
-  it("gitlabReadOnly=true では書込6ツールが登録されず18件になる", async () => {
+  it("gitlabReadOnly=true では書込8ツールが登録されず21件になる", async () => {
     const harness = await connect({ gitlabReadOnly: true });
     const tools = await harness.listTools();
     const names = tools.map((t) => t.name);
-    expect(tools).toHaveLength(18);
+    expect(tools).toHaveLength(21);
     for (const writeName of WRITE_TOOL_NAMES) {
       expect(names).not.toContain(writeName);
     }
@@ -75,18 +86,18 @@ describe("tools/list - ツール表面", () => {
     await harness.close();
   });
 
-  it("読取系18件は readOnlyHint === true", async () => {
+  it("読取系21件は readOnlyHint === true", async () => {
     const harness = await connect();
     const tools = await harness.listTools();
     const readTools = tools.filter((t) => !WRITE_TOOL_NAMES.includes(t.name));
-    expect(readTools).toHaveLength(18);
+    expect(readTools).toHaveLength(21);
     for (const tool of readTools) {
       expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
     }
     await harness.close();
   });
 
-  it("書込系6件は readOnlyHint === false かつ destructiveHint === false", async () => {
+  it("書込系8件は readOnlyHint === false かつ destructiveHint === false", async () => {
     const harness = await connect();
     const tools = await harness.listTools();
     for (const name of WRITE_TOOL_NAMES) {
@@ -133,6 +144,14 @@ describe("tools/list - ツール表面", () => {
     const tools = await harness.listTools();
     const tool = tools.find((t) => t.name === "gitlab_get_issue");
     expect(tool?.inputSchema.required).toContain("issue_iid");
+    await harness.close();
+  });
+
+  it("gitlab_get_group の group は required に含まれる（projectと異なりデフォルトが無い）", async () => {
+    const harness = await connect();
+    const tools = await harness.listTools();
+    const tool = tools.find((t) => t.name === "gitlab_get_group");
+    expect(tool?.inputSchema.required).toContain("group");
     await harness.close();
   });
 

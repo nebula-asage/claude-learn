@@ -1,6 +1,6 @@
 # gitlab-mcp-server
 
-セルフホストGitLabをAPI経由で操作するMCP（Model Context Protocol）サーバ。パーソナルアクセストークン（PAT）で認証し、リポジトリ参照・Issue・マージリクエスト・CI/パイプラインの4領域をツールとして提供する。
+セルフホストGitLabをAPI経由で操作するMCP（Model Context Protocol）サーバ。パーソナルアクセストークン（PAT）で認証し、リポジトリ参照・Issue・マージリクエスト・CI/パイプライン・グループ/メンバーの5領域をツールとして提供する。
 
 - 実装言語: TypeScript（依存は `@modelcontextprotocol/sdk` と `zod` のみ。GitLab APIはNode組み込みの`fetch`で直接叩く）
 - 実行形態: Dockerコンテナ
@@ -54,7 +54,17 @@
 | `gitlab_list_pipeline_jobs` | 読取 | パイプラインのジョブ一覧を取得する                   |
 | `gitlab_get_job_log`        | 読取 | ジョブの実行ログを取得する（既定で末尾から切り詰め） |
 
-マージの実行（`PUT .../merge`）やIssue/MRの削除など、破壊的度合いが高い操作は今回のスコープに含めていない。
+### グループ / メンバー
+
+| ツール名                     | 種別 | 説明                                         |
+| ---------------------------- | ---- | -------------------------------------------- |
+| `gitlab_list_groups`         | 読取 | グループを検索・一覧する                     |
+| `gitlab_get_group`           | 読取 | グループ詳細を取得する                       |
+| `gitlab_list_group_members`  | 読取 | グループのメンバーを検索・一覧する           |
+| `gitlab_add_group_member`    | 書込 | グループにメンバーを追加する                 |
+| `gitlab_update_group_member` | 書込 | メンバーのアクセスレベル・有効期限を更新する |
+
+マージの実行（`PUT .../merge`）やIssue/MRの削除、グループメンバーの削除など、破壊的度合いが高い操作は今回のスコープに含めていない。
 
 ## 環境変数
 
@@ -76,7 +86,7 @@
 GitLabの `User Settings > Access Tokens` から発行する。必要なスコープ:
 
 - 読み取り系ツールのみ使う場合: `read_api`
-- 書込系ツール（Issue/MR作成・更新・コメント）も使う場合: `api`
+- 書込系ツール（Issue/MR作成・更新・コメント、グループメンバー追加・更新）も使う場合: `api`
 
 ## ローカル開発
 
@@ -151,7 +161,7 @@ docker run -i --rm \
 
 ## 読み取り専用運用
 
-`GITLAB_READ_ONLY=true` を設定すると、Issue/MR の作成・更新・コメント追加ツールが一切登録されない。閲覧用途のみに使う場合や、権限の弱いPAT（`read_api`スコープのみ）と組み合わせて使う場合はこちらを推奨する。
+`GITLAB_READ_ONLY=true` を設定すると、Issue/MR の作成・更新・コメント追加ツールとグループメンバーの追加・更新ツールが一切登録されない。閲覧用途のみに使う場合や、権限の弱いPAT（`read_api`スコープのみ）と組み合わせて使う場合はこちらを推奨する。
 
 ## テスト環境
 
