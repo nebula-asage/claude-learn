@@ -98,7 +98,7 @@ GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start
 
 型チェックのみ行う場合は `pnpm run typecheck`。リグレッションテストは `pnpm test`（vitest）で実行する。
 
-`pnpm test`（ユニットテスト）はGitLab APIへのfetchをモックし、`createServer()` を同一プロセス内で直接呼び出して検証するため、実際のプロセス起動やstdioのパイプ越しの通信は通らない。この境界を自動で検証するE2Eテストが `pnpm run test:e2e` で、`dist/index.js` を実子プロセスとして起動し、本物のstdio JSON-RPC + 実HTTPで下記「テスト環境」の実GitLab（`test-env/`）に対して疎通確認する。実行前に `cd test-env && ./setup.sh` でセルフホストGitLabを起動しておく必要がある（未起動だと明確なエラーで失敗する）。読取系ツールに加え、書込系8ツール（Issue/MR作成・更新・コメント追加、グループメンバー追加更新）も実際にGitLabへ反映させて検証しており、作成した使い捨てデータはテスト後に自動で後始末される。
+`pnpm test`（ユニットテスト）はGitLab APIへのfetchをモックし、`createServer()` を同一プロセス内で直接呼び出して検証するため、実際のプロセス起動やstdioのパイプ越しの通信は通らない。この境界を自動で検証するE2Eテストが `pnpm run test:e2e` で、`dist/index.js` を実子プロセスとして起動し、本物のstdio JSON-RPC + 実HTTPで下記「テスト環境」の実GitLab（`test-env/`）に対して疎通確認する。実行前に `cd test-env && ./setup.sh` でセルフホストGitLabを起動しておく必要がある（未起動だと明確なエラーで失敗する）。全29ツールの正常系を実GitLabに対して呼び出して検証しており（書込系8ツールも含む）、作成した使い捨てデータはテスト後に自動で後始末される。
 
 ## Dockerビルド
 

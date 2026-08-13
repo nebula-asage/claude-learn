@@ -40,10 +40,12 @@ vitest ^4 を使用。`test/` 配下にドメインごとにテストファイ�
 
 `vitest.e2e.config.ts` で別実行（`pnpm run test:e2e`。build込みで、`pnpm test` には含まれない）。共通ヘルパーは `test/e2e/helpers/testEnv.ts`（`.env.test`読込、実子プロセス起動、`callTool`/`firstJson`、後始末用の直接GitLab APIリクエスト）に集約している。`dist/index.js` を `StdioClientTransport` 経由で実子プロセスとして起動し、本物のstdio JSON-RPC + 実HTTPで上記の `test-env/`（実GitLab CE）に対して疎通確認する。接続情報は `test-env/.env.test` から読む。**実行前に `cd test-env && ./setup.sh` でGitLabを起動しておくこと**（未起動・`.env.test`欠落時は明確なエラーメッセージで失敗する。無言でスキップはしない）。config.ts の環境変数読込ミスや起動シーケンスの崩れなど、InMemoryTransport ハーネスでは検出できないプロセス境界の不具合に加え、実GitLab APIとの疎通そのものを検証するのが目的。
 
-- `test/e2e/stdio-process.test.ts`: 読取系ツールと起動時エラー系の疎通確認
+- `test/e2e/stdio-process.test.ts`: プロセス境界の疎通確認（`tools/list`件数、`gitlab_get_project`等の基本的な読取、トークン誤り・未設定時の起動/呼び出しエラー）
+- `test/e2e/read-tools.test.ts`: `stdio-process.test.ts`で未カバーの読取専用ツール（リポジトリツリー・ファイル内容・ブランチ・コミット・コード検索・Issue詳細・MR詳細/diff/コメント一覧・CI/パイプライン一連・グループ一連）を検証する
 - `test/e2e/write-tools.test.ts`: 書込系8ツール（create/update/note追加・グループメンバー追加更新）を実際にGitLabへ反映させて検証する。グループメンバー系は `test-env/setup.sh` が用意する `mcp-e2e-member` ユーザー（`GITLAB_TEST_MEMBER_USER_ID`、グループ未所属の状態で用意される）を使う。gitlab-mcp-server自体は削除系ツールを意図的に持たないため、各テストが作った使い捨てのIssue/MR/ブランチ/グループメンバーは、MCPツールではなく `testEnv.ts` の `gitlabCleanup`（直接GitLab APIを叩く）で`afterEach`ごとに後始末し、`test-env/`にゴミが積み上がらないようにしている
-- アサーションは `test-env/setup.sh` が投入するseedデータ（グループ `mcp-test`、プロジェクト `mcp-test/demo`、Issue 3件、`feature/demo`→`main`のMR、メンバーテスト用ユーザー`mcp-e2e-member`等）に依存する。**seedデータを変更したらこれらのテストも合わせて更新すること**
-- ツール総数（29）をハードコードしたアサーションがあるため、新規ツールを追加した場合は `test/invariants.test.ts` / `test/tools/surface.test.ts` と同様にこのテストの件数も更新すること
+- 上記3ファイルの合計で、全29ツールの正常系呼び出しを網羅している（`grep -ohE 'callTool\(client, "gitlab_[a-z_]+"' test/e2e/*.test.ts | sort -u | wc -l` で29件になることを確認可能）。**新規ツールを追加した場合は、`test/invariants.test.ts` / `test/tools/surface.test.ts` に加え、いずれかのe2eテストファイルにも正常系呼び出しを追加し、`stdio-process.test.ts` のツール総数（29）も更新すること**
+- アサーションは `test-env/setup.sh` が投入するseedデータ（グループ `mcp-test`、プロジェクト `mcp-test/demo`、Issue 3件、`.gitlab-ci.yml`によるパイプライン（成功ジョブ・失敗ジョブ含む）、`feature/demo`→`main`のMR、メンバーテスト用ユーザー`mcp-e2e-member`等）に依存する。**seedデータを変更したらこれらのテストも合わせて更新すること**
+- `gitlab_search_code` は `project` を省略するとインスタンス全体検索になり、Elasticsearchを使わないGitLab CE（test-env）では400エラーになる。e2eテストでは `project` を明示的に渡すこと
 - `test-env/setup.sh` は冪等に作られているが、Issue/CIファイル/ブランチ+MRの投入は「プロジェクトを新規作成した場合のみ」行う設計（既存プロジェクトに対して無条件で再実行するとIssueが複製され、`.gitlab-ci.yml`追加が400エラーになるため）。seedデータの内容自体を変えたい場合は、一度 `./teardown.sh` してから `./setup.sh` を実行し直すこと
 
 ## アーキテクチャ
