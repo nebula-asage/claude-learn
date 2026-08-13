@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 概要
 
-セルフホストGitLabをAPI経由で操作するMCP（Model Context Protocol）サーバ。パーソナルアクセストークン（PAT）で認証し、リポジトリ参照・Issue・マージリクエスト・CI/パイプラインの4領域をツールとして提供する。TypeScript製。依存は `@modelcontextprotocol/sdk` と `zod` のみで、GitLab APIはNode組み込みの `fetch` で直接叩く（GitLab用SDKは使わない）。
+セルフホストGitLabをAPI経由で操作するMCP（Model Context Protocol）サーバ。パーソナルアクセストークン（PAT）で認証し、リポジトリ参照・Issue・マージリクエスト・CI/パイプライン・グループ/メンバーの5領域をツールとして提供する。TypeScript製。依存は `@modelcontextprotocol/sdk` と `zod` のみで、GitLab APIはNode組み込みの `fetch` で直接叩く（GitLab用SDKは使わない）。
 
 ## コマンド
 
@@ -42,10 +42,10 @@ vitest ^4 を使用。`test/` 配下にドメインごとにテストファイ�
 ```
 src/index.ts           起動エントリポイント。設定読込 → サーバ生成 → トランスポート起動
 src/config.ts          環境変数の読込・検証（loadConfig）。不正時はConfigErrorで即座に落とす
-src/server.ts          McpServerを生成し、4つのtoolsモジュールの register関数を呼ぶ
+src/server.ts          McpServerを生成し、5つのtoolsモジュールの register関数を呼ぶ
 src/gitlab/client.ts   GitLabClient: fetchラッパー、認証ヘッダ付与、ページング処理、エラー変換
 src/gitlab/types.ts    GitLab API レスポンスの型定義
-src/tools/*.ts         ツール実装（repository/issues/mergeRequests/pipelines）。ドメインごとに1ファイル
+src/tools/*.ts         ツール実装（repository/issues/mergeRequests/pipelines/groups）。ドメインごとに1ファイル
 src/tools/shared.ts    ツール共通のヘルパー（エラーハンドリング、ページング引数、切り詰め等）
 src/transports/        stdio.ts と http.ts。config.mcpTransport で切替
 ```
@@ -70,7 +70,7 @@ src/transports/        stdio.ts と http.ts。config.mcpTransport で切替
 
 ### デフォルトプロジェクト解決
 
-`GitLabClient.resolveProject(project)` が、ツール引数 `project` 省略時に `config.gitlabDefaultProject`（環境変数 `GITLAB_DEFAULT_PROJECT`）にフォールバックする。どちらもなければ `ToolInputError`。
+`GitLabClient.resolveProject(project)` が、ツール引数 `project` 省略時に `config.gitlabDefaultProject`（環境変数 `GITLAB_DEFAULT_PROJECT`）にフォールバックする。どちらもなければ `ToolInputError`。グループ系ツールの `group` 引数には同様のデフォルト解決が無く、常に必須（`shared.ts` の `groupArg`）。
 
 ### トランスポート
 
@@ -79,6 +79,6 @@ src/transports/        stdio.ts と http.ts。config.mcpTransport で切替
 
 ## 実装時の注意
 
-- プロジェクトIDやファイルパスをURLパスに埋め込む際は `GitLabClient.encodeId()` / `GitLabClient.encodePathSegment()` を必ず使う（インジェクション対策）
-- マージの実行（`PUT .../merge`）やIssue/MRの削除など、破壊的度合いが高い操作はスコープ外（意図的に未実装）
+- プロジェクトID・グループID・ファイルパスをURLパスに埋め込む際は `GitLabClient.encodeId()` / `GitLabClient.encodePathSegment()` を必ず使う（インジェクション対策）
+- マージの実行（`PUT .../merge`）やIssue/MRの削除、グループメンバーの削除など、破壊的度合いが高い操作はスコープ外（意図的に未実装）
 - 新規ツールを追加したら `README.md` のツール一覧表も更新する

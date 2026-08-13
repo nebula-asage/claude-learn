@@ -147,6 +147,27 @@ export interface GitLabJob {
   web_url: string;
 }
 
+export interface GitLabGroup {
+  id: number;
+  name: string;
+  path: string;
+  full_path: string;
+  description: string | null;
+  visibility: string;
+  web_url: string;
+  parent_id: number | null;
+}
+
+export interface GitLabGroupMember {
+  id: number;
+  username: string;
+  name: string;
+  state: string;
+  access_level: number;
+  expires_at: string | null;
+  web_url: string;
+}
+
 /** ページング情報。GitLab のレスポンスヘッダから抽出する。 */
 export interface PageInfo {
   page: number;
