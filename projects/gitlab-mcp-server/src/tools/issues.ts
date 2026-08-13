@@ -3,7 +3,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { GitLabClient } from "../gitlab/client.js";
 import type { GitLabIssue, GitLabNote } from "../gitlab/types.js";
 import type { Config } from "../config.js";
-import { jsonResult, pagedJsonResult, pagingArgs, projectArg, withErrorHandling } from "./shared.js";
+import {
+  jsonResult,
+  pagedJsonResult,
+  pagingArgs,
+  projectArg,
+  withErrorHandling,
+} from "./shared.js";
 
 const issueSummary = (issue: GitLabIssue) => ({
   iid: issue.iid,
@@ -27,8 +33,14 @@ export function registerIssueTools(server: McpServer, client: GitLabClient, conf
       description: "プロジェクトのIssueを検索・一覧する。",
       inputSchema: {
         ...projectArg,
-        state: z.enum(["opened", "closed", "all"]).optional().describe("Issueの状態で絞り込む。省略時は全件。"),
-        labels: z.string().optional().describe("カンマ区切りのラベル名で絞り込む（例: 'bug,urgent'）。"),
+        state: z
+          .enum(["opened", "closed", "all"])
+          .optional()
+          .describe("Issueの状態で絞り込む。省略時は全件。"),
+        labels: z
+          .string()
+          .optional()
+          .describe("カンマ区切りのラベル名で絞り込む（例: 'bug,urgent'）。"),
         assignee_username: z.string().optional().describe("担当者のユーザー名で絞り込む。"),
         milestone: z.string().optional().describe("マイルストーン名で絞り込む。"),
         search: z.string().optional().describe("タイトル・説明文の部分一致検索文字列。"),
@@ -36,14 +48,16 @@ export function registerIssueTools(server: McpServer, client: GitLabClient, conf
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
-    withErrorHandling(async ({ project, state, labels, assignee_username, milestone, search, page, per_page }) => {
-      const projectId = client.resolveProject(project);
-      const { items, page: pageInfo } = await client.getPaged<GitLabIssue>(
-        `/projects/${GitLabClient.encodeId(projectId)}/issues`,
-        { state, labels, assignee_username, milestone, search, page, per_page },
-      );
-      return pagedJsonResult(items.map(issueSummary), pageInfo);
-    }),
+    withErrorHandling(
+      async ({ project, state, labels, assignee_username, milestone, search, page, per_page }) => {
+        const projectId = client.resolveProject(project);
+        const { items, page: pageInfo } = await client.getPaged<GitLabIssue>(
+          `/projects/${GitLabClient.encodeId(projectId)}/issues`,
+          { state, labels, assignee_username, milestone, search, page, per_page },
+        );
+        return pagedJsonResult(items.map(issueSummary), pageInfo);
+      },
+    ),
   );
 
   server.registerTool(
@@ -87,7 +101,12 @@ export function registerIssueTools(server: McpServer, client: GitLabClient, conf
       return pagedJsonResult(
         items
           .filter((n) => !n.system)
-          .map((n) => ({ id: n.id, author: n.author.username, body: n.body, created_at: n.created_at })),
+          .map((n) => ({
+            id: n.id,
+            author: n.author.username,
+            body: n.body,
+            created_at: n.created_at,
+          })),
         pageInfo,
       );
     }),
@@ -109,16 +128,24 @@ export function registerIssueTools(server: McpServer, client: GitLabClient, conf
         labels: z.string().optional().describe("カンマ区切りのラベル名。"),
         assignee_ids: z.array(z.number().int()).optional().describe("担当者のユーザーID配列。"),
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     withErrorHandling(async ({ project, title, description, labels, assignee_ids }) => {
       const projectId = client.resolveProject(project);
-      const issue = await client.post<GitLabIssue>(`/projects/${GitLabClient.encodeId(projectId)}/issues`, {
-        title,
-        description,
-        labels,
-        assignee_ids,
-      });
+      const issue = await client.post<GitLabIssue>(
+        `/projects/${GitLabClient.encodeId(projectId)}/issues`,
+        {
+          title,
+          description,
+          labels,
+          assignee_ids,
+        },
+      );
       return jsonResult(issueSummary(issue));
     }),
   );
@@ -134,9 +161,17 @@ export function registerIssueTools(server: McpServer, client: GitLabClient, conf
         title: z.string().optional().describe("新しいタイトル。"),
         description: z.string().optional().describe("新しい説明文（Markdown）。"),
         labels: z.string().optional().describe("カンマ区切りのラベル名（既存を置き換える）。"),
-        state_event: z.enum(["close", "reopen"]).optional().describe("Issueをclose/reopenする場合に指定。"),
+        state_event: z
+          .enum(["close", "reopen"])
+          .optional()
+          .describe("Issueをclose/reopenする場合に指定。"),
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
+      },
     },
     withErrorHandling(async ({ project, issue_iid, title, description, labels, state_event }) => {
       const projectId = client.resolveProject(project);
@@ -158,7 +193,12 @@ export function registerIssueTools(server: McpServer, client: GitLabClient, conf
         issue_iid: z.number().int().positive().describe("Issueのプロジェクト内番号（IID）。"),
         body: z.string().min(1).describe("コメント本文（Markdown）。"),
       },
-      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     withErrorHandling(async ({ project, issue_iid, body }) => {
       const projectId = client.resolveProject(project);
@@ -166,7 +206,12 @@ export function registerIssueTools(server: McpServer, client: GitLabClient, conf
         `/projects/${GitLabClient.encodeId(projectId)}/issues/${issue_iid}/notes`,
         { body },
       );
-      return jsonResult({ id: note.id, author: note.author.username, body: note.body, created_at: note.created_at });
+      return jsonResult({
+        id: note.id,
+        author: note.author.username,
+        body: note.body,
+        created_at: note.created_at,
+      });
     }),
   );
 }

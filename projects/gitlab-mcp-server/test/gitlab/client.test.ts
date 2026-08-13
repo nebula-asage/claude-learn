@@ -1,7 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Config } from "../../src/config.js";
-import { GitLabApiError, GitLabClient, ToolInputError, truncateUtf8 } from "../../src/gitlab/client.js";
-import { installFetchMock, jsonResponse, pagedResponse, textResponse, timeoutError } from "../helpers/fetchMock.js";
+import {
+  GitLabApiError,
+  GitLabClient,
+  ToolInputError,
+  truncateUtf8,
+} from "../../src/gitlab/client.js";
+import {
+  installFetchMock,
+  jsonResponse,
+  pagedResponse,
+  textResponse,
+  timeoutError,
+} from "../helpers/fetchMock.js";
 import { baseConfig } from "../helpers/mcp.js";
 
 function client(overrides: Partial<Config> = {}): GitLabClient {
@@ -36,7 +47,9 @@ describe("GitLabClient - resolveProject", () => {
   });
 
   it("引数もデフォルトも無ければ ToolInputError を投げる", () => {
-    expect(() => client({ gitlabDefaultProject: undefined }).resolveProject(undefined)).toThrow(ToolInputError);
+    expect(() => client({ gitlabDefaultProject: undefined }).resolveProject(undefined)).toThrow(
+      ToolInputError,
+    );
     expect(() => client({ gitlabDefaultProject: undefined }).resolveProject(undefined)).toThrow(
       /GITLAB_DEFAULT_PROJECT/,
     );
@@ -70,7 +83,9 @@ describe("GitLabClient - URL構築", () => {
 
   it("パスに埋め込んだ %2F はクエリ付与後も維持される", async () => {
     const mock = installFetchMock(() => jsonResponse({}));
-    await client().get(`/projects/${GitLabClient.encodeId("grp/sub/proj")}/issues`, { state: "opened" });
+    await client().get(`/projects/${GitLabClient.encodeId("grp/sub/proj")}/issues`, {
+      state: "opened",
+    });
     expect(mock.last().url.pathname).toBe("/api/v4/projects/grp%2Fsub%2Fproj/issues");
     expect(mock.last().url.toString()).toContain("grp%2Fsub%2Fproj");
   });
@@ -118,7 +133,9 @@ describe("GitLabClient - ヘッダとリクエストボディ", () => {
 
 describe("GitLabClient - エラー変換", () => {
   it("404 + message フィールドをメッセージに含める", async () => {
-    installFetchMock(() => jsonResponse({ message: "404 Project Not Found" }, { status: 404, statusText: "Not Found" }));
+    installFetchMock(() =>
+      jsonResponse({ message: "404 Project Not Found" }, { status: 404, statusText: "Not Found" }),
+    );
     const err = await client()
       .get("/projects/x")
       .catch((e: unknown) => e);
@@ -139,7 +156,9 @@ describe("GitLabClient - エラー変換", () => {
   });
 
   it("message がオブジェクトなら JSON 文字列化して含める", async () => {
-    installFetchMock(() => jsonResponse({ message: { title: ["can't be blank"] } }, { status: 400 }));
+    installFetchMock(() =>
+      jsonResponse({ message: { title: ["can't be blank"] } }, { status: 400 }),
+    );
     const err = (await client()
       .get("/projects/x")
       .catch((e: unknown) => e)) as GitLabApiError;
@@ -238,7 +257,10 @@ describe("GitLabClient - getPaged", () => {
         "x-next-page": "3",
       }),
     );
-    const { items, page } = await client().getPaged<{ id: number }>("/projects", { page: 2, per_page: 50 });
+    const { items, page } = await client().getPaged<{ id: number }>("/projects", {
+      page: 2,
+      per_page: 50,
+    });
     expect(items).toEqual([{ id: 1 }]);
     expect(page).toEqual({ page: 2, perPage: 50, totalItems: 120, totalPages: 3, nextPage: 3 });
   });
@@ -258,7 +280,13 @@ describe("GitLabClient - getPaged", () => {
   it("ページングヘッダが全く無ければリクエスト値にフォールバックする", async () => {
     installFetchMock(() => jsonResponse([]));
     const { page } = await client().getPaged("/projects", { page: 4, per_page: 7 });
-    expect(page).toEqual({ page: 4, perPage: 7, totalItems: undefined, totalPages: undefined, nextPage: undefined });
+    expect(page).toEqual({
+      page: 4,
+      perPage: 7,
+      totalItems: undefined,
+      totalPages: undefined,
+      nextPage: undefined,
+    });
   });
 });
 
@@ -271,7 +299,11 @@ describe("GitLabClient - getText", () => {
 
 describe("truncateUtf8", () => {
   it("上限以下なら切り詰めずバイト数を返す", () => {
-    expect(truncateUtf8("あいう", 100)).toEqual({ text: "あいう", truncated: false, originalBytes: 9 });
+    expect(truncateUtf8("あいう", 100)).toEqual({
+      text: "あいう",
+      truncated: false,
+      originalBytes: 9,
+    });
   });
 
   it("head は先頭側を残す", () => {

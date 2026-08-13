@@ -32,7 +32,12 @@ const MINIMAL_ARGS: Record<string, Record<string, unknown>> = {
   gitlab_get_merge_request: { project: "grp/sub proj", merge_request_iid: 34 },
   gitlab_get_merge_request_diff: { project: "grp/sub proj", merge_request_iid: 34 },
   gitlab_list_merge_request_notes: { project: "grp/sub proj", merge_request_iid: 34 },
-  gitlab_create_merge_request: { project: "grp/sub proj", source_branch: "feat/x", target_branch: "main", title: "t" },
+  gitlab_create_merge_request: {
+    project: "grp/sub proj",
+    source_branch: "feat/x",
+    target_branch: "main",
+    title: "t",
+  },
   gitlab_update_merge_request: { project: "grp/sub proj", merge_request_iid: 34 },
   gitlab_create_merge_request_note: { project: "grp/sub proj", merge_request_iid: 34, body: "b" },
   gitlab_list_pipelines: { project: "grp/sub proj" },

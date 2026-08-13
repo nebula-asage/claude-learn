@@ -36,7 +36,14 @@ export function projectFixture(overrides: Partial<GitLabProject> = {}): GitLabPr
 }
 
 export function treeItemFixture(overrides: Partial<GitLabTreeItem> = {}): GitLabTreeItem {
-  return { id: "abc123", name: "index.ts", type: "blob", path: "src/index.ts", mode: "100644", ...overrides };
+  return {
+    id: "abc123",
+    name: "index.ts",
+    type: "blob",
+    path: "src/index.ts",
+    mode: "100644",
+    ...overrides,
+  };
 }
 
 export function fileFixture(overrides: Partial<GitLabFile> = {}): GitLabFile {
@@ -60,7 +67,12 @@ export function branchFixture(overrides: Partial<GitLabBranch> = {}): GitLabBran
     protected: true,
     merged: false,
     web_url: "https://gitlab.example.com/grp/sub/proj/-/tree/main",
-    commit: { id: "commit123", short_id: "commit1", title: "初回コミット", committed_date: "2026-01-01T00:00:00Z" },
+    commit: {
+      id: "commit123",
+      short_id: "commit1",
+      title: "初回コミット",
+      committed_date: "2026-01-01T00:00:00Z",
+    },
     ...overrides,
   };
 }
@@ -79,7 +91,14 @@ export function commitFixture(overrides: Partial<GitLabCommit> = {}): GitLabComm
 }
 
 export function searchBlobFixture(overrides: Partial<GitLabSearchBlob> = {}): GitLabSearchBlob {
-  return { path: "src/index.ts", filename: "index.ts", data: "const x = 1;", ref: "main", project_id: 42, ...overrides };
+  return {
+    path: "src/index.ts",
+    filename: "index.ts",
+    data: "const x = 1;",
+    ref: "main",
+    project_id: 42,
+    ...overrides,
+  };
 }
 
 export function issueFixture(overrides: Partial<GitLabIssue> = {}): GitLabIssue {
@@ -134,7 +153,9 @@ export function mrFixture(overrides: Partial<GitLabMergeRequest> = {}): GitLabMe
   };
 }
 
-export function diffFixture(overrides: Partial<GitLabMergeRequestDiff> = {}): GitLabMergeRequestDiff {
+export function diffFixture(
+  overrides: Partial<GitLabMergeRequestDiff> = {},
+): GitLabMergeRequestDiff {
   return {
     old_path: "src/a.ts",
     new_path: "src/a.ts",

@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { installFetchMock, jsonResponse, pagedResponse, textResponse } from "../helpers/fetchMock.js";
+import {
+  installFetchMock,
+  jsonResponse,
+  pagedResponse,
+  textResponse,
+} from "../helpers/fetchMock.js";
 import { jobFixture, pipelineFixture } from "../helpers/fixtures.js";
 import { connect, okJson, type PagedPayload } from "../helpers/mcp.js";
 
@@ -40,7 +45,10 @@ describe("gitlab_list_pipelines", () => {
 
   it("未知の status は isError になる", async () => {
     const harness = await connect();
-    const result = await harness.call("gitlab_list_pipelines", { project: "a/b", status: "unknown" });
+    const result = await harness.call("gitlab_list_pipelines", {
+      project: "a/b",
+      status: "unknown",
+    });
     expect(result.isError).toBe(true);
     await harness.close();
   });
@@ -84,13 +92,25 @@ describe("gitlab_list_pipeline_jobs", () => {
   });
 
   it("jobSummary の9キーに整形し created_at は落ちる。null系は保たれる", async () => {
-    installFetchMock(() => pagedResponse([jobFixture({ started_at: null, finished_at: null, duration: null })]));
+    installFetchMock(() =>
+      pagedResponse([jobFixture({ started_at: null, finished_at: null, duration: null })]),
+    );
     const harness = await connect();
     const payload = okJson<PagedPayload<Record<string, unknown>>>(
       await harness.call("gitlab_list_pipeline_jobs", { project: "a/b", pipeline_id: 5001 }),
     );
     expect(Object.keys(payload.items[0] as object).sort()).toEqual(
-      ["duration", "finished_at", "id", "name", "ref", "stage", "started_at", "status", "web_url"].sort(),
+      [
+        "duration",
+        "finished_at",
+        "id",
+        "name",
+        "ref",
+        "stage",
+        "started_at",
+        "status",
+        "web_url",
+      ].sort(),
     );
     expect(payload.items[0]).toMatchObject({ started_at: null, finished_at: null, duration: null });
     await harness.close();
@@ -132,7 +152,9 @@ describe("gitlab_get_job_log", () => {
   it("max_bytes 既定は100000", async () => {
     installFetchMock(() => textResponse("短いログ"));
     const harness = await connect();
-    const payload = okJson<{ notice?: string }>(await harness.call("gitlab_get_job_log", { project: "a/b", job_id: 1 }));
+    const payload = okJson<{ notice?: string }>(
+      await harness.call("gitlab_get_job_log", { project: "a/b", job_id: 1 }),
+    );
     expect(payload.notice).toBeUndefined();
     await harness.close();
   });

@@ -63,7 +63,13 @@ export const projectArg = {
 /** 一覧系ツール共通のページング引数スキーマ断片。 */
 export const pagingArgs = {
   page: z.number().int().min(1).optional().describe("取得するページ番号（1始まり）。省略時は1。"),
-  per_page: z.number().int().min(1).max(100).optional().describe("1ページあたりの件数（最大100）。省略時は20。"),
+  per_page: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .optional()
+    .describe("1ページあたりの件数（最大100）。省略時は20。"),
 };
 
 /** 一覧系ツールの結果を items + pageInfo の形にまとめる。 */
@@ -82,7 +88,11 @@ export function pagedJsonResult<T>(items: T[], page: PageInfo): CallToolResult {
 }
 
 /** 切り詰め結果を本文と一緒に返す共通フォーマット。 */
-export function truncationNotice(truncated: boolean, originalBytes: number, maxBytes: number): string | undefined {
+export function truncationNotice(
+  truncated: boolean,
+  originalBytes: number,
+  maxBytes: number,
+): string | undefined {
   if (!truncated) return undefined;
   return `(注: 応答が ${originalBytes} バイトあったため ${maxBytes} バイトに切り詰めています)`;
 }

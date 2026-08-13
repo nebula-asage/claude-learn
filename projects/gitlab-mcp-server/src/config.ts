@@ -66,7 +66,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 
   const transportRaw = env.MCP_TRANSPORT ?? "stdio";
   if (transportRaw !== "stdio" && transportRaw !== "http") {
-    throw new ConfigError(`MCP_TRANSPORT は stdio か http を指定してください（値: ${transportRaw}）。`);
+    throw new ConfigError(
+      `MCP_TRANSPORT は stdio か http を指定してください（値: ${transportRaw}）。`,
+    );
   }
 
   const mcpHttpAllowedOrigins = (env.MCP_HTTP_ALLOWED_ORIGINS ?? "")

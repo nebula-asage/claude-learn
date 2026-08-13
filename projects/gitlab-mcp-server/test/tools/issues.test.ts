@@ -98,7 +98,11 @@ describe("gitlab_list_issue_notes", () => {
   it("system 除外により items.length が perPage と不一致になり得る", async () => {
     installFetchMock(() =>
       pagedResponse(
-        [noteFixture({ id: 1, system: true }), noteFixture({ id: 2, system: true }), noteFixture({ id: 3, system: false })],
+        [
+          noteFixture({ id: 1, system: true }),
+          noteFixture({ id: 2, system: true }),
+          noteFixture({ id: 3, system: false }),
+        ],
         { "x-page": "1", "x-per-page": "20" },
       ),
     );
@@ -117,7 +121,12 @@ describe("gitlab_list_issue_notes", () => {
     const payload = okJson<PagedPayload<Record<string, unknown>>>(
       await harness.call("gitlab_list_issue_notes", { project: "a/b", issue_iid: 12 }),
     );
-    expect(Object.keys(payload.items[0] as object).sort()).toEqual(["author", "body", "created_at", "id"]);
+    expect(Object.keys(payload.items[0] as object).sort()).toEqual([
+      "author",
+      "body",
+      "created_at",
+      "id",
+    ]);
     await harness.close();
   });
 });
@@ -135,7 +144,12 @@ describe("gitlab_create_issue", () => {
     });
     expect(mock.last().method).toBe("POST");
     expect(mock.last().url.pathname).toBe("/api/v4/projects/a%2Fb/issues");
-    expect(mock.last().body).toEqual({ title: "新規Issue", description: "本文", labels: "bug", assignee_ids: [1, 2] });
+    expect(mock.last().body).toEqual({
+      title: "新規Issue",
+      description: "本文",
+      labels: "bug",
+      assignee_ids: [1, 2],
+    });
     await harness.close();
   });
 
@@ -152,7 +166,11 @@ describe("gitlab_update_issue", () => {
   it("PUT /issues/{iid} で state_event のみ指定時はそれだけを送る", async () => {
     const mock = installFetchMock(() => jsonResponse(issueFixture()));
     const harness = await connect();
-    await harness.call("gitlab_update_issue", { project: "a/b", issue_iid: 12, state_event: "close" });
+    await harness.call("gitlab_update_issue", {
+      project: "a/b",
+      issue_iid: 12,
+      state_event: "close",
+    });
     expect(mock.last().method).toBe("PUT");
     expect(mock.last().url.pathname).toBe("/api/v4/projects/a%2Fb/issues/12");
     expect(mock.last().body).toEqual({ state_event: "close" });
@@ -164,7 +182,11 @@ describe("gitlab_create_issue_note", () => {
   it("POST /issues/{iid}/notes にボディは body のみを送る", async () => {
     const mock = installFetchMock(() => jsonResponse(noteFixture()));
     const harness = await connect();
-    await harness.call("gitlab_create_issue_note", { project: "a/b", issue_iid: 12, body: "コメント" });
+    await harness.call("gitlab_create_issue_note", {
+      project: "a/b",
+      issue_iid: 12,
+      body: "コメント",
+    });
     expect(mock.last().url.pathname).toBe("/api/v4/projects/a%2Fb/issues/12/notes");
     expect(mock.last().body).toEqual({ body: "コメント" });
     await harness.close();
@@ -175,7 +197,12 @@ describe("gitlab_read_only", () => {
   it("readOnly=true では書込3ツールが isError（ツール未登録）になる", async () => {
     const harness = await connect({ gitlabReadOnly: true });
     for (const name of ["gitlab_create_issue", "gitlab_update_issue", "gitlab_create_issue_note"]) {
-      const result = await harness.call(name, { project: "a/b", title: "x", issue_iid: 1, body: "x" });
+      const result = await harness.call(name, {
+        project: "a/b",
+        title: "x",
+        issue_iid: 1,
+        body: "x",
+      });
       expect(errText(result), name).toBeTruthy();
     }
     await harness.close();
@@ -183,7 +210,9 @@ describe("gitlab_read_only", () => {
 
   it("readOnly=true でも読取3ツールは動く", async () => {
     installFetchMock((call) =>
-      call.url.pathname.endsWith("/issues/12") ? jsonResponse(issueFixture()) : pagedResponse([issueFixture()]),
+      call.url.pathname.endsWith("/issues/12")
+        ? jsonResponse(issueFixture())
+        : pagedResponse([issueFixture()]),
     );
     const harness = await connect({ gitlabReadOnly: true });
     for (const name of ["gitlab_list_issues", "gitlab_get_issue", "gitlab_list_issue_notes"]) {

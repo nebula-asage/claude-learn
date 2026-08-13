@@ -72,7 +72,9 @@ describe("shared - withErrorHandling", () => {
     });
     const result = await wrapped({});
     expect(result.isError).toBe(true);
-    expect(textOf(result)).toBe("予期しないエラーが発生しました: Cannot read properties of undefined");
+    expect(textOf(result)).toBe(
+      "予期しないエラーが発生しました: Cannot read properties of undefined",
+    );
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy.mock.calls[0]?.[0]).toContain("[gitlab-mcp-server]");
   });

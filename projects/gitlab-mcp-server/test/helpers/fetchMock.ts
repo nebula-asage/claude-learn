@@ -101,7 +101,9 @@ export function textResponse(
  */
 export function pagedResponse(
   items: unknown[],
-  headers: Partial<Record<"x-page" | "x-per-page" | "x-total" | "x-total-pages" | "x-next-page", string>> = {},
+  headers: Partial<
+    Record<"x-page" | "x-per-page" | "x-total" | "x-total-pages" | "x-next-page", string>
+  > = {},
 ): Response {
   const merged: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {

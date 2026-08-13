@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { installFetchMock, jsonResponse, pagedResponse } from "../helpers/fetchMock.js";
-import { branchFixture, commitFixture, fileFixture, projectFixture, searchBlobFixture, treeItemFixture } from "../helpers/fixtures.js";
+import {
+  branchFixture,
+  commitFixture,
+  fileFixture,
+  projectFixture,
+  searchBlobFixture,
+  treeItemFixture,
+} from "../helpers/fixtures.js";
 import { connect, okJson, type PagedPayload } from "../helpers/mcp.js";
 
 afterEach(() => {
@@ -33,11 +40,22 @@ describe("gitlab_list_projects", () => {
 
   it("pageInfo は page/perPage/totalItems/totalPages/hasNextPage/nextPage の形", async () => {
     installFetchMock(() =>
-      pagedResponse([], { "x-page": "1", "x-per-page": "20", "x-total": "1", "x-total-pages": "1" }),
+      pagedResponse([], {
+        "x-page": "1",
+        "x-per-page": "20",
+        "x-total": "1",
+        "x-total-pages": "1",
+      }),
     );
     const harness = await connect();
     const payload = okJson<PagedPayload<unknown>>(await harness.call("gitlab_list_projects", {}));
-    expect(payload.pageInfo).toEqual({ page: 1, perPage: 20, totalItems: 1, totalPages: 1, hasNextPage: false });
+    expect(payload.pageInfo).toEqual({
+      page: 1,
+      perPage: 20,
+      totalItems: 1,
+      totalPages: 1,
+      hasNextPage: false,
+    });
     await harness.close();
   });
 });
@@ -54,7 +72,9 @@ describe("gitlab_get_project", () => {
   it("生レスポンスをそのまま返す唯一の非整形ツール", async () => {
     installFetchMock(() => jsonResponse(projectFixture({ visibility: "internal" })));
     const harness = await connect();
-    const payload = okJson<{ visibility: string }>(await harness.call("gitlab_get_project", { project: "a/b" }));
+    const payload = okJson<{ visibility: string }>(
+      await harness.call("gitlab_get_project", { project: "a/b" }),
+    );
     expect(payload.visibility).toBe("internal");
     await harness.close();
   });
@@ -65,7 +85,12 @@ describe("gitlab_list_repository_tree", () => {
     const mock = installFetchMock(() => pagedResponse([treeItemFixture()]));
     const harness = await connect();
     const payload = okJson<PagedPayload<unknown>>(
-      await harness.call("gitlab_list_repository_tree", { project: "a/b", path: "src", ref: "main", recursive: true }),
+      await harness.call("gitlab_list_repository_tree", {
+        project: "a/b",
+        path: "src",
+        ref: "main",
+        recursive: true,
+      }),
     );
     expect(mock.lastQuery()).toMatchObject({ path: "src", ref: "main", recursive: "true" });
     expect(payload.items[0]).toEqual(treeItemFixture());
@@ -85,7 +110,11 @@ describe("gitlab_get_file_content", () => {
   it("ref 指定時はその値を送る", async () => {
     const mock = installFetchMock(() => jsonResponse(fileFixture()));
     const harness = await connect();
-    await harness.call("gitlab_get_file_content", { project: "a/b", file_path: "src/index.ts", ref: "feature" });
+    await harness.call("gitlab_get_file_content", {
+      project: "a/b",
+      file_path: "src/index.ts",
+      ref: "feature",
+    });
     expect(mock.lastQuery().ref).toBe("feature");
     await harness.close();
   });
@@ -99,7 +128,11 @@ describe("gitlab_get_file_content", () => {
   });
 
   it("encoding=base64 ならデコードして content に入れる", async () => {
-    installFetchMock(() => jsonResponse(fileFixture({ encoding: "base64", content: Buffer.from("hello").toString("base64") })));
+    installFetchMock(() =>
+      jsonResponse(
+        fileFixture({ encoding: "base64", content: Buffer.from("hello").toString("base64") }),
+      ),
+    );
     const harness = await connect();
     const payload = okJson<{ content: string }>(
       await harness.call("gitlab_get_file_content", { project: "a/b", file_path: "x" }),
@@ -124,7 +157,11 @@ describe("gitlab_get_file_content", () => {
     );
     const harness = await connect();
     const payload = okJson<{ content: string; notice?: string }>(
-      await harness.call("gitlab_get_file_content", { project: "a/b", file_path: "x", max_bytes: 4 }),
+      await harness.call("gitlab_get_file_content", {
+        project: "a/b",
+        file_path: "x",
+        max_bytes: 4,
+      }),
     );
     expect(payload.content).toBe("0123");
     expect(payload.notice).toContain("10");
@@ -186,7 +223,12 @@ describe("gitlab_list_commits", () => {
         path: "src",
       }),
     );
-    expect(mock.lastQuery()).toMatchObject({ ref_name: "main", since: "2026-01-01", until: "2026-02-01", path: "src" });
+    expect(mock.lastQuery()).toMatchObject({
+      ref_name: "main",
+      since: "2026-01-01",
+      until: "2026-02-01",
+      path: "src",
+    });
     expect(payload.items[0]).toEqual({
       id: "commit123",
       short_id: "commit1",

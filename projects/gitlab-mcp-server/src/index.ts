@@ -24,6 +24,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error(`[gitlab-mcp-server] 起動に失敗しました: ${err instanceof Error ? err.stack ?? err.message : err}`);
+  console.error(
+    `[gitlab-mcp-server] 起動に失敗しました: ${err instanceof Error ? (err.stack ?? err.message) : err}`,
+  );
   process.exit(1);
 });
