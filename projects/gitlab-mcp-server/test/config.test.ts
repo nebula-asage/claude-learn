@@ -20,7 +20,9 @@ describe("loadConfig - 必須項目とベースURLの正規化", () => {
   });
 
   it("GITLAB_TOKEN が未設定なら ConfigError を投げる", () => {
-    expect(() => loadConfig({ GITLAB_BASE_URL: "https://gitlab.example.com" })).toThrow(ConfigError);
+    expect(() => loadConfig({ GITLAB_BASE_URL: "https://gitlab.example.com" })).toThrow(
+      ConfigError,
+    );
   });
 
   it("末尾スラッシュを除去して origin に正規化する", () => {
@@ -30,13 +32,15 @@ describe("loadConfig - 必須項目とベースURLの正規化", () => {
   });
 
   it("ポート番号は origin に残る", () => {
-    expect(loadConfig(env({ GITLAB_BASE_URL: "https://gitlab.example.com:8443/" })).gitlabBaseUrl).toBe(
-      "https://gitlab.example.com:8443",
-    );
+    expect(
+      loadConfig(env({ GITLAB_BASE_URL: "https://gitlab.example.com:8443/" })).gitlabBaseUrl,
+    ).toBe("https://gitlab.example.com:8443");
   });
 
   it("パス付きのベースURL（サブパス配置）は ConfigError で拒否する", () => {
-    expect(() => loadConfig(env({ GITLAB_BASE_URL: "https://gitlab.example.com/gitlab" }))).toThrow(ConfigError);
+    expect(() => loadConfig(env({ GITLAB_BASE_URL: "https://gitlab.example.com/gitlab" }))).toThrow(
+      ConfigError,
+    );
   });
 
   it("URLとしてパースできない値は ConfigError で拒否する", () => {
@@ -112,7 +116,9 @@ describe("loadConfig - その他の項目", () => {
 
   it("GITLAB_DEFAULT_PROJECT が空文字なら undefined になる", () => {
     expect(loadConfig(env({ GITLAB_DEFAULT_PROJECT: "" })).gitlabDefaultProject).toBeUndefined();
-    expect(loadConfig(env({ GITLAB_DEFAULT_PROJECT: "grp/repo" })).gitlabDefaultProject).toBe("grp/repo");
+    expect(loadConfig(env({ GITLAB_DEFAULT_PROJECT: "grp/repo" })).gitlabDefaultProject).toBe(
+      "grp/repo",
+    );
   });
 
   it("MCP_HTTP_AUTH_TOKEN が空文字なら undefined になる", () => {
@@ -132,7 +138,10 @@ describe("loadConfig - その他の項目", () => {
 
   it("引数で渡した env のみを参照し、process.env を変更しない", () => {
     const before = { ...process.env };
-    const custom = env({ GITLAB_BASE_URL: "https://other.example.com", GITLAB_TOKEN: "glpat-other" });
+    const custom = env({
+      GITLAB_BASE_URL: "https://other.example.com",
+      GITLAB_TOKEN: "glpat-other",
+    });
     const config = loadConfig(custom);
     expect(config.gitlabBaseUrl).toBe("https://other.example.com");
     expect(config.gitlabToken).toBe("glpat-other");

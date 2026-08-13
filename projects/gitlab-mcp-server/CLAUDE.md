@@ -10,12 +10,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 pnpm install
-pnpm run build       # tsc でビルド（distへ出力）
+pnpm run build        # tsc でビルド（distへ出力）
 pnpm run typecheck    # 型チェックのみ（--noEmit）。src と test の両方を対象にする
 pnpm run dev          # tsc --watch
 pnpm test             # vitest run（リグレッションテスト一式を実行）
+pnpm run lint         # eslint . （型情報を使った検査を含む）
+pnpm run lint:fix     # eslint . --fix
+pnpm run format       # prettier --write .
+pnpm run format:check # prettier --check .
 GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start   # dist/index.js を起動
 ```
+
+### Lint / Format
+
+ESLint（flat config, `eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecked` をベースに、`tsconfig.json` と `tsconfig.test.json` の両方を型情報のソースとして使う。テストコード（`test/**/*.ts`）はモック・フィクスチャで `any` や型アサーションを扱うことが多いため、`no-unsafe-*` 系など一部ルールを緩めている。フォーマットはPrettier（`.prettierrc.json`）で、既存コードに合わせてダブルクォート・セミコロンあり。新規コードを追加したら `pnpm run lint` と `pnpm run format:check` を通すこと。
 
 テスト用のセルフホストGitLab（GitLab CE + GitLab Runner）環境を `test-env/` にDocker Composeで用意している。詳細は `test-env/README.md` を参照。これは手動E2E確認用であり、`pnpm test` のユニットテストはこの環境に依存しない。
 

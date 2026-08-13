@@ -140,7 +140,8 @@ describe("tools/list - ツール表面", () => {
     const harness = await connect();
     const tools = await harness.listTools();
     const tool = tools.find((t) => t.name === "gitlab_list_issues");
-    const perPage = tool?.inputSchema.properties?.per_page as { minimum?: number; maximum?: number } | undefined;
+    const perPage = tool?.inputSchema.properties?.per_page as
+      { minimum?: number; maximum?: number } | undefined;
     expect(perPage?.minimum).toBe(1);
     expect(perPage?.maximum).toBe(100);
     await harness.close();

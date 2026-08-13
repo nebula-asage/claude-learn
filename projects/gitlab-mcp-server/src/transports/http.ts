@@ -17,7 +17,7 @@ function jsonRpcError(res: ServerResponse, status: number, message: string): voi
   sendJson(res, status, { jsonrpc: "2.0", error: { code: -32000, message }, id: null });
 }
 
-async function readJsonBody(req: IncomingMessage, res: ServerResponse): Promise<unknown | undefined> {
+async function readJsonBody(req: IncomingMessage, res: ServerResponse): Promise<unknown> {
   const chunks: Buffer[] = [];
   let total = 0;
   for await (const chunk of req) {
@@ -61,7 +61,7 @@ function isAuthorized(req: IncomingMessage, authToken: string | undefined): bool
 export async function runHttp(config: Config): Promise<http.Server> {
   const transports = new Map<string, StreamableHTTPServerTransport>();
 
-  const httpServer = http.createServer(async (req, res) => {
+  const handleRequest = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
 
     if (url.pathname === "/healthz") {
@@ -151,7 +151,9 @@ export async function runHttp(config: Config): Promise<http.Server> {
         jsonRpcError(res, 500, "サーバ内部エラーが発生しました。");
       }
     }
-  });
+  };
+
+  const httpServer = http.createServer((req, res) => void handleRequest(req, res));
 
   await new Promise<void>((resolve) => {
     httpServer.listen(config.mcpHttpPort, config.mcpHttpHost, resolve);
@@ -168,7 +170,8 @@ export async function runHttp(config: Config): Promise<http.Server> {
       try {
         await transport.close();
       } catch (err) {
-        console.error(`[gitlab-mcp-server] セッション ${id} のクローズに失敗: ${err}`);
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[gitlab-mcp-server] セッション ${id} のクローズに失敗: ${message}`);
       }
     }
     httpServer.close(() => process.exit(0));

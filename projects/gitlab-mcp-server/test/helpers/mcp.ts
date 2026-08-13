@@ -57,7 +57,8 @@ export async function connect(overrides: Partial<Config> = {}): Promise<Harness>
 
   return {
     client,
-    call: async (name, args = {}) => (await client.callTool({ name, arguments: args })) as ToolCallResult,
+    call: async (name, args = {}) =>
+      (await client.callTool({ name, arguments: args })) as ToolCallResult,
     listTools: async () => (await client.listTools()).tools,
     close: async () => {
       await client.close();

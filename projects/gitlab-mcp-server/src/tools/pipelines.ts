@@ -2,7 +2,15 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { GitLabClient, truncateUtf8 } from "../gitlab/client.js";
 import type { GitLabJob, GitLabPipeline } from "../gitlab/types.js";
-import { DEFAULT_MAX_BYTES, jsonResult, pagedJsonResult, pagingArgs, projectArg, truncationNotice, withErrorHandling } from "./shared.js";
+import {
+  DEFAULT_MAX_BYTES,
+  jsonResult,
+  pagedJsonResult,
+  pagingArgs,
+  projectArg,
+  truncationNotice,
+  withErrorHandling,
+} from "./shared.js";
 
 const pipelineSummary = (p: GitLabPipeline) => ({
   id: p.id,
@@ -122,14 +130,18 @@ export function registerPipelineTools(server: McpServer, client: GitLabClient): 
           .int()
           .positive()
           .optional()
-          .describe(`返すログの最大バイト数（デフォルト ${DEFAULT_MAX_BYTES}）。超過分は先頭を切り詰め、末尾を残す。`),
+          .describe(
+            `返すログの最大バイト数（デフォルト ${DEFAULT_MAX_BYTES}）。超過分は先頭を切り詰め、末尾を残す。`,
+          ),
       },
       annotations: { readOnlyHint: true, openWorldHint: true },
     },
     withErrorHandling(async ({ project, job_id, max_bytes }) => {
       const projectId = client.resolveProject(project);
       const maxBytes = max_bytes ?? DEFAULT_MAX_BYTES;
-      const log = await client.getText(`/projects/${GitLabClient.encodeId(projectId)}/jobs/${job_id}/trace`);
+      const log = await client.getText(
+        `/projects/${GitLabClient.encodeId(projectId)}/jobs/${job_id}/trace`,
+      );
       const { text, truncated, originalBytes } = truncateUtf8(log, maxBytes, "tail");
       return jsonResult({
         job_id,

@@ -110,7 +110,10 @@ export class GitLabClient {
         );
       }
       const detail = err instanceof Error ? err.message : String(err);
-      throw new GitLabApiError(0, `GitLab API へのリクエストに失敗しました: ${method} ${path} (${detail})`);
+      throw new GitLabApiError(
+        0,
+        `GitLab API へのリクエストに失敗しました: ${method} ${path} (${detail})`,
+      );
     }
 
     if (!res.ok) {
@@ -194,11 +197,16 @@ export interface TruncateResult {
  * @param from "head"（先頭からmaxBytes分を残す）または "tail"（末尾からmaxBytes分を残す）。
  *   ジョブログは失敗原因が末尾に出るため "tail" を既定にする。
  */
-export function truncateUtf8(text: string, maxBytes: number, from: "head" | "tail" = "head"): TruncateResult {
+export function truncateUtf8(
+  text: string,
+  maxBytes: number,
+  from: "head" | "tail" = "head",
+): TruncateResult {
   const buf = Buffer.from(text, "utf8");
   if (buf.byteLength <= maxBytes) {
     return { text, truncated: false, originalBytes: buf.byteLength };
   }
-  const slice = from === "head" ? buf.subarray(0, maxBytes) : buf.subarray(buf.byteLength - maxBytes);
+  const slice =
+    from === "head" ? buf.subarray(0, maxBytes) : buf.subarray(buf.byteLength - maxBytes);
   return { text: slice.toString("utf8"), truncated: true, originalBytes: buf.byteLength };
 }
