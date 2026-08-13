@@ -98,6 +98,8 @@ GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start
 
 型チェックのみ行う場合は `pnpm run typecheck`。リグレッションテストは `pnpm test`（vitest）で実行する。
 
+`pnpm test`（ユニットテスト）はGitLab APIへのfetchをモックし、`createServer()` を同一プロセス内で直接呼び出して検証するため、実際のプロセス起動やstdioのパイプ越しの通信は通らない。この境界を自動で検証するE2Eテストが `pnpm run test:e2e` で、`dist/index.js` を実子プロセスとして起動し、本物のstdio JSON-RPCで疎通確認する（GitLab API側はローカルのモックHTTPサーバ。実GitLabに対する手動確認は下記の「テスト環境」を参照）。
+
 ## Dockerビルド
 
 ```bash

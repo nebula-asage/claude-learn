@@ -14,6 +14,7 @@ pnpm run build        # tsc でビルド（distへ出力）
 pnpm run typecheck    # 型チェックのみ（--noEmit）。src と test の両方を対象にする
 pnpm run dev          # tsc --watch
 pnpm test             # vitest run（リグレッションテスト一式を実行）
+pnpm run test:e2e     # build後、dist/index.jsを実子プロセスとして起動しstdioで疎通確認（自動E2E）
 pnpm run lint         # eslint . （型情報を使った検査を含む）
 pnpm run lint:fix     # eslint . --fix
 pnpm run format       # prettier --write .
@@ -25,15 +26,19 @@ GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start   
 
 ESLint（flat config, `eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecked` をベースに、`tsconfig.json` と `tsconfig.test.json` の両方を型情報のソースとして使う。テストコード（`test/**/*.ts`）はモック・フィクスチャで `any` や型アサーションを扱うことが多いため、`no-unsafe-*` 系など一部ルールを緩めている。フォーマットはPrettier（`.prettierrc.json`）で、既存コードに合わせてダブルクォート・セミコロンあり。新規コードを追加したら `pnpm run lint` と `pnpm run format:check` を通すこと。
 
-テスト用のセルフホストGitLab（GitLab CE + GitLab Runner）環境を `test-env/` にDocker Composeで用意している。詳細は `test-env/README.md` を参照。これは手動E2E確認用であり、`pnpm test` のユニットテストはこの環境に依存しない。
+テスト用のセルフホストGitLab（GitLab CE + GitLab Runner）環境を `test-env/` にDocker Composeで用意している。詳細は `test-env/README.md` を参照。これは手動E2E確認用（実GitLabに対する動作確認）であり、`pnpm test` のユニットテストも `pnpm run test:e2e` の自動E2Eもこの環境に依存しない。
 
-### ユニットテスト（`test/`）
+### ユニットテスト（`test/`、`test/e2e/` を除く）
 
-vitest ^4 を使用。`test/` 配下にドメインごとにテストファイルを置く（`test/config.test.ts`、`test/gitlab/client.test.ts`、`test/tools/*.test.ts`、`test/invariants.test.ts`、`test/transports/http.test.ts`）。fetchは `test/helpers/fetchMock.ts` の `vi.stubGlobal` ベースのモックで差し替える（`test/transports/http.test.ts` だけは実HTTPサーバーを検証するため本物のfetchを使う）。MCPツールの統合テストは `test/helpers/mcp.ts` の `InMemoryTransport` ハーネス経由で `createServer()` に対して行う。
+vitest ^4 を使用。`test/` 配下にドメインごとにテストファイルを置く（`test/config.test.ts`、`test/gitlab/client.test.ts`、`test/tools/*.test.ts`、`test/invariants.test.ts`、`test/transports/http.test.ts`）。fetchは `test/helpers/fetchMock.ts` の `vi.stubGlobal` ベースのモックで差し替える（`test/transports/http.test.ts` だけは実HTTPサーバーを検証するため本物のfetchを使う）。MCPツールの統合テストは `test/helpers/mcp.ts` の `InMemoryTransport` ハーネス経由で `createServer()` に対して行う（同一プロセス内呼び出しのため、実プロセス起動やstdioパイプは通らない）。
 
 - **不変条件を変更する場合は `test/invariants.test.ts` を必ず更新すること**（トークン非漏洩・`console.log`不使用・URLエンコード・破壊的操作の非対応を固定している）
 - **新規ツールを追加した場合は `test/invariants.test.ts` の `MINIMAL_ARGS` テーブルと `test/tools/surface.test.ts` のツール名一覧を更新すること**（更新を忘れるとテストが自動的に失敗する設計）
 - プロダクションコード側の非exportヘルパー（`issueSummary`等の整形関数、`config.ts`/`client.ts`/`http.ts`の内部関数）はテストのためにexport化しない。公開API（`loadConfig`・`GitLabClient`のpublicメソッド・`tools/call`・実HTTPリクエスト）経由で検証する方針を維持すること
+
+### 自動E2Eテスト（`test/e2e/`）
+
+`vitest.e2e.config.ts` で別実行（`pnpm run test:e2e`。build込みで、`pnpm test` には含まれない）。`test/e2e/stdio-process.test.ts` が `dist/index.js` を `StdioClientTransport` 経由で実子プロセスとして起動し、本物のstdio JSON-RPCで疎通確認する。GitLab API側は `test/e2e/helpers/mockGitLabServer.ts`（127.0.0.1の空きポートで起動する軽量HTTPスタブ）で代替し、実GitLabには依存しない（実GitLabに対する検証は上記の `test-env/` を使った手動確認が対象）。config.ts の環境変数読込ミスや起動シーケンスの崩れなど、InMemoryTransport ハーネスでは検出できないプロセス境界の不具合を検出するのが目的。ツール総数（29）をハードコードしたアサーションがあるため、新規ツールを追加した場合は `test/invariants.test.ts` / `test/tools/surface.test.ts` と同様にこのテストの件数も更新すること。
 
 ## アーキテクチャ
 
