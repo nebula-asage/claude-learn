@@ -1,6 +1,6 @@
 # __PROJECT_NAME__
 
-Node.jsの練習用プロジェクト。ランタイムは [nvm](https://github.com/nvm-sh/nvm)、パッケージ管理は [pnpm](https://pnpm.io/) を前提とする。
+Node.jsの練習用プロジェクト。ランタイムは [nvm](https://github.com/nvm-sh/nvm)、パッケージ管理は [pnpm](https://pnpm.io/) を前提とする。言語はTypeScriptで、ESLint（flat config, typescript-eslint）・Prettier・Vitestを組み込み済み。
 
 ## セットアップ
 
@@ -29,8 +29,25 @@ npm install -g pnpm@^10
 
 ```bash
 pnpm install
-pnpm start
+pnpm run build   # tsc でビルド（dist へ出力）
+pnpm start        # dist/index.js を実行
 ```
+
+開発中は `pnpm run dev`（`tsc --watch`）でビルドを追従させる。
+
+## Lint / Format / Test
+
+```bash
+pnpm run typecheck    # 型チェックのみ（--noEmit）。src と test の両方が対象
+pnpm run lint          # eslint .（型情報を使った検査を含む）
+pnpm run lint:fix      # eslint . --fix
+pnpm run format        # prettier --write .
+pnpm run format:check  # prettier --check .
+pnpm test              # vitest run
+pnpm run test:watch    # vitest（watchモード）
+```
+
+ESLint（`eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecked` をベースに、`tsconfig.json` と `tsconfig.test.json` の両方を型情報のソースとして使う。フォーマットはPrettier（`.prettierrc.json`）。新規コードを追加したら `pnpm run lint` と `pnpm run format:check` を通すこと。
 
 ## 依存パッケージの追加
 
