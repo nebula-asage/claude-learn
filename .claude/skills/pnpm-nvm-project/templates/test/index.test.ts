@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { greet } from "../src/index.js";
 
-describe("sample", () => {
-  it("passes", () => {
-    expect(1 + 1).toBe(2);
+describe("greet", () => {
+  it("returns a greeting for the given name", () => {
+    expect(greet("World")).toBe("Hello, World!");
   });
 });

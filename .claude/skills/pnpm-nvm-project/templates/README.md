@@ -52,6 +52,17 @@ ESLint（`eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecke
 
 `pnpm run test:coverage` はvitestの既定カバレッジプロバイダ（`@vitest/coverage-v8`、内部でistanbul形式に変換してレポートする）を使う。`coverage/index.html` をブラウザで開くとファイル別・行/分岐単位の詳細を確認できる。`coverage/` は `.gitignore` 済みでコミット対象外。
 
+`src/**/*.ts` には `eslint-plugin-jsdoc`（`flat/recommended-typescript-error`）も適用しており、exportしたシンボル（クラス・関数・interface・型エイリアス・定数、および interface の各フィールド）にはJSDocが必須。TypeScriptが型情報を持つため `@param`/`@returns` に型注記は書かない。ファイル先頭のモジュールコメントは `@module` ではなく `@packageDocumentation` を使う。
+
+## APIドキュメント生成
+
+```bash
+pnpm run docs        # TypeDocでソースコードのJSDocコメントからAPIリファレンス(HTML)を docs/api に生成
+pnpm run docs:check   # HTMLを出さずにドキュメント記述漏れだけ検証する
+```
+
+`docs/api/` はコミットせず、必要なときに手元で都度生成する運用にする（`.gitignore` 済み）。
+
 ## 依存パッケージの追加
 
 ```bash
