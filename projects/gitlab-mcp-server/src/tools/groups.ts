@@ -5,6 +5,13 @@ import type { GitLabGroup, GitLabGroupMember } from "../gitlab/types.js";
 import type { Config } from "../config.js";
 import { groupArg, jsonResult, pagedJsonResult, pagingArgs, withErrorHandling } from "./shared.js";
 
+/**
+ * グループの一覧・詳細・メンバー参照（読取系）と、メンバー追加・更新（書込系）を提供する。
+ * メンバー削除は意図的にスコープ外。書込系は `config.gitlabReadOnly` が true の場合、
+ * 登録関数内で早期returnして一切登録されない（`tools/list` にも現れない）。
+ * @packageDocumentation
+ */
+
 const ACCESS_LEVEL_NAMES: Record<number, string> = {
   10: "Guest",
   20: "Reporter",
@@ -42,7 +49,12 @@ const memberSummary = (member: GitLabGroupMember) => ({
   web_url: member.web_url,
 });
 
-/** グループ・メンバー操作系ツールを登録する。config.gitlabReadOnly が true の場合、書き込み系は登録しない。 */
+/**
+ * グループ・メンバー操作系ツールを登録する。config.gitlabReadOnly が true の場合、書き込み系は登録しない。
+ * @param server ツールを登録する `McpServer`。
+ * @param client GitLab APIクライアント。
+ * @param config 起動設定。`gitlabReadOnly` が書込系ツールの登録可否を決める。
+ */
 export function registerGroupTools(server: McpServer, client: GitLabClient, config: Config): void {
   server.registerTool(
     "gitlab_list_groups",

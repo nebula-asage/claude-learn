@@ -12,6 +12,12 @@ import {
   withErrorHandling,
 } from "./shared.js";
 
+/**
+ * CI/CDパイプラインとジョブの読み取り専用ツール群。パイプラインの実行・再試行・キャンセルは
+ * 意図的にスコープ外。このドメインに書込系ツールは無いため `config` は受け取らない。
+ * @packageDocumentation
+ */
+
 const pipelineSummary = (p: GitLabPipeline) => ({
   id: p.id,
   status: p.status,
@@ -34,7 +40,11 @@ const jobSummary = (j: GitLabJob) => ({
   web_url: j.web_url,
 });
 
-/** CI/パイプライン系の読み取り専用ツールを登録する。パイプライン実行・キャンセル等は今回のスコープに含めない。 */
+/**
+ * CI/パイプライン系の読み取り専用ツールを登録する。パイプライン実行・キャンセル等は今回のスコープに含めない。
+ * @param server ツールを登録する `McpServer`。
+ * @param client GitLab APIクライアント。
+ */
 export function registerPipelineTools(server: McpServer, client: GitLabClient): void {
   server.registerTool(
     "gitlab_list_pipelines",

@@ -19,7 +19,18 @@ import {
   withErrorHandling,
 } from "./shared.js";
 
-/** リポジトリ/ファイル参照系の読み取り専用ツールを登録する。 */
+/**
+ * プロジェクト・ツリー・ファイル・ブランチ・コミット・コード検索の読み取り専用ツール群。
+ * 各ツールの入出力仕様は `inputSchema` の `.describe()` と `description`（MCPクライアント向け）を参照。
+ * このドメインに書込系ツールは無いため `config` は受け取らない。
+ * @packageDocumentation
+ */
+
+/**
+ * リポジトリ/ファイル参照系の読み取り専用ツールを登録する。
+ * @param server ツールを登録する `McpServer`。
+ * @param client GitLab APIクライアント。
+ */
 export function registerRepositoryTools(server: McpServer, client: GitLabClient): void {
   server.registerTool(
     "gitlab_list_projects",

@@ -13,6 +13,13 @@ import {
   withErrorHandling,
 } from "./shared.js";
 
+/**
+ * マージリクエストの一覧・詳細・差分・コメント参照（読取系）と、作成・更新・コメント追加（書込系）を提供する。
+ * マージの実行（`PUT .../merge`）は意図的にスコープ外。書込系は `config.gitlabReadOnly` が true の
+ * 場合、登録関数内で早期returnして一切登録されない（`tools/list` にも現れない）。
+ * @packageDocumentation
+ */
+
 const mrSummary = (mr: GitLabMergeRequest) => ({
   iid: mr.iid,
   title: mr.title,
@@ -27,7 +34,12 @@ const mrSummary = (mr: GitLabMergeRequest) => ({
   updated_at: mr.updated_at,
 });
 
-/** マージリクエスト操作系ツールを登録する。config.gitlabReadOnly が true の場合、書き込み系は登録しない。 */
+/**
+ * マージリクエスト操作系ツールを登録する。config.gitlabReadOnly が true の場合、書き込み系は登録しない。
+ * @param server ツールを登録する `McpServer`。
+ * @param client GitLab APIクライアント。
+ * @param config 起動設定。`gitlabReadOnly` が書込系ツールの登録可否を決める。
+ */
 export function registerMergeRequestTools(
   server: McpServer,
   client: GitLabClient,

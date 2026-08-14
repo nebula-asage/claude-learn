@@ -5,6 +5,13 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { Config } from "../config.js";
 import { createServer } from "../server.js";
 
+/**
+ * Streamable HTTP トランスポート（`/mcp` エンドポイント）と、死活監視用の `/healthz` を提供する。
+ * MCPセッションごとに独立した `McpServer` インスタンスを持ち、`mcp-session-id` ヘッダで紐付ける
+ * （stdioモードと異なり、1プロセスで複数クライアントの同時接続を扱えるようにするため）。
+ * @packageDocumentation
+ */
+
 const MAX_BODY_BYTES = 10 * 1024 * 1024; // 10MB。JSON-RPCリクエストとして十分大きく、かつ無制限読み込みを防ぐ上限。
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -43,6 +50,8 @@ async function readJsonBody(req: IncomingMessage, res: ServerResponse): Promise<
  * 許可リスト（MCP_HTTP_ALLOWED_ORIGINS）に含まれる場合のみ通す。
  * 許可リストが空の場合、Origin 付きリクエスト（＝ブラウザ経由の可能性がある）は拒否する。
  * curl 等の非ブラウザクライアント（Originヘッダなし）は許可リストの影響を受けない。
+ * @param origin リクエストの `Origin` ヘッダ値。無ければ `undefined`。
+ * @param allowedOrigins `config.mcpHttpAllowedOrigins`（許可Originのリスト）。
  */
 function isOriginAllowed(origin: string | undefined, allowedOrigins: string[]): boolean {
   if (origin === undefined) return true;
@@ -57,7 +66,13 @@ function isAuthorized(req: IncomingMessage, authToken: string | undefined): bool
   return token === authToken;
 }
 
-/** Streamable HTTP トランスポートでMCPサーバをリッスンする。セッションごとに独立したMcpServerインスタンスを持つ。 */
+/**
+ * Streamable HTTP トランスポートでMCPサーバをリッスンする。セッションごとに独立したMcpServerインスタンスを持つ。
+ * @remarks 呼び出すと `SIGINT`/`SIGTERM` ハンドラをプロセスに登録し、シグナル受信時に
+ *   全セッションをクローズしてから `process.exit(0)` する副作用がある。
+ * @param config 起動設定（`mcpHttpHost`/`mcpHttpPort`/`mcpHttpAuthToken`/`mcpHttpAllowedOrigins` 等）。
+ * @returns リッスン開始済みの `http.Server`。テストは実際に確保されたポート確認等に使う。
+ */
 export async function runHttp(config: Config): Promise<http.Server> {
   const transports = new Map<string, StreamableHTTPServerTransport>();
 

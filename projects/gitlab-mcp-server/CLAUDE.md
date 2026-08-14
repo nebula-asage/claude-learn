@@ -25,12 +25,16 @@ pnpm run lint         # eslint . （型情報を使った検査を含む）
 pnpm run lint:fix     # eslint . --fix
 pnpm run format       # prettier --write .
 pnpm run format:check # prettier --check .
+pnpm run docs         # TypeDocでAPIドキュメント(HTML)を docs/api に生成（生成物はgit管理外）
+pnpm run docs:check   # HTMLを出さずにドキュメント記述漏れだけ検証する
 GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start   # dist/index.js を起動
 ```
 
 ### Lint / Format
 
 ESLint（flat config, `eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecked` をベースに、`tsconfig.json` と `tsconfig.test.json` の両方を型情報のソースとして使う。テストコード（`test/**/*.ts`）はモック・フィクスチャで `any` や型アサーションを扱うことが多いため、`no-unsafe-*` 系など一部ルールを緩めている。フォーマットはPrettier（`.prettierrc.json`）で、既存コードに合わせてダブルクォート・セミコロンあり。新規コードを追加したら `pnpm run lint` と `pnpm run format:check` を通すこと。
+
+`src/**/*.ts` には `eslint-plugin-jsdoc`（`flat/recommended-typescript-error`）も適用しており、**exportしたシンボル（クラス・関数・interface・型エイリアス・定数、および interface の各フィールド）にはJSDocが必須**（非exportの内部ヘルパーは対象外）。TypeScriptが型情報を持つため `@param`/`@returns` に型注記は書かない（`jsdoc/no-types` で禁止）。ファイル先頭のモジュールコメントは `@module` ではなく **`@packageDocumentation`** を使うこと（TS環境では `@module` が冗長タグとしてESLintに拒否される上、TypeDocの挙動としても等価）。記述漏れは `pnpm run docs:check` で検出できる。
 
 テスト用のセルフホストGitLab（GitLab CE + GitLab Runner）環境を `test-env/` にDocker Composeで用意している。詳細は `test-env/README.md` を参照。起動は `cd test-env && ./setup.sh`（手動、初回5〜10分）。`pnpm test` のユニットテストはこの環境に依存しないが、`pnpm run test:e2e` の自動E2Eはこの環境（`test-env/.env.test` の接続情報とseedデータ）に依存する。
 
@@ -103,3 +107,4 @@ src/transports/        stdio.ts と http.ts。config.mcpTransport で切替
 - プロジェクトID・グループID・ファイルパスをURLパスに埋め込む際は `GitLabClient.encodeId()` / `GitLabClient.encodePathSegment()` を必ず使う（インジェクション対策）
 - マージの実行（`PUT .../merge`）やIssue/MRの削除、グループメンバーの削除など、破壊的度合いが高い操作はスコープ外（意図的に未実装）
 - 新規ツールを追加したら `README.md` のツール一覧表も更新する
+- 新規にexportを追加したらJSDocを付ける（`pnpm run docs:check` が記述漏れを検出する）
