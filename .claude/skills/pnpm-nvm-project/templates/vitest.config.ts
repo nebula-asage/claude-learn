@@ -4,5 +4,13 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
+    // coverage.include を明示しないと、テストから一度もimportされなかったsrc配下のファイルは
+    // カバレッジレポートに一切現れない（0/0で「対象ファイル無し」に見えてしまう）。
+    // include を指定すると、未テストのファイルも0%として一覧に出るため、
+    // 「まだテストが無い」ことがレポート上で分かるようになる。
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+    },
   },
 });

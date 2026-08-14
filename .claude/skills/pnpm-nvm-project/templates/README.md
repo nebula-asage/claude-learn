@@ -45,9 +45,12 @@ pnpm run format        # prettier --write .
 pnpm run format:check  # prettier --check .
 pnpm test              # vitest run
 pnpm run test:watch    # vitest（watchモード）
+pnpm run test:coverage # vitest run --coverage（カバレッジ計測。coverage/ 配下にHTML/JSON/Cloverレポートを生成）
 ```
 
 ESLint（`eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecked` をベースに、`tsconfig.json` と `tsconfig.test.json` の両方を型情報のソースとして使う。フォーマットはPrettier（`.prettierrc.json`）。新規コードを追加したら `pnpm run lint` と `pnpm run format:check` を通すこと。
+
+`pnpm run test:coverage` はvitestの既定カバレッジプロバイダ（`@vitest/coverage-v8`、内部でistanbul形式に変換してレポートする）を使う。`coverage/index.html` をブラウザで開くとファイル別・行/分岐単位の詳細を確認できる。`coverage/` は `.gitignore` 済みでコミット対象外。
 
 ## 依存パッケージの追加
 

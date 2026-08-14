@@ -1,6 +1,6 @@
 ---
 name: pnpm-nvm-project
-description: Node.js(TypeScript)の練習・開発プロジェクト一式（pnpm前提のpackage.json + .npmrc + README + TypeScript/ESLint/Prettier/Vitestの開発環境一式）をホスト環境に直接構築するときに使う。「pnpmの環境作って」「Node.jsの練習環境作って」「pnpmでプロジェクト作って」「このリポジトリにNode.jsプロジェクト追加して」「TypeScriptのlint/format/testも入れて」など、このリポジトリ配下にpnpmベースのNode.js/TypeScriptプロジェクトを新規作成・再作成したい場合にトリガーする。Docker/devcontainerには依存せず、nvm(Node Version Manager)が未導入ならホストに直接導入する。pnpm本体はcorepack(将来Node.js本体から切り離される方針)ではなくnpm経由で導入し、サプライチェーン攻撃対策（ignore-scripts抑制・7日間のリリース遅延）も標準で組み込む。TypeScript(tscビルド) + ESLint(flat config, typescript-eslint) + Prettier + Vitestという、gitlab-mcp-serverプロジェクトで検証済みの開発環境構成をテンプレート化している。devcontainer/コンテナ環境の構築自体を頼まれた場合はdevcontainer-ubuntu-jaスキルを使うこと（このスキルとは独立で、組み合わせる必要もない）。
+description: Node.js(TypeScript)の練習・開発プロジェクト一式（pnpm前提のpackage.json + .npmrc + README + TypeScript/ESLint/Prettier/Vitestの開発環境一式）をホスト環境に直接構築するときに使う。「pnpmの環境作って」「Node.jsの練習環境作って」「pnpmでプロジェクト作って」「このリポジトリにNode.jsプロジェクト追加して」「TypeScriptのlint/format/testも入れて」など、このリポジトリ配下にpnpmベースのNode.js/TypeScriptプロジェクトを新規作成・再作成したい場合にトリガーする。Docker/devcontainerには依存せず、nvm(Node Version Manager)が未導入ならホストに直接導入する。pnpm本体はcorepack(将来Node.js本体から切り離される方針)ではなくnpm経由で導入し、サプライチェーン攻撃対策（ignore-scripts抑制・7日間のリリース遅延）も標準で組み込む。TypeScript(tscビルド) + ESLint(flat config, typescript-eslint) + Prettier + Vitest（`@vitest/coverage-v8`によるカバレッジ計測込み）という、gitlab-mcp-serverプロジェクトで検証済みの開発環境構成をテンプレート化している。devcontainer/コンテナ環境の構築自体を頼まれた場合はdevcontainer-ubuntu-jaスキルを使うこと（このスキルとは独立で、組み合わせる必要もない）。
 ---
 
 # pnpm-nvm-project
@@ -24,7 +24,7 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（pnp
   - 2つの設定キーが必要なのは、npmとpnpmでキー名・単位が異なるため（`min-release-age`は日、`minimum-release-age`は分）。両方書いても片方のツールにとって未知のキーになるが、動作上問題はない（検証済み）
 - `package-lock.json`は作らない。依存関係は`package.json` + `pnpm-lock.yaml`（`pnpm install`で生成、コミット対象）で管理する
 - **言語はTypeScript一本**。プレーンなJavaScriptのテンプレートは提供しない（`src/`配下に`.ts`を置き、`tsc`で`dist/`にビルドする）
-- **Lint/Format/Testは標準で組み込む**。ESLint(flat config, `typescript-eslint`の`recommendedTypeChecked`)・Prettier・Vitestは`projects/gitlab-mcp-server/`で検証済みの構成をそのままテンプレート化したものであり、単なる「pnpm環境作って」的な依頼でも省略しない
+- **Lint/Format/Test/カバレッジ計測は標準で組み込む**。ESLint(flat config, `typescript-eslint`の`recommendedTypeChecked`)・Prettier・Vitest・`@vitest/coverage-v8`（`pnpm run test:coverage`でカバレッジHTMLレポートを生成）は`projects/gitlab-mcp-server/`で検証済みの構成をそのままテンプレート化したものであり、単なる「pnpm環境作って」的な依頼でも省略しない
 
 ## 手順
 
@@ -78,6 +78,7 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（pnp
    - `pnpm install`を実行し、`pnpm-lock.yaml`が生成されることを確認する（これはコミット対象）。
    - `pnpm run build`（`tsc`ビルド）と`pnpm start`（`dist/index.js`を実行）が動くことを確認する。
    - `pnpm run typecheck`・`pnpm run lint`・`pnpm run format:check`・`pnpm test`（テンプレート同梱のサンプルテストが通る）がいずれもエラーなく完了することを確認する。
+   - `pnpm run test:coverage`を実行し、`coverage/`配下にHTMLレポート（`coverage/index.html`）が生成されることを確認する。
    - `pnpm config get minimum-release-age`が`10080`、`npm config get min-release-age`が`7`を返すことを確認する。
    - `ignore-scripts`が効いているかは、postinstallスクリプトを持つ適当なパッケージを試験的に追加し、そのスクリプトのログが出力されないことを確認する。確認後はそのパッケージを取り除く。
 
@@ -93,5 +94,5 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（pnp
 ## このスキルの対象外
 
 - Docker/devcontainer環境の構築自体はこのスキルの対象外。コンテナ環境が欲しいと言われたら[[devcontainer-ubuntu-ja]]スキルを使う（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
-- corepackを使わない方針、pnpmを10系に固定する方針、`.npmrc`の3設定、TypeScript/ESLint/Prettier/Vitestの開発環境一式はこのリポジトリで検証済みの固定条件として扱い、単なる「pnpm環境作って」的な依頼でも省略しない。
+- corepackを使わない方針、pnpmを10系に固定する方針、`.npmrc`の3設定、TypeScript/ESLint/Prettier/Vitest+カバレッジ計測(`@vitest/coverage-v8`)の開発環境一式はこのリポジトリで検証済みの固定条件として扱い、単なる「pnpm環境作って」的な依頼でも省略しない。
 - ビルドバンドラ（Vite等）は含まない。`projects/gitlab-mcp-server/`はNode.js向けMCPサーバであり、ブラウザ向けバンドルを必要としないため`tsc`ビルドのみで完結している。ブラウザ向けアプリ等でバンドラが必要な場合は、テンプレートに`vite`等を追加導入すること。
