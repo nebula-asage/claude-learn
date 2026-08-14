@@ -1,0 +1,32 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src"],
+  "entryPointStrategy": "expand",
+  "tsconfig": "tsconfig.json",
+  "out": "docs/api",
+  "readme": "README.md",
+  "name": "gitlab-mcp-server",
+  "includeVersion": true,
+  "lang": "ja",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "navigation": {
+    "includeFolders": true
+  },
+  "requiredToBeDocumented": [
+    "Variable",
+    "Function",
+    "Class",
+    "Interface",
+    "Property",
+    "Method",
+    "Accessor",
+    "TypeAlias"
+  ],
+  "validation": {
+    "notExported": true,
+    "notDocumented": true,
+    "invalidLink": true,
+    "invalidPath": false
+  }
+}

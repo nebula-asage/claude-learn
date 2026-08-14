@@ -5,6 +5,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  * stdio トランスポートで接続する。
  * 注意: stdout は JSON-RPC メッセージ専用のため、このモードでは console.log を絶対に使わない。
  * ログは全て console.error（stderr）へ出す。
+ * @param server 接続対象の `McpServer`（ツール登録済みであること）。
  */
 export async function runStdio(server: McpServer): Promise<void> {
   const transport = new StdioServerTransport();

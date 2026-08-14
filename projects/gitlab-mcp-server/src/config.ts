@@ -1,21 +1,37 @@
 /**
  * 環境変数の読込・検証。
  * 不足・不正がある場合は起動時にエラーを投げて即座に落とす（実行途中で気づかせない）。
+ * @packageDocumentation
  */
 
+/** {@link loadConfig} が返す、検証済みの起動設定。 */
 export interface Config {
+  /** GitLab インスタンスのオリジン（例: `https://gitlab.example.com`）。パスは含まない。 */
   gitlabBaseUrl: string;
+  /** GitLab パーソナルアクセストークン。`PRIVATE-TOKEN` ヘッダで送信する。 */
   gitlabToken: string;
+  /** `project` 引数省略時のデフォルトプロジェクト。未設定なら `undefined`（`resolveProject` が必須化する）。 */
   gitlabDefaultProject: string | undefined;
+  /** true の場合、書込系ツールを一切登録しない（`tools/list` にも現れない）。 */
   gitlabReadOnly: boolean;
+  /** GitLab APIリクエストのタイムアウト（ミリ秒）。 */
   gitlabTimeoutMs: number;
+  /** MCPサーバの待ち受けトランスポート。 */
   mcpTransport: "stdio" | "http";
+  /** HTTPモードのバインドアドレス。 */
   mcpHttpHost: string;
+  /** HTTPモードのポート番号。 */
   mcpHttpPort: number;
+  /** 設定時、HTTPモードで `Authorization: Bearer <token>` を必須にする。未設定なら認証なし。 */
   mcpHttpAuthToken: string | undefined;
+  /**
+   * DNSリバインディング対策の許可Originリスト。空配列の場合、Originヘッダ付きリクエスト
+   * （＝ブラウザ経由の可能性がある）は全て拒否される（`transports/http.ts` の `isOriginAllowed`）。
+   */
   mcpHttpAllowedOrigins: string[];
 }
 
+/** 環境変数の欠落・不正など、起動を継続できない設定エラー。`main()` はこれをスタック無しで表示して終了する。 */
 export class ConfigError extends Error {}
 
 function requireEnv(name: string, env: NodeJS.ProcessEnv): string {
@@ -60,6 +76,12 @@ function normalizeBaseUrl(raw: string): string {
   return url.origin;
 }
 
+/**
+ * 環境変数から起動設定を読み込み、検証する。
+ * @param env 読み込み元の環境変数。既定は `process.env`（テストでは差し替え可能）。
+ * @returns 検証済みの {@link Config}。
+ * @throws ConfigError 必須の環境変数が欠落している、または値の形式が不正な場合。
+ */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const gitlabBaseUrl = normalizeBaseUrl(requireEnv("GITLAB_BASE_URL", env));
   const gitlabToken = requireEnv("GITLAB_TOKEN", env);

@@ -11,6 +11,13 @@ import {
   withErrorHandling,
 } from "./shared.js";
 
+/**
+ * Issueの一覧・詳細取得・コメント参照（読取系）と、作成・更新・コメント追加（書込系）を提供する。
+ * 書込系は `config.gitlabReadOnly` が true の場合、登録関数内で早期returnして一切登録されない
+ * （`tools/list` にも現れない）。ファイル内の並び順は常に「読取系 → readOnlyチェック → 書込系」。
+ * @packageDocumentation
+ */
+
 const issueSummary = (issue: GitLabIssue) => ({
   iid: issue.iid,
   title: issue.title,
@@ -24,7 +31,12 @@ const issueSummary = (issue: GitLabIssue) => ({
   updated_at: issue.updated_at,
 });
 
-/** Issue操作系ツールを登録する。config.gitlabReadOnly が true の場合、書き込み系は登録しない。 */
+/**
+ * Issue操作系ツールを登録する。config.gitlabReadOnly が true の場合、書き込み系は登録しない。
+ * @param server ツールを登録する `McpServer`。
+ * @param client GitLab APIクライアント。
+ * @param config 起動設定。`gitlabReadOnly` が書込系ツールの登録可否を決める。
+ */
 export function registerIssueTools(server: McpServer, client: GitLabClient, config: Config): void {
   server.registerTool(
     "gitlab_list_issues",
