@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 セルフホストGitLabをAPI経由で操作するMCP（Model Context Protocol）サーバ。パーソナルアクセストークン（PAT）で認証し、リポジトリ参照・Issue・マージリクエスト・CI/パイプライン・グループ/メンバーの5領域をツールとして提供する。TypeScript製。依存は `@modelcontextprotocol/sdk` と `zod` のみで、GitLab APIはNode組み込みの `fetch` で直接叩く（GitLab用SDKは使わない）。
 
+## 開発環境
+
+このプロジェクトは `.devcontainer/`（Ubuntu 24.04 / ja_JP.UTF-8 / Asia-Tokyo、Node.js 24 + pnpm）を用意している。**E2Eテスト（`pnpm run test:e2e` および `test-env/` 関連の作業）を除く基本的な作業（`pnpm install`、ビルド、型チェック、lint、format、`pnpm test` によるユニットテスト等）はdevcontainer内で実施すること。**
+
+E2Eテストのみ対象外なのは、`test-env/`（セルフホストGitLab CE + GitLab Runner）をDocker Composeで起動する必要があるが、このdevcontainerはDocker-in-Docker構成になっておらずホストのDockerを操作できないため。E2Eテストと `test-env/` のセットアップ（`./setup.sh` / `./teardown.sh` 等）はdevcontainerの外（ホスト側）で実施する。
+
 ## コマンド
 
 ```bash
