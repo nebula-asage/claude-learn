@@ -6,9 +6,15 @@
  * runHttp() は SIGINT/SIGTERM リスナーを登録するため、1ファイルあたりの起動数は
  * 最小限（認証なし用・認証あり用の2インスタンス）に留める。シグナルを送らない限り
  * process.exit は発火しないので、テストからは到達しない。
+ *
+ * handleRequest 内の catch節（想定外エラー時の500応答）も意図的に対象外にしている。
+ * 到達させるにはリクエスト読み取り中にソケットを強制破壊するような黒箱テストが必要だが、
+ * vitest プロセス自体を巻き込みかねない不安定な手段になるため、費用対効果が見合わない。
  */
 import type { AddressInfo } from "node:net";
 import type http from "node:http";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { runHttp } from "../../src/transports/http.js";
 import { baseConfig } from "../helpers/mcp.js";
@@ -204,5 +210,44 @@ describe("リクエストボディ・セッションIDの検証", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.error.message).toBe("セッションIDが無く、initializeリクエストでもありません。");
+  });
+
+  it("ボディが上限（10MB）を超えるPOSTは413", async () => {
+    const oversized = "a".repeat(10 * 1024 * 1024 + 1);
+    const res = await fetch(`${baseUrlNoAuth}/mcp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: oversized,
+    });
+    expect(res.status).toBe(413);
+    const body = await res.json();
+    expect(body.error.message).toBe("リクエストボディが大きすぎます。");
+  });
+});
+
+describe("セッションのライフサイクル（initialize→利用→終了）", () => {
+  it("initializeで新規セッションが張られ、以降のPOST/GET/DELETEをそのセッションIDで処理できる", async () => {
+    const transport = new StreamableHTTPClientTransport(new URL(`${baseUrlNoAuth}/mcp`));
+    const client = new Client({ name: "coverage-test-client", version: "0.0.0" });
+
+    await client.connect(transport);
+    const sessionId = transport.sessionId;
+    expect(sessionId).toBeDefined();
+
+    // 既存セッションIDでの通常のPOST（tools/list）が通ること。
+    const { tools } = await client.listTools();
+    expect(tools.length).toBeGreaterThan(0);
+
+    // DELETE によるセッション終了（transport.handleRequest の GET/DELETE 経路）。
+    await transport.terminateSession();
+
+    // セッションが消えているので、同じセッションIDでの以降の呼び出しは404になる。
+    const res = await fetch(`${baseUrlNoAuth}/mcp`, {
+      method: "GET",
+      headers: { "mcp-session-id": sessionId ?? "" },
+    });
+    expect(res.status).toBe(404);
+
+    await client.close();
   });
 });
