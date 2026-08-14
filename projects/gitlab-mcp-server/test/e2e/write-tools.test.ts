@@ -19,6 +19,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import {
   callTool,
+  cleanupPipelinesForRefs,
   connectRealProcess,
   ensureServerBuilt,
   firstJson,
@@ -106,7 +107,11 @@ describe("書込系ツール × test-env実GitLab とのE2E疎通", () => {
     let branchName: string | undefined;
 
     afterEach(async () => {
+      // MR・ブランチを消しても skipped のパイプライン記録だけは残るので、
+      // 対象の ref を控えておいて最後にまとめて消す。
+      const refs: string[] = [];
       if (mergeRequestIid !== undefined) {
+        refs.push(`refs/merge-requests/${mergeRequestIid}/head`);
         await gitlabCleanup(
           conn,
           "DELETE",
@@ -115,6 +120,7 @@ describe("書込系ツール × test-env実GitLab とのE2E疎通", () => {
         mergeRequestIid = undefined;
       }
       if (branchName !== undefined) {
+        refs.push(branchName);
         await gitlabCleanup(
           conn,
           "DELETE",
@@ -122,6 +128,7 @@ describe("書込系ツール × test-env実GitLab とのE2E疎通", () => {
         );
         branchName = undefined;
       }
+      await cleanupPipelinesForRefs(conn, projectPathSegment, refs);
     });
 
     it("gitlab_create_merge_request → gitlab_create_merge_request_note → gitlab_update_merge_request(close) が実GitLabに反映される", async () => {
@@ -130,6 +137,8 @@ describe("書込系ツール × test-env実GitLab とのE2E疎通", () => {
 
       // MCPサーバにブランチ作成ツールは無いため、作業ブランチとその上のコミットは
       // 直接GitLab APIで用意する（start_branchでmainから新規ブランチを切りつつ1コミット積む）。
+      // seedの .gitlab-ci.yml が発火するとブランチを消した後もパイプライン記録だけ
+      // test-env に残り続けるため、[skip ci] でCIを止める。
       const commitRes = await gitlabApiRequest(
         conn,
         "POST",
@@ -137,7 +146,7 @@ describe("書込系ツール × test-env実GitLab とのE2E疎通", () => {
         {
           branch: branchName,
           start_branch: "main",
-          commit_message: "E2E write-tools test commit",
+          commit_message: "E2E write-tools test commit [skip ci]",
           actions: [
             {
               action: "create",

@@ -5,7 +5,9 @@
  * 注意: このプロジェクトは module: NodeNext のため、相対importは必ず `.js` 拡張子を付ける。
  */
 
+import { spawn, type ChildProcess } from "node:child_process";
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -85,6 +87,98 @@ export async function connectRealProcess(
   return { client, transport };
 }
 
+/**
+ * 空きポートを1つ確保する。
+ *
+ * MCP_HTTP_PORT は src/config.ts の parsePositiveIntEnv が 0 以下を弾くため、
+ * test/transports/http.test.ts のように `port: 0` でOSに任せることができない。
+ * 一時的にエフェメラルポートをlistenして番号だけ取り、閉じてから子プロセスに渡す。
+ */
+export async function findFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (address === null || typeof address === "string") {
+        server.close(() => reject(new Error("空きポートの取得に失敗しました。")));
+        return;
+      }
+      const { port } = address;
+      server.close(() => resolve(port));
+    });
+  });
+}
+
+export interface HttpServerProcess {
+  child: ChildProcess;
+  baseUrl: string;
+  /** SIGTERM を送って終了を待つ（src/transports/http.ts の graceful shutdown が応答する）。 */
+  stop(): Promise<void>;
+}
+
+/**
+ * MCP_TRANSPORT=http で dist/index.js を実子プロセスとして起動し、
+ * /healthz が応答するまで待つ。stdio と違いJSON-RPCがstdoutを流れないので、
+ * StdioClientTransport ではなく素の spawn を使う。
+ */
+export async function startRealHttpProcess(
+  conn: TestEnvConnection,
+  envOverrides: Record<string, string> = {},
+): Promise<HttpServerProcess> {
+  const port = await findFreePort();
+  const baseUrl = `http://127.0.0.1:${port}`;
+  const child = spawn(process.execPath, [SERVER_ENTRY], {
+    env: {
+      GITLAB_BASE_URL: conn.baseUrl,
+      GITLAB_TOKEN: conn.token,
+      GITLAB_DEFAULT_PROJECT: conn.defaultProject,
+      MCP_TRANSPORT: "http",
+      MCP_HTTP_HOST: "127.0.0.1",
+      MCP_HTTP_PORT: String(port),
+      ...envOverrides,
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  // 起動に失敗した場合（設定エラー等）に原因が分かるよう、stderrを溜めておく。
+  let stderr = "";
+  child.stderr?.on("data", (chunk: Buffer) => {
+    stderr += chunk.toString("utf8");
+  });
+
+  const stop = async (): Promise<void> => {
+    if (child.exitCode !== null || child.signalCode !== null) return;
+    await new Promise<void>((resolve) => {
+      child.once("exit", () => resolve());
+      child.kill("SIGTERM");
+    });
+  };
+
+  // 固定sleepではなく /healthz のポーリングで起動完了を待つ。
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    if (child.exitCode !== null || child.signalCode !== null) {
+      throw new Error(`HTTPモードの子プロセスが起動直後に終了しました。stderr:\n${stderr}`);
+    }
+    try {
+      const res = await fetch(`${baseUrl}/healthz`);
+      if (res.ok) break;
+    } catch {
+      // まだlisten前。リトライする。
+    }
+    if (Date.now() >= deadline) {
+      await stop();
+      throw new Error(
+        `HTTPモードの子プロセスが起動しませんでした（${baseUrl}）。stderr:\n${stderr}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  return { child, baseUrl, stop };
+}
+
 // Client#callTool の戻り型は CallToolResult と旧仕様の { toolResult } との union になっており、
 // そのままでは content に型が付かない。本サーバは常に CallToolResult 形式を返すので寄せる
 // （test/helpers/mcp.ts の Harness#call と同じ扱い）。
@@ -136,6 +230,41 @@ export async function gitlabCleanup(
 ): Promise<void> {
   try {
     await gitlabApiRequest(conn, method, apiPath);
+  } catch {
+    // クリーンアップの失敗はテスト結果に影響させない。
+  }
+}
+
+/**
+ * 指定した ref に紐づくパイプライン記録を削除する。
+ *
+ * コミットメッセージに `[skip ci]` を付けてもGitLabは status="skipped" のパイプライン記録を
+ * 作るため、ブランチやMRを消してもこれだけが test-env に残り続ける。
+ * 一覧APIの `ref` フィルタはブランチ名には効くが `refs/merge-requests/<iid>/head` には
+ * 効かないので、一覧を取ってから自前で絞り込む。
+ */
+export async function cleanupPipelinesForRefs(
+  conn: TestEnvConnection,
+  projectPathSegment: string,
+  refs: string[],
+): Promise<void> {
+  if (refs.length === 0) return;
+  try {
+    const res = await gitlabApiRequest(
+      conn,
+      "GET",
+      `/projects/${projectPathSegment}/pipelines?per_page=100`,
+    );
+    if (!res.ok) return;
+    const pipelines = (await res.json()) as Array<{ id: number; ref: string }>;
+    for (const pipeline of pipelines) {
+      if (!refs.includes(pipeline.ref)) continue;
+      await gitlabCleanup(
+        conn,
+        "DELETE",
+        `/projects/${projectPathSegment}/pipelines/${pipeline.id}`,
+      );
+    }
   } catch {
     // クリーンアップの失敗はテスト結果に影響させない。
   }

@@ -40,11 +40,13 @@ beforeAll(() => {
 });
 
 describe("実子プロセス（stdio）× test-env実GitLab とのE2E疎通", () => {
-  it("dist/index.js を子プロセスとして起動し、tools/list に29ツールが並ぶ", async () => {
+  // ツール数・名前の厳密な固定は test/tools/surface.test.ts が、E2Eでの網羅性は
+  // test/e2e/coverage.test.ts が担うため、ここでは件数をハードコードしない。
+  it("dist/index.js を子プロセスとして起動し、tools/list がツール一覧を返す", async () => {
     const { client, transport } = await connectRealProcess(conn);
     try {
       const { tools } = await client.listTools();
-      expect(tools).toHaveLength(29);
+      expect(tools.length).toBeGreaterThan(0);
       expect(tools.map((t) => t.name)).toContain("gitlab_list_projects");
     } finally {
       await client.close();
