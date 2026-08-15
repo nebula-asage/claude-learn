@@ -30,6 +30,14 @@ pnpm run docs:check   # HTMLを出さずにドキュメント記述漏れだけ�
 GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start   # dist/index.js を起動
 ```
 
+`.npmrc` の `ignore-scripts=true` により `pnpm install` では `prepare` スクリプト（Husky設定）が自動実行されない。`pnpm install` 後、初回のみ `pnpm run prepare` を手動実行してGitフックを有効化すること（詳細は下記「Git hooks」）。
+
+### Git hooks（Husky + lint-staged）
+
+コミット時、ステージされた `*.ts` に `eslint --fix` → `prettier --write` を自動適用する（lint-staged。設定は `package.json` の `lint-staged` フィールド）。フック本体は `.husky/pre-commit`。
+
+このプロジェクトはmonorepo（`claude-learn`）のサブディレクトリにあり `.git` はリポジトリルートにしか存在しないため、Husky標準の `npx husky init` / `husky` コマンド（cwd直下の `.git` しか認識しない）はそのままでは使えない。`scripts/install-husky.mjs` が `git rev-parse --show-toplevel` でリポジトリルートを求め、そこへ `chdir` した上でこのプロジェクト配下 `.husky` を対象に `core.hooksPath` を設定する（`package.json` の `prepare` はこのスクリプトを指す）。`core.hooksPath` はGitのローカル設定でリポジトリには含まれないため、clone後の環境では毎回 `pnpm run prepare` の実行が必要。
+
 ### Lint / Format
 
 ESLint（flat config, `eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecked` をベースに、`tsconfig.json` と `tsconfig.test.json` の両方を型情報のソースとして使う。テストコード（`test/**/*.ts`）はモック・フィクスチャで `any` や型アサーションを扱うことが多いため、`no-unsafe-*` 系など一部ルールを緩めている。フォーマットはPrettier（`.prettierrc.json`）で、既存コードに合わせてダブルクォート・セミコロンあり。新規コードを追加したら `pnpm run lint` と `pnpm run format:check` を通すこと。

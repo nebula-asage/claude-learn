@@ -17,7 +17,15 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "docs": "typedoc",
-    "docs:check": "typedoc --emit none --treatValidationWarningsAsErrors"
+    "docs:check": "typedoc --emit none --treatValidationWarningsAsErrors",
+    "prepare": "node scripts/install-husky.mjs"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,mjs,cjs,json,md,yml,yaml}": "prettier --write"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1",
@@ -30,6 +38,8 @@
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-jsdoc": "^63.3.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
     "prettier": "^3.9.6",
     "typedoc": "^0.28.20",
     "typescript": "^5",
