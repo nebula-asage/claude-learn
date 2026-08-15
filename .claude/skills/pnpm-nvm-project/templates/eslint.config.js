@@ -24,8 +24,15 @@ export default tseslint.config(
     },
   },
   {
-    files: ["eslint.config.js"],
+    files: ["eslint.config.js", "scripts/**/*.mjs"],
     ...tseslint.configs.disableTypeChecked,
+  },
+  {
+    // Node CLIスクリプトのため process/console のグローバルを許可する。
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: { process: "readonly", console: "readonly" },
+    },
   },
   {
     // JSDoc は src のプロダクションコードにのみ強制する。

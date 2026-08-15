@@ -54,6 +54,16 @@ ESLint（`eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecke
 
 `src/**/*.ts` には `eslint-plugin-jsdoc`（`flat/recommended-typescript-error`）も適用しており、exportしたシンボル（クラス・関数・interface・型エイリアス・定数、および interface の各フィールド）にはJSDocが必須。TypeScriptが型情報を持つため `@param`/`@returns` に型注記は書かない。ファイル先頭のモジュールコメントは `@module` ではなく `@packageDocumentation` を使う。
 
+## Git hooks（Husky + lint-staged）
+
+`.npmrc` で `ignore-scripts=true`（サプライチェーン攻撃対策）にしているため、`pnpm install` 時に `prepare` スクリプトは自動実行されない。`pnpm install` の後、**初回のみ手動で以下を実行**してGitのpre-commitフックを有効化すること。
+
+```bash
+pnpm run prepare
+```
+
+これにより、コミット時にステージされた `.ts` ファイルへ `eslint --fix` と `prettier --write` が自動適用される（設定は `package.json` の `lint-staged` フィールド、フック本体は `.husky/pre-commit`）。このプロジェクトがmonorepoのサブディレクトリにあり `.git` はリポジトリルート直下にしか無い場合、`scripts/install-husky.mjs` がリポジトリルートを検出したうえで `git config core.hooksPath` をこのプロジェクト配下の `.husky/` に向ける。`core.hooksPath` はGitのローカル設定でありコミット対象外のため、リポジトリを新しく clone した環境では毎回 `pnpm run prepare` の実行が必要。
+
 ## APIドキュメント生成
 
 ```bash
