@@ -62,11 +62,13 @@ uv run pytest --cov --cov-report=html
 
 公開関数・モジュールへのdocstring記述は開発用依存の `flake8-docstrings`（pydocstyle）により `flake8` の実行時に強制される。docstringが無い、あるいは1行目がおかしい場合は `D1xx`/`D2xx` 等のエラーで検出される。
 
+さらに、docstringの `Args:` に書いた引数名が実際の関数シグネチャと一致しているかは `pydoclint` により検証される。引数名の誤記や過不足があると `DOC103` のエラーで検出される（型注釈の一致までは要求しない設定にしている）。
+
 ```bash
 uv run flake8 .
 ```
 
-docstringは [Google スタイル](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)（`Args:`/`Returns:` セクション）で書く。英語の文章作法を前提にした `D400`（ピリオド終端）・`D401`（命令形）・`D415` は日本語のdocstringには馴染まないため `.flake8` で無視している。`tests/` 配下のテスト関数はpytestの慣習としてdocstring不要のため、`per-file-ignores` で除外している。
+docstringは [Google スタイル](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)（`Args:`/`Returns:` セクション）で書く。英語の文章作法を前提にした `D400`（ピリオド終端）・`D401`（命令形）・`D415` は日本語のdocstringには馴染まないため `.flake8` で無視している。`tests/` 配下のテスト関数はpytestの慣習としてdocstring不要のため、`per-file-ignores` で `flake8-docstrings`（`D`）と `pydoclint`（`DOC`）どちらも除外している。
 
 APIドキュメントはdocstringから `pdoc` でHTML生成する。
 
