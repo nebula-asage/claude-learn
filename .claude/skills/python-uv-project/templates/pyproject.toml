@@ -14,4 +14,23 @@ exclude-newer = "7 days"
 dev = [
     "black>=26.5.1",
     "flake8>=7.3.0",
+    "pytest>=8.4.0",
+    "pytest-cov>=6.0.0",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# main.py はパッケージ化していないプロジェクト直下のモジュールなので、
+# pytestのデフォルトのimportモードのままだとtestsディレクトリからは見えない。
+# pythonpathでプロジェクトルートをsys.pathに加え、`from main import ...`を可能にする。
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    ".venv/*",
+    "tests/*",
+]
+
+[tool.coverage.report]
+show_missing = true
