@@ -1,0 +1,31 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/othello.ts"],
+  "tsconfig": "tsconfig.app.json",
+  "out": "docs/api",
+  "readme": "README.md",
+  "name": "othello",
+  "includeVersion": true,
+  "lang": "ja",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "navigation": {
+    "includeFolders": true
+  },
+  "requiredToBeDocumented": [
+    "Variable",
+    "Function",
+    "Class",
+    "Interface",
+    "Property",
+    "Method",
+    "Accessor",
+    "TypeAlias"
+  ],
+  "validation": {
+    "notExported": true,
+    "notDocumented": true,
+    "invalidLink": true,
+    "invalidPath": false
+  }
+}
