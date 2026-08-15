@@ -98,6 +98,16 @@ GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start
 
 型チェックのみ行う場合は `pnpm run typecheck`。リグレッションテストは `pnpm test`（vitest）で実行する。
 
+### Git hooks（Husky + lint-staged）
+
+`.npmrc` で `ignore-scripts=true`（サプライチェーン攻撃対策）にしているため、`pnpm install` 時に `prepare` スクリプトは自動実行されない。`pnpm install` の後、**初回のみ手動で以下を実行**してGitのpre-commitフックを有効化すること。
+
+```bash
+pnpm run prepare
+```
+
+これにより、コミット時にステージされた `.ts` ファイルへ `eslint --fix` と `prettier --write` が自動適用される（設定は `package.json` の `lint-staged` フィールド、フック本体は `.husky/pre-commit`）。このプロジェクトはmonorepo（`claude-learn`）のサブディレクトリにあり `.git` はリポジトリルート直下にしか無いため、`scripts/install-husky.mjs` がリポジトリルートを検出したうえで `git config core.hooksPath` をこのプロジェクト配下（`projects/gitlab-mcp-server/.husky/_`）に向けている。`core.hooksPath` はGitのローカル設定でありコミット対象外のため、リポジトリを新しく clone した環境では毎回 `pnpm run prepare` の実行が必要。
+
 `pnpm run docs` を実行すると、TypeDocがソースコードのJSDocコメントから開発者向けAPIリファレンス（HTML）を `docs/api/` に生成する。生成物はコミットせず、必要なときに手元で都度生成する運用にしている。ドキュメントの記述漏れだけを（HTMLを出さずに）検証したい場合は `pnpm run docs:check` を使う。
 
 `pnpm test`（ユニットテスト）はGitLab APIへのfetchをモックし、`createServer()` を同一プロセス内で直接呼び出して検証するため、実際のプロセス起動やトランスポート越しの通信は通らない。この境界を自動で検証するE2Eテストが `pnpm run test:e2e` で、`dist/index.js` を実子プロセスとして起動し、本物のJSON-RPC（stdio と Streamable HTTP の両方）+ 実HTTPで下記「テスト環境」の実GitLab（`test-env/`）に対して疎通確認する。実行前に `cd test-env && ./setup.sh` でセルフホストGitLabを起動しておく必要がある（未起動だと明確なエラーで失敗する）。全29ツールの正常系を実GitLabに対して呼び出して検証しており（書込系8ツールも含む）、網羅漏れはE2E側の網羅性ガードで自動的に検出される。作成した使い捨てデータはテスト後に自動で後始末される。
