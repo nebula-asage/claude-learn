@@ -41,6 +41,23 @@ uv run flake8 .
 
 `black` の整形（1行88文字・スライスの空白など）とflake8のデフォルト設定は一部競合するため、`.flake8` で `max-line-length = 88` と `E203` の無視を設定している。
 
+## テスト / カバレッジ
+
+開発用依存として `pytest`（テストランナー）・`pytest-cov`（カバレッジ計測）を導入済み。テストは `tests/` 配下に `test_*.py` として置く。
+
+```bash
+# テストのみ実行
+uv run pytest
+
+# カバレッジ付きで実行（terminalに未カバー行を表示）
+uv run pytest --cov --cov-report=term-missing
+
+# カバレッジのHTMLレポートを生成（htmlcov/index.html）
+uv run pytest --cov --cov-report=html
+```
+
+カバレッジの対象・除外は `pyproject.toml` の `[tool.coverage.run]` で設定している（`.venv/`・`tests/` は対象外）。`htmlcov/`・`.coverage`・`.pytest_cache/` はいずれもテスト実行のたびに再生成される成果物なので `.gitignore` 済み。
+
 ## サプライチェーン攻撃対策
 
 `pyproject.toml` の `[tool.uv]` で `exclude-newer = "7 days"` を設定している。公開から7日未満のパッケージバージョンは解決対象から除外され、悪意あるバージョンが検知・撤回される猶予を確保する。
