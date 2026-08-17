@@ -3,6 +3,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "jsdom",
+    // e2e/ はPlaywrightのランナーで実行するのでvitestからは除外する。
+    include: ["test/**/*.test.ts"],
     // 相対URLの絶対化テストのため、既定のドキュメントURLを固定する。
     environmentOptions: {
       jsdom: {

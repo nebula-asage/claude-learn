@@ -54,6 +54,7 @@ pnpm build
 pnpm dev         # esbuildのwatchモードでビルド(拡張は手動リロードが必要)
 pnpm typecheck   # 型チェックのみ(--noEmit)
 pnpm test        # vitestでMarkdown変換ロジックの単体テストを実行
+pnpm test:e2e    # Playwrightで実ブラウザに拡張を読み込んで通しテスト
 pnpm build       # 本番ビルド
 ```
 
@@ -75,6 +76,26 @@ cd fixtures && python3 -m http.server 8000
 ```
 
 `fixtures/sample.html` には、見出し・リスト・テーブル・コードブロック・タスクリスト・相対リンク/画像・非表示要素・`position: fixed` のヘッダー・クリック抑止確認用のリンクとボタン・内部スクロールコンテナを詰め込んである。
+
+### e2eテスト
+
+実ブラウザ(Playwrightのchromium)に拡張を読み込み、`fixtures/sample.html` に対して「ピッカー起動 → ホバー → `↑`/`↓` → 確定 → クリップボード」までを通しで検証する。
+
+```bash
+pnpm exec playwright install chromium   # 初回のみ(約115MB)
+pnpm test:e2e                           # 実行前に自動で pnpm build 相当が走る
+HEADED=1 pnpm test:e2e                  # ブラウザを表示して確認したいとき
+pnpm exec playwright test -g "Esc"      # テスト名で絞り込み
+```
+
+fixtureは `python3 -m http.server` で `http://localhost:8123` に配信される（Playwrightが自動で起動・停止する）。`https` ではなく `localhost` を使うのは、secure contextになり `navigator.clipboard` が本番同様に使えるため。
+
+`sudo` が使えず `libnss3` / `libnspr4` をシステムに入れられない環境（WSLなど）では、ホームディレクトリに展開しておけば `playwright.config.ts` が自動で `LD_LIBRARY_PATH` に足す。
+
+```bash
+cd /tmp && apt-get download libnss3 libnspr4
+for f in libnss3*.deb libnspr4*.deb; do dpkg -x "$f" ~/.local/chromedeps; done
+```
 
 ## 依存パッケージの追加
 

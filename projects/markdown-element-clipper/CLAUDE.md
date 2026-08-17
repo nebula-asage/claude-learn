@@ -12,8 +12,9 @@ Chrome / Edge用のManifest V3拡張機能。ページ上の要素をDevTools風
 pnpm install
 pnpm build       # esbuildでdist/へバンドル
 pnpm dev         # esbuildのwatchモード
-pnpm typecheck   # tsc --noEmit
+pnpm typecheck   # tsc --noEmit (本体とe2eで設定ファイルが分かれている)
 pnpm test        # vitest run (src/convert/ の単体テストのみ)
+pnpm test:e2e    # playwright test (実ブラウザに拡張を読み込む通しテスト)
 ```
 
 ## アーキテクチャ
@@ -63,3 +64,26 @@ content scriptでも一応動いてしまうため気付きにくい)。
   activationが切れ、`execCommand('copy')` フォールバックが失敗しうるため
 - 新しい依存を追加したら `pnpm build` 後に `grep -ci domino dist/content.js`
   が0件であることを確認する(browserビルドが選ばれている証拠)
+
+### テストの二層構成
+
+- `test/` — vitest + jsdom。Markdown変換ロジック(`src/convert/`)の網羅的なテスト
+- `e2e/` — Playwright。実ブラウザに拡張を読み込んで、注入・イベント抑止・
+  キー操作・クリップボードという「jsdomでは確認できないこと」だけを見る
+
+e2eで押さえておくべき制約が3つある。
+
+- **ツールバーのクリックと`Alt+Shift+M`は発火できない**: どちらもブラウザUI側の
+  操作でCDPの対象外。しかも `activeTab` はその操作でしか付与されないため、
+  Service Workerから `chrome.scripting.executeScript` を呼んでも権限不足になる。
+  そこで `e2e/fixtures.ts` が `dist/` をコピーして fixtureのオリジンだけに
+  絞った `host_permissions` を足した `dist-e2e/` を作り、`togglePicker()` が
+  background の `activate()` と同じ手順(sendMessage → executeScript)を
+  Service Worker上で再現している。**拡張本体のコードはe2eのために変更しない**
+- **オーバーレイの中身は覗けない**: `overlay.ts` のShadow DOMは `mode: "closed"`
+  で、かつcontent scriptはisolated worldで動くため、`attachShadow` を差し替える
+  小細工も効かない。ピッカーの起動判定は、`overlay.ts` が `document.head` に
+  挿入する唯一のページDOM(`#markdown-element-clipper-cursor-style`)の有無で行う
+- **タブは1枚だけ使う**: `page` フィクスチャは永続コンテキストの既存タブを
+  使い回している。新しいタブを開くと元のタブがhiddenになり、picker側の
+  `visibilitychange` → `stop()` が走ってしまう
