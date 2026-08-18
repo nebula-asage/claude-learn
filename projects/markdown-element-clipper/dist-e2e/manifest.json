@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Markdown Element Clipper",
+  "version": "0.1.0",
+  "description": "ページ上の要素をDevTools風に選んでMarkdownとしてコピーします。",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_title": "要素を選んでMarkdownでコピー (Alt+Shift+M)"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "toggle-picker": {
+      "suggested_key": {
+        "default": "Alt+Shift+M"
+      },
+      "description": "要素ピッカーを開始/終了する"
+    }
+  },
+  "host_permissions": [
+    "http://localhost:8123/*"
+  ]
+}

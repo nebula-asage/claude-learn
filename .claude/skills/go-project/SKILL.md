@@ -1,6 +1,6 @@
 ---
 name: go-project
-description: Go言語の練習・開発プロジェクト一式（go.mod + main.go + internalパッケージ + README + golangci-lintによるリンター/フォーマッター + go testによる単体テスト・カバレッジ計測・HTMLレポート生成 + revive/gomarkdocによるドキュメンテーションコメント強制・APIドキュメント生成環境）をホスト環境に直接構築するときに使う。「goの環境作って」「go言語の練習環境作って」「goでプロジェクト作って」「このリポジトリにgoプロジェクト追加して」「golangci-lintを入れて」「goのlint環境作って」「goのテスト環境も入れて」「goのカバレッジ測定したい」「カバレッジレポート出したい」「godocのコメント環境も欲しい」「ドキュメンテーションコメントを強制したい」「APIドキュメントを生成したい」など、このリポジトリ配下にGoプロジェクトを新規作成・再作成したい場合や、既存プロジェクトにgolangci-lint/カバレッジ計測/ドキュメンテーションコメント環境を追加したい場合にトリガーする。Docker/devcontainerには依存せず、Go本体・golangci-lint・gomarkdocが未導入ならホストのユーザーローカル環境（sudo不要）に直接導入する。テスト・カバレッジ計測（`go test` + `go tool cover`、`go tool cover -html`によるHTMLレポート生成）と、ドキュメンテーションコメント環境（exportされた識別子へのコメントをreviveで強制し、gomarkdocでMarkdown形式のAPIリファレンスを生成）も標準で組み込む。devcontainer/コンテナ環境の構築自体を頼まれた場合はdevcontainer-ubuntu-jaスキルを使うこと。
+description: Go言語の練習・開発プロジェクト一式（go.mod+main.go+internalパッケージ+golangci-lintによるlint+go testでのテスト/カバレッジHTMLレポート+revive/gomarkdocによるドキュメンテーションコメント強制/APIドキュメント生成）をホスト環境に直接構築するスキル。「goの環境/プロジェクトを作って」「golangci-lintを入れて」「goのカバレッジ測定/レポートがほしい」「ドキュメンテーションコメントを強制したい」「APIドキュメントを生成したい」など、Goプロジェクトの新規作成・再作成や、既存プロジェクトへのlint/カバレッジ/ドキュメンテーション環境の追加を頼まれたら、明示的に「go-project」と言われなくても必ず使うこと。Docker/devcontainerには依存せずホストのユーザーローカル環境（sudo不要）に直接導入する。devcontainer自体の構築を頼まれた場合はdevcontainer-ubuntu-jaスキルを使う。
 ---
 
 # go-project

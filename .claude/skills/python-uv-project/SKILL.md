@@ -1,6 +1,6 @@
 ---
 name: python-uv-project
-description: Pythonの練習・開発プロジェクト一式（uv前提のpyproject.toml + main.py + README + pytest/pytest-covによるテスト・カバレッジ計測環境 + flake8-docstrings/pydoclint/pdocによるドキュメンテーションコメント強制・APIドキュメント生成環境）をホスト環境に直接構築するときに使う。「pythonの練習環境作って」「python環境構築して」「uvでpythonプロジェクト作って」「このリポジトリにpythonプロジェクト追加して」「pythonのテスト環境も入れて」「カバレッジ測定したい」「カバレッジレポート出したい」「docstringのコメント環境も欲しい」「ドキュメンテーションコメントを強制したい」「docstringの引数名が実際のコードと一致しているか検証したい」「APIドキュメントを生成したい」「pdocを入れたい」など、このリポジトリ配下にPythonプロジェクトを新規作成・再作成したい場合や、既存プロジェクトにpytest/カバレッジ計測/ドキュメンテーションコメント環境を追加したい場合にトリガーする。Docker/devcontainerには依存せず、uv自体が入っていなければ公式インストーラー（curl経由）でホストに直接導入する。パッケージ管理はpip/venvではなく常にuvを使う前提で、サプライチェーン攻撃対策（min release age = 7日）も標準で組み込む。テスト・カバレッジ計測（`pytest` + `pytest-cov`、`uv run pytest --cov --cov-report=html`によるHTMLレポート生成）と、ドキュメンテーションコメント環境（公開関数・モジュールへのdocstringをflake8-docstringsで強制し、pydoclintでdocstringのArgs/Returnsと実際の関数シグネチャの不一致（引数名の誤記・過不足など）を検出し、pdocでHTML形式のAPIリファレンスを生成）も標準で組み込む。devcontainer/コンテナ環境の構築自体を頼まれた場合はdevcontainer-ubuntu-jaスキルを使うこと（このスキルとは独立で、組み合わせる必要もない）。
+description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/pytest-covによるテスト・カバレッジHTMLレポート+flake8-docstrings/pydoclint/pdocによるドキュメンテーションコメント強制・APIドキュメント生成）をホスト環境に直接構築するスキル。「pythonの環境/プロジェクトを作って」「uvでpythonプロジェクトを作って」「カバレッジ測定/レポートがほしい」「docstringのコメント環境がほしい」「docstringの引数名がコードと一致しているか検証したい」「APIドキュメントを生成したい」など、Pythonプロジェクトの新規作成・再作成や、既存プロジェクトへのpytest/カバレッジ/ドキュメンテーション環境の追加を頼まれたら必ず使うこと。Docker/devcontainerには依存せず、パッケージ管理は常にuv（pip/venvは使わない）でサプライチェーン攻撃対策も組み込む。devcontainer自体の構築はdevcontainer-ubuntu-jaスキルを使う。
 ---
 
 # python-uv-project
