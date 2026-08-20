@@ -14,7 +14,9 @@ venv/
 # Editor / OS
 .DS_Store
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # Claude Code 会話ログ（個人の作業ログ、共有対象外）
 .claude/conversations/

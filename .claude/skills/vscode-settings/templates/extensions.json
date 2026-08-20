@@ -1,0 +1,15 @@
+{
+  // 特定のプログラミング言語に依存しない、共通的に有用な拡張機能のみを推奨する
+  "recommendations": [
+    // .editorconfigの設定（インデント・改行コード等）をエディタに反映する
+    "editorconfig.editorconfig",
+    // Gitの変更履歴・blame表示などを強化する
+    "eamodio.gitlens",
+    // コード・コメント・ドキュメントを問わずスペルミスを検出する
+    "streetsidesoftware.code-spell-checker",
+    // Dockerfile / docker-compose.yml の編集支援
+    "ms-azuretools.vscode-docker",
+    // Dev Containers（.devcontainer）でコンテナ内開発を行うための拡張機能
+    "ms-vscode-remote.remote-containers"
+  ]
+}

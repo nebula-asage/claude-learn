@@ -1,0 +1,19 @@
+{
+  // 保存時にファイル末尾に改行を1行だけ入れる（改行なし/複数改行の食い違いを防ぐ）
+  "files.insertFinalNewline": true,
+  // 保存時に行末の余分な空白を自動的に削除する
+  "files.trimTrailingWhitespace": true,
+  // 改行コードをLFに統一する（Windows由来のCRLF混入を防ぐ）
+  "files.eol": "\n",
+  // 保存時に、その言語に設定済みのフォーマッタで自動整形する
+  // （特定言語のフォーマッタ指定はここでは行わない。各プロジェクトの設定に委ねる）
+  "editor.formatOnSave": true,
+  // インデント幅・タブ/スペースをファイルの内容から自動検出する
+  "editor.detectIndentation": true,
+  // 桁の目安となる縦線を表示する
+  "editor.rulers": [100],
+  // 行末の空白などが見えるよう、選択範囲内の空白文字を可視化する
+  "editor.renderWhitespace": "boundary",
+  // git fetchを自動で行い、リモートの更新状況を早めに把握できるようにする
+  "git.autofetch": true
+}
