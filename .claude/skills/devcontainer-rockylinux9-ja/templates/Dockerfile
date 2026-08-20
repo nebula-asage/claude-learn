@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM rockylinux/rockylinux:9
 
 ARG USERNAME=vscode
@@ -12,7 +13,13 @@ ENV LC_ALL=ja_JP.UTF-8
 
 # RHEL系はglibc-langpack-jaを入れるだけでロケールが使えるようになる（locale-gen不要）
 # --allowerasing: ベースイメージにプリインストールされたcurl-minimalとcurlの衝突を解決するために必要
-RUN dnf install -y --allowerasing \
+# dnfのパッケージキャッシュはBuildKitのキャッシュマウントで永続化し、ビルドのたびに再ダウンロードしない。
+# キャッシュマウント自体はイメージのレイヤーに含まれないため、dnf clean all / rm -rf /var/cache/dnf は不要
+# （むしろ実行するとキャッシュマウントの中身を消してしまい効果がなくなる）。
+# --setopt=keepcache=True: dnfはデフォルト（keepcache=0）だとインストール成功後にダウンロード済みRPMを
+# 自身で削除してしまい、キャッシュマウントに何も残らず次回ビルドで再ダウンロードが発生する。それを防ぐため必須。
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
+    dnf install -y --allowerasing --setopt=keepcache=True \
     glibc-langpack-ja \
     tzdata \
     sudo \
@@ -21,9 +28,7 @@ RUN dnf install -y --allowerasing \
     ca-certificates \
     bash-completion \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
-    && echo $TZ > /etc/timezone \
-    && dnf clean all \
-    && rm -rf /var/cache/dnf
+    && echo $TZ > /etc/timezone
 
 # 非rootユーザーを作成し、パスワードなしでsudoを使えるようにする
 # （ベースイメージに同じUID/GIDが既に存在する場合はそれを再利用する）
