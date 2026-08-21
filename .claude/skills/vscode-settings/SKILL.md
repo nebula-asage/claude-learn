@@ -1,11 +1,11 @@
 ---
 name: vscode-settings
-description: リポジトリやprojects/<name>/配下にVS Code用の`.vscode/settings.json`（おすすめ設定）と`.vscode/extensions.json`（おすすめ拡張機能）を配置・更新するときに使う。「VS Codeの環境を作って」「VS Codeのおすすめ設定を追加して」「.vscodeディレクトリを作って」「VS Code拡張のおすすめ設定をして」「settings.jsonにおすすめ設定を入れて」など、このリポジトリでVS Code向けのsettings.json/extensions.jsonを新規作成・更新したい場合は必ずこのスキルを使うこと。配置先が[[devcontainer-ubuntu-ja]]・[[devcontainer-rockylinux9-ja]]などで作った`.devcontainer/devcontainer.json`を持つdevcontainer環境の場合、おすすめ拡張機能は`.vscode/extensions.json`ではなく`devcontainer.json`の`customizations.vscode.extensions`に書く点が通常のVS Code設定と異なるので注意すること。
+description: リポジトリやprojects/<name>/配下にVS Code用の`.vscode/settings.json`（おすすめ設定）と`.vscode/extensions.json`（おすすめ拡張機能）を配置・更新するときに使う。「VS Codeの環境を作って」「VS Codeのおすすめ設定を追加して」「.vscodeディレクトリを作って」「VS Code拡張のおすすめ設定をして」「settings.jsonにおすすめ設定を入れて」など、このリポジトリでVS Code向けのsettings.json/extensions.jsonを新規作成・更新したい場合は必ずこのスキルを使うこと。配置先に`.devcontainer/devcontainer.json`が存在するdevcontainer環境の場合、おすすめ拡張機能は`.vscode/extensions.json`ではなく`devcontainer.json`の`customizations.vscode.extensions`に書く点が通常のVS Code設定と異なるので注意すること。
 ---
 
 # vscode-settings
 
-特定のプログラミング言語に依存しない、共通的なVS Codeの`settings.json`（エディタ設定）と`extensions.json`（おすすめ拡張機能）一式を配置するスキル。このリポジトリは`projects/`配下にGo・Python・Node/TypeScriptなど異なる言語のプロジェクトが並存する構成（[[go-project]]・[[python-uv-project]]・[[pnpm-nvm-project]]参照）のため、特定言語のフォーマッタ・リンター設定はここでは扱わず、各プロジェクト側に委ねる。設定ファイルにはJSONC（コメント付きJSON）の形式でコメントを入れ、それぞれの設定・拡張機能が何のためにあるかを残す。
+特定のプログラミング言語に依存しない、共通的なVS Codeの`settings.json`（エディタ設定）と`extensions.json`（おすすめ拡張機能）一式を配置するスキル。プロジェクトごとに使用言語が異なる（あるいは混在する）ことを前提に、特定言語のフォーマッタ・リンター設定はここでは扱わず、各プロジェクト側に委ねる。設定ファイルにはJSONC（コメント付きJSON）の形式でコメントを入れ、それぞれの設定・拡張機能が何のためにあるかを残す。
 
 ## 手順
 
@@ -25,7 +25,7 @@ description: リポジトリやprojects/<name>/配下にVS Code用の`.vscode/se
    - **devcontainer環境でない場合**: `.claude/skills/vscode-settings/templates/extensions.json` → `<配置先>/.vscode/extensions.json`
    - **devcontainer環境の場合**: `.vscode/extensions.json`は作らず、`templates/extensions.json`の`recommendations`配列の中身（コメントは転記しなくてよい。拡張機能IDのみでよい）を`<配置先>/.devcontainer/devcontainer.json`の`customizations.vscode.extensions`配列としてマージする。`devcontainer.json`は手元のEdit/Writeツールで直接編集し、`jq`などJSON専用パーサーへは通さない（後述の理由でコメント入りJSONCをそのまま読み込めないため）。
      - 理由: devcontainer環境では`devcontainer.json`の`customizations.vscode.extensions`に書いた拡張機能はコンテナ起動時に自動インストールされるが、`.vscode/extensions.json`の`recommendations`はあくまで「おすすめ表示」止まりで自動インストールされない。devcontainer環境ではより確実に効く`devcontainer.json`側を使う。
-     - 既存の`customizations.vscode.settings`（[[devcontainer-ubuntu-ja]]等のテンプレートに既に入っている`terminal.integrated.defaultProfile.linux`など）はそのまま残し、同じ`customizations.vscode`オブジェクトに`extensions`キーを追加する形でマージする。
+     - 既存の`customizations.vscode.settings`（devcontainer構築時のテンプレートに既に入っている設定など）はそのまま残し、同じ`customizations.vscode`オブジェクトに`extensions`キーを追加する形でマージする。
      - 既に`customizations.vscode.extensions`が存在する場合は、重複を除いて追記する（上書きしない）。
 
 5. **内容を確認する**
@@ -40,5 +40,5 @@ description: リポジトリやprojects/<name>/配下にVS Code用の`.vscode/se
 
 ## このスキルの対象外
 
-- devcontainer環境そのものの構築（`Dockerfile`・`devcontainer.json`の作成）は対象外。[[devcontainer-ubuntu-ja]]・[[devcontainer-rockylinux9-ja]]スキルを使う。
-- 言語ごとのプロジェクト一式（lint/test/ドキュメンテーション環境）の構築は対象外。[[go-project]]・[[python-uv-project]]・[[pnpm-nvm-project]]スキルを使う。
+- devcontainer環境そのものの構築（`Dockerfile`・`devcontainer.json`の新規作成）は対象外。既に存在する`devcontainer.json`への追記のみを行う。
+- 言語ごとのプロジェクト一式（lint/test/ドキュメンテーション環境）の構築は対象外。特定言語のフォーマッタ・リンター設定が必要な場合は、各プロジェクト側の設定で対応する。
