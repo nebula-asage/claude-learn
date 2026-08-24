@@ -1,10 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM rockylinux/rockylinux:9
 
-ARG USERNAME=vscode
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-
 # ロケール（日本語）とタイムゾーン（Asia/Tokyo）の設定
 ENV TZ=Asia/Tokyo
 ENV LANG=ja_JP.UTF-8
@@ -29,6 +25,12 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
     bash-completion \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone
+
+# ARGはここで初めて使うRUNの直前で宣言する。dnf installより前で宣言すると、
+# USER_UID等のビルドargを変えるたびにdnf installレイヤーのキャッシュまで無効化されてしまうため。
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
 
 # 非rootユーザーを作成し、パスワードなしでsudoを使えるようにする
 # （ベースイメージに同じUID/GIDが既に存在する場合はそれを再利用する）
