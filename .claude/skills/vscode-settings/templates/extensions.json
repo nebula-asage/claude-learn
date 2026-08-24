@@ -9,7 +9,17 @@
     "streetsidesoftware.code-spell-checker",
     // Dockerfile / docker-compose.yml の編集支援
     "ms-azuretools.vscode-docker",
-    // Dev Containers（.devcontainer）でコンテナ内開発を行うための拡張機能
-    "ms-vscode-remote.remote-containers"
+    // Markdownの目次自動生成・ショートカット・プレビュー等の編集支援
+    "yzhang.markdown-all-in-one",
+    // Markdownの構文・スタイルをlintする
+    "davidanson.vscode-markdownlint",
+    // 数式（KaTeX）・Mermaid図・PlantUML等に対応した高機能Markdownプレビュー（MPE）
+    "shd101wyy.markdown-preview-enhanced",
+    // HTML/CSS/JSファイルをローカルサーバーで即時プレビューする
+    "ritwickdey.liveserver",
+    // VS CodeのUIを日本語化する
+    "ms-ceintl.vscode-language-pack-ja",
+    // SSH/WSL/コンテナ等のリモート開発をまとめて有効化する拡張機能パック
+    "ms-vscode-remote.vscode-remote-extensionpack"
   ]
 }
