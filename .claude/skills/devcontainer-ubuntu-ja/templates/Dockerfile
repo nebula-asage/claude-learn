@@ -1,10 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM ubuntu:24.04
 
-ARG USERNAME=vscode
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-
 ENV DEBIAN_FRONTEND=noninteractive
 
 # ロケール（日本語）とタイムゾーン（Asia/Tokyo）の設定
@@ -33,6 +29,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
     && dpkg-reconfigure -f noninteractive tzdata
+
+# ARGはここで初めて使うRUNの直前で宣言する。apt-get installより前で宣言すると、
+# USER_UID等のビルドargを変えるたびにapt-get installレイヤーのキャッシュまで無効化されてしまうため。
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
 
 # 非rootユーザーを作成し、パスワードなしでsudoを使えるようにする
 # （ベースイメージに同じUID/GIDが既に存在する場合はそれを再利用する）
