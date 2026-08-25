@@ -35,7 +35,7 @@ description: リポジトリやprojects/<name>/配下にVS Code用の`.vscode/se
 ## おすすめ設定・拡張機能の内容（特定言語に依存しない共通項目のみ）
 
 - `settings.json`: 保存時の最終改行付与・行末空白除去・改行コード統一、保存時フォーマット（フォーマッタ自体の指定はしない）、インデント自動検出、ルーラー表示、空白の可視化、`git.autofetch`など。特定言語のフォーマッタ・リンター設定（`[go]`/`[python]`のような言語別ブロックや`go.*`/`python.*`設定）は含めない。
-- `extensions.json`: `ms-ceintl.vscode-language-pack-ja`（VS Code UIの日本語化）、`ms-vscode-remote.vscode-remote-extensionpack`（SSH/WSL/コンテナ等のリモート開発をまとめて有効化する拡張機能パック。Dev Containersもこのパックに含まれる）、`editorconfig.editorconfig`（`.editorconfig`反映）、`eamodio.gitlens`（Git履歴強化）、`streetsidesoftware.code-spell-checker`（スペルチェック）、`yzhang.markdown-all-in-one`・`davidanson.vscode-markdownlint`・`shd101wyy.markdown-preview-enhanced`（Markdown編集支援・lint・数式/図表対応の高機能プレビュー）、`ritwickdey.liveserver`（ローカルサーバーでの即時プレビュー）、`ms-azuretools.vscode-docker`（Docker操作）。特定言語用の拡張機能（`golang.go`や`ms-python.python`、ESLint/Prettierなど）は含めない。
+- `extensions.json`: `ms-ceintl.vscode-language-pack-ja`（VS Code UIの日本語化）、`ms-vscode-remote.vscode-remote-extensionpack`（SSH/WSL/コンテナ等のリモート開発をまとめて有効化する拡張機能パック。Dev Containersもこのパックに含まれる）、`eamodio.gitlens`（Git履歴強化）、`streetsidesoftware.code-spell-checker`（スペルチェック）、`yzhang.markdown-all-in-one`・`davidanson.vscode-markdownlint`・`shd101wyy.markdown-preview-enhanced`（Markdown編集支援・lint・数式/図表対応の高機能プレビュー）、`ritwickdey.liveserver`（ローカルサーバーでの即時プレビュー）、`ms-azuretools.vscode-docker`（Docker操作）。特定言語用の拡張機能（`golang.go`や`ms-python.python`、ESLint/Prettierなど）は含めない。
 - 各設定・拡張機能にはJSONCのコメントで採用理由を書いてある。ユーザーから追加・削除の要望があれば都度応じてよいが、特定言語に依存する項目を追加する場合は必ずコメントを添え、範囲がこのスキルの「共通項目限定」という前提から外れないか確認する。
 
 ## このスキルの対象外

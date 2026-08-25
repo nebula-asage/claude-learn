@@ -5,8 +5,6 @@
     "ms-ceintl.vscode-language-pack-ja",
     // SSH/WSL/コンテナ等のリモート開発をまとめて有効化する拡張機能パック
     "ms-vscode-remote.vscode-remote-extensionpack",
-    // .editorconfigの設定（インデント・改行コード等）をエディタに反映する
-    "editorconfig.editorconfig",
     // Gitの変更履歴・blame表示などを強化する
     "eamodio.gitlens",
     // コード・コメント・ドキュメントを問わずスペルミスを検出する
