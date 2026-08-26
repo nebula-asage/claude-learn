@@ -121,30 +121,35 @@ function waterTile(landMask: number): ArtCanvas {
   const canvas = new ArtCanvas(TILE_SIZE, TILE_SIZE);
   canvas.fill(COLOR.water);
 
-  // 岸から遠いほど深く見えるよう、陸に接していない側を暗くする。
-  if ((landMask & 1) === 0) canvas.rect(0, 0, 16, 3, COLOR.deepWater);
-  if ((landMask & 4) === 0) canvas.rect(0, 13, 16, 3, COLOR.deepWater);
-  if ((landMask & 8) === 0) canvas.rect(0, 0, 3, 16, COLOR.deepWater);
-  if ((landMask & 2) === 0) canvas.rect(13, 0, 3, 16, COLOR.deepWater);
-  if (landMask === 0) {
-    canvas.rect(4, 4, 8, 8, COLOR.deepWater);
-    canvas.rect(6, 6, 4, 4, COLOR.abyss);
+  // さざ波。全タイル共通の模様にしておく。タイルごとに変えると、
+  // 広い水面がタイル境界の格子模様として浮き上がってしまう。
+  for (const [wx, wy] of [
+    [2, 3],
+    [9, 6],
+    [4, 11],
+    [12, 13],
+  ]) {
+    canvas.rect(wx, wy, 3, 1, COLOR.deepWater);
+    canvas.px(wx + 3, wy + 1, COLOR.deepWater);
   }
 
-  // さざ波。位置をマスクから決めているので、同じタイルは常に同じ模様になる。
-  const wavePhase = landMask & 3;
-  for (let i = 0; i < 3; i++) {
-    const wy = 3 + i * 5 + wavePhase;
-    const wx = 2 + ((i * 5 + wavePhase * 3) % 9);
-    canvas.rect(wx, wy, 3, 1, COLOR.shallow);
-    canvas.px(wx + 3, wy + 1, COLOR.shallow);
+  // 陸に接している辺だけ浅瀬にして、岸の位置が分かるようにする。
+  if (landMask & 1) {
+    canvas.rect(0, 0, 16, 2, COLOR.shallow);
+    canvas.rect(0, 2, 16, 1, COLOR.water);
   }
-
-  // 陸に接している辺は浅瀬にする。
-  if (landMask & 1) canvas.rect(0, 0, 16, 2, COLOR.shallow);
-  if (landMask & 2) canvas.rect(14, 0, 2, 16, COLOR.shallow);
-  if (landMask & 4) canvas.rect(0, 14, 16, 2, COLOR.shallow);
-  if (landMask & 8) canvas.rect(0, 0, 2, 16, COLOR.shallow);
+  if (landMask & 2) {
+    canvas.rect(14, 0, 2, 16, COLOR.shallow);
+    canvas.rect(13, 0, 1, 16, COLOR.water);
+  }
+  if (landMask & 4) {
+    canvas.rect(0, 14, 16, 2, COLOR.shallow);
+    canvas.rect(0, 13, 16, 1, COLOR.water);
+  }
+  if (landMask & 8) {
+    canvas.rect(0, 0, 2, 16, COLOR.shallow);
+    canvas.rect(2, 0, 1, 16, COLOR.water);
+  }
 
   return canvas;
 }

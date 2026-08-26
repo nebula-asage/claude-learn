@@ -14,6 +14,8 @@ export interface PointerState {
   y: number;
   /** 左ボタンが押されているか。 */
   down: boolean;
+  /** 右ボタンが押されているか。 */
+  rightDown: boolean;
   /** 画面上にカーソルがあるか。 */
   inside: boolean;
 }
@@ -33,7 +35,7 @@ export class Input {
   /** このフレームで新たに押されたキーのコード。 */
   private readonly pressed = new Set<string>();
   /** マウスの状態。 */
-  readonly pointer: PointerState = { x: 0, y: 0, down: false, inside: false };
+  readonly pointer: PointerState = { x: 0, y: 0, down: false, rightDown: false, inside: false };
   /** 直前のフレームからのマウス移動量（内部解像度基準）。 */
   readonly pointerDelta: PointerDelta = { x: 0, y: 0 };
   /** このフレームで左ボタンが押された瞬間かどうか。 */
@@ -66,6 +68,9 @@ export class Input {
         this.pointer.down = true;
         this.clicked = true;
         canvas.setPointerCapture(e.pointerId);
+      } else if (e.button === 2) {
+        this.pointer.rightDown = true;
+        canvas.setPointerCapture(e.pointerId);
       }
     });
     canvas.addEventListener("pointerup", (e) => {
@@ -73,6 +78,8 @@ export class Input {
       if (e.button === 0) {
         this.pointer.down = false;
         this.released = true;
+      } else if (e.button === 2) {
+        this.pointer.rightDown = false;
       }
     });
     canvas.addEventListener("pointerleave", () => {
