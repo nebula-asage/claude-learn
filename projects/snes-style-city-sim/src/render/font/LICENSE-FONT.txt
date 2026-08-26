@@ -1,0 +1,23 @@
+misaki8.bin は「美咲フォント」(美咲ゴシック) から生成したビットマップデータです。
+
+  Font name : 美咲フォント / MisakiGothic
+  Author    : 門真 なむ (Num Kadoma)
+  Copyright : Copyright (C) 2002-2021 Num Kadoma
+  Web site  : https://littlelimit.net/misaki.htm
+
+--- ライセンス (配布アーカイブ同梱の misaki.txt より引用) ---
+
+  These fonts are free softwares.
+  Unlimited permission is granted to use, copy, and distribute it, with or
+  without modification, either commercially and noncommercially.
+  THESE FONTS ARE PROVIDED "AS IS" WITHOUT WARRANTY.
+
+  これらのフォントはフリー（自由な）ソフトウエアです。
+  あらゆる改変の有無に関わらず、また商業的な利用であっても、自由にご利用、複製、
+  再配布することができますが、全て無保証とさせていただきます。
+
+-------------------------------------------------------------------------------
+
+このディレクトリの misaki8.bin は、配布元のBDF版 (misaki_gothic.bdf) を
+scripts/build-font.mjs で本プロジェクト向けのバイナリ形式に変換したものです。
+字形そのものに変更は加えていません。

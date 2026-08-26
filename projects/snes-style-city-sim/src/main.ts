@@ -4,4 +4,4 @@
  */
 import { startGame } from "./app/game.js";
 
-startGame("screen");
+void startGame("screen");
