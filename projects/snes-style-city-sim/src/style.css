@@ -1,0 +1,22 @@
+/* SNES風の見た目を崩さないため、画面は整数倍拡大＋ニアレストネイバーで表示する。 */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #101018;
+  overflow: hidden;
+}
+
+#stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+#screen {
+  image-rendering: pixelated;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
