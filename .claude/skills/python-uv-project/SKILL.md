@@ -1,6 +1,6 @@
 ---
 name: python-uv-project
-description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/pytest-covによるテスト・カバレッジHTMLレポート+ruff/pdocによるドキュメンテーションコメント強制・APIドキュメント生成）をホスト環境に直接構築するスキル。「pythonの環境/プロジェクトを作って」「uvでpythonプロジェクトを作って」「カバレッジ測定/レポートがほしい」「docstringのコメント環境がほしい」「docstringの引数名がコードと一致しているか検証したい」「APIドキュメントを生成したい」など、Pythonプロジェクトの新規作成・再作成や、既存プロジェクトへのpytest/カバレッジ/ドキュメンテーション環境の追加を頼まれたら必ず使うこと。Docker/devcontainerには依存せず、パッケージ管理は常にuv（pip/venvは使わない）でサプライチェーン攻撃対策も組み込む。devcontainer自体の構築はdevcontainer-ubuntu-jaスキルを使う。
+description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/pytest-covによるテスト・カバレッジHTMLレポート+ruff/pdocによるドキュメンテーションコメント強制・APIドキュメント生成）をホスト環境に直接構築するスキル。「pythonの環境/プロジェクトを作って」「uvでpythonプロジェクトを作って」「カバレッジ測定/レポートがほしい」「docstringのコメント環境がほしい」「docstringの引数名がコードと一致しているか検証したい」「APIドキュメントを生成したい」など、Pythonプロジェクトの新規作成・再作成や、既存プロジェクトへのpytest/カバレッジ/ドキュメンテーション環境の追加を頼まれたら必ず使うこと。配置先が既にVS Code向けの`.vscode/`ディレクトリを持つ場合は、ruff/black/pytestに対応したPython向けのsettings.json・拡張機能のおすすめ設定に加え、Coverage Gutters拡張によるカバレッジのエディタ上可視化（被覆/未被覆行のガター色付け）設定も追加する。Docker/devcontainerには依存せず、パッケージ管理は常にuv（pip/venvは使わない）でサプライチェーン攻撃対策も組み込む。devcontainer自体の構築はdevcontainer-ubuntu-jaスキルを使う。
 ---
 
 # python-uv-project
@@ -49,8 +49,17 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
    - `.claude/skills/python-uv-project/templates/README.md` → `<配置先>/README.md`（`__PROJECT_NAME__` を置換）
    - `.claude/skills/python-uv-project/templates/.gitignore` → `<配置先>/.gitignore`（置換不要）
 
-5. **依存関係を同期し、動作確認する**
-   `<配置先>` に移動し、以下を確認する。確認後、テストで作った一時的な依存追加や `uv.lock` / `.venv` / `.pytest_cache` / `htmlcov` / `.coverage` / `apidocs` は元に戻す/削除すること。
+5. **配置先がVS Codeプロジェクトの場合、Python向けのVS Code設定を追加する**
+   - 判定は `<配置先>/.vscode/` ディレクトリ（`settings.json` または `extensions.json`）の有無で行う。存在しなければVS Code向けの設定は持たないプロジェクトとみなし、この手順はスキップする（`.vscode/` を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、`.vscode/` を新規作成したうえで以下と同じ内容を配置してよい）。
+   - **`settings.json` を配置する**: `.claude/skills/python-uv-project/templates/vscode/settings.json` の内容を `<配置先>/.vscode/settings.json` にマージする。ファイルが既に存在する場合は、Edit系ツールで直接編集し、既存のキー（言語非依存の共通設定など）を残したまま `python.*`/`coverage-gutters.*` 系のキーと `[python]` ブロックを追加する（同じキーが既にあれば上書きせず、内容を確認したうえでユーザーに判断を仰ぐ）。ファイルが無ければ新規作成する。
+     - `coverage-gutters.*` の設定はCoverage Gutters拡張（後述）向けで、`uv run pytest --cov --cov-report=lcov` を実行すると生成される `coverage.lcov`（lcov形式のカバレッジレポート）を読み込み、エディタの行番号横に被覆行（緑）・未被覆行（赤）を色付け表示する。既存の `--cov-report=term-missing`/`--cov-report=html` 運用に加えて使う追加のレポート形式であり、どちらかを置き換えるものではない。`coverage.lcov` はテスト実行のたびに再生成される成果物なのでコミット対象に含めない（テンプレートの `.gitignore` で除外済み）。
+   - **拡張機能のおすすめ設定を配置する**: 配置先の判定はさらに `<配置先>/.devcontainer/devcontainer.json` の有無で分岐する（この判定も「devcontainer環境を構築するスキルが動いたかどうか」ではなく、あくまでファイルの有無で行う）。
+     - `devcontainer.json` が存在する場合: `.vscode/extensions.json` は使わず、`.claude/skills/python-uv-project/templates/vscode/extensions.json` の `recommendations` 配列の中身（拡張機能IDのみ。コメントは転記しなくてよい）を `<配置先>/.devcontainer/devcontainer.json` の `customizations.vscode.extensions` 配列にEdit系ツールで直接マージする（重複を除いて追記。既存の `customizations.vscode.settings` 等は残す）。
+     - `devcontainer.json` が存在しない場合: `.claude/skills/python-uv-project/templates/vscode/extensions.json` の内容を `<配置先>/.vscode/extensions.json` にマージする（既存の `recommendations` があれば重複を除いて追記し、既存の非Python系の推奨拡張機能はそのまま残す）。
+   - `settings.json`/`extensions.json`（および `devcontainer.json`）はJSONC（コメント付きJSON）として解釈されるため、標準の `jq` に通す前にコメント行を取り除くか、目視でカンマ・かっこの対応を確認する。
+
+6. **依存関係を同期し、動作確認する**
+   `<配置先>` に移動し、以下を確認する。確認後、テストで作った一時的な依存追加や `uv.lock` / `.venv` / `.pytest_cache` / `htmlcov` / `.coverage` / `coverage.lcov` / `apidocs` は元に戻す/削除すること。
    - `uv sync` を実行し、`pyproject.toml` に記載した `ruff`/`black`/`pytest`/`pytest-cov`/`pdoc` を含む依存が解決されることを確認する（`uv.lock` が生成される。これはコミット対象）。
    - `uv run main.py` を実行し、`.venv` の自動生成込みで動くことを確認する。
    - `uv run ruff check .` が警告なしで終了する（exit 0）ことを確認する。ruffは `.venv` をデフォルトで除外するため、flake8の頃のような除外設定は不要。テンプレートの `main.py` にはdocstringが入っているので、まずはこれが素直に通ることを確認し、そのうえで一時的に `main.py` のdocstringを削って `D100`/`D103` が検出されること・`tests/test_main.py` にdocstringが無くてもエラーにならないことも確認するとよい（確認後は削った内容を必ず元に戻す）。
@@ -59,10 +68,11 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
    - `uv run pytest` を実行し、テンプレート同梱のサンプルテスト（`tests/test_main.py`）が通ることを確認する。
    - `uv run pytest --cov --cov-report=term-missing` を実行し、ターミナルにカバレッジのサマリと未カバー行が表示されることを確認する（`.venv/`・`tests/` がカバレッジ集計から除外されているかも見る）。
    - `uv run pytest --cov --cov-report=html` を実行し、`htmlcov/index.html` が生成されることを確認する。
+   - 手順5でVS Code向け設定を配置した場合は、`uv run pytest --cov --cov-report=lcov` を実行し、`coverage.lcov` が生成されることも確認する（VS Codeで開いてCoverage Gutters拡張の「Watch」コマンドを実行すると、`tests/test_main.py` から呼ばれていない行があればエディタのガターに未被覆として表示されるはずだが、これはVS Code上での見た目の確認なので必須ではない）。
    - `uv run pdoc main.py -d google -o apidocs` を実行し、`apidocs/index.html` と `apidocs/main.html` が生成されることを確認する。`main.html` を開き（またはgrepで）、`greet` のdocstringの `Args:`/`Returns:` が見出し付きで描画されていることも確認する。
    - `exclude-newer` が効いているかは、適当なパッケージを試験的に追加してverboseログを見て確認する。例: `uv add <パッケージ名> -v 2>&1 | grep -i exclude` を実行し、`Solving with exclude-newer: global: <実行日の7日前の日時>` のような行が出ることを確認する。確認後はこの試験的な依存追加を `pyproject.toml` から取り除く。
 
-6. **（任意）bash補完を有効化する**
+7. **（任意）bash補完を有効化する**
    - uvは `uv generate-shell-completion bash` でbash補完スクリプトを生成できる。ホスト環境ではroot権限で `/etc/bash_completion.d/` に置く方法は使えないことが多いので、ユーザー単位で有効化する。
      ```bash
      echo 'eval "$(uv generate-shell-completion bash)"' >> ~/.bashrc
@@ -72,4 +82,5 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
 ## このスキルの対象外
 
 - Docker/devcontainer環境の構築自体はこのスキルの対象外。コンテナ環境が欲しいと言われたら別スキル（例: devcontainer-ubuntu-ja）を使う（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
+- `.vscode/` ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはPython固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/` を新規作成したうえでPython向け設定を配置してよい。
 - `exclude-newer` の7日という値やuv前提の方針、ruff/black、pytest/pytest-covによるテスト・カバレッジ計測環境一式、ruffの`D`ルール（`D400`/`D401`/`D415`無視・`tests/`除外込み）・`DOC`ルール（`preview = true`・`tests/`除外込み）とpdoc（`-d google`）によるドキュメンテーションコメント環境一式は、このリポジトリで検証済みの固定条件として扱い、単なる「Python環境を作って」的な依頼でも省略しない。
