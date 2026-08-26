@@ -4,6 +4,8 @@
  */
 import { buildTileset } from "../render/art/index.js";
 import { buildIconAtlas } from "../render/art/icons.js";
+import { type SpriteImage, type SpriteName, buildSprites } from "../render/art/sprites.js";
+import { drawAdvisor, drawDisasterEntities } from "../render/entities.js";
 import { BitmapFont, loadFont } from "../render/font/font.js";
 import { MapView, VIEW_HEIGHT, VIEW_WIDTH } from "../render/mapview.js";
 import { COLOR } from "../render/palette.js";
@@ -13,12 +15,20 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH, Screen } from "../render/screen.js";
 import type { Tileset } from "../render/tileset.js";
 import { canPlaceStructure } from "../sim/build.js";
 import { Rng } from "../sim/rng.js";
+import type { AdvisorMessage } from "../sim/messages.js";
+import { isToolUnlocked } from "../sim/milestones.js";
 import { SPEEDS, Simulation } from "../sim/simulation.js";
 import { CityState } from "../sim/state.js";
 import { generateTerrain } from "../sim/terrain.js";
 import { TILE_SIZE, type TilePos } from "../sim/tiles.js";
 import { Input } from "../ui/input.js";
-import { BudgetModal, EvaluationModal, GraphModal, type Modal } from "../ui/modals.js";
+import {
+  BudgetModal,
+  DisasterModal,
+  EvaluationModal,
+  GraphModal,
+  type Modal,
+} from "../ui/modals.js";
 import { TOOLS, applyTool, toolOrigin } from "../ui/tools.js";
 
 /** キーボードでスクロールするときの速さ（ドット毎秒）。 */
@@ -29,6 +39,9 @@ const ANIMATION_INTERVAL = 0.2;
 
 /** 通知を表示し続ける秒数。 */
 const MESSAGE_DURATION = 2.5;
+
+/** アドバイザーの吹き出しを表示し続ける秒数。 */
+const ADVISOR_DURATION = 7;
 
 /** 道具を数字キーで選ぶときの、キーと並び順の対応。 */
 const TOOL_HOTKEYS = [
@@ -53,6 +66,7 @@ export class Game {
   private readonly font: BitmapFont;
   private readonly tileset: Tileset;
   private readonly icons: Tileset;
+  private readonly sprites: Record<SpriteName, SpriteImage[]>;
   private readonly state: CityState;
   private readonly simulation: Simulation;
   private readonly view: MapView;
@@ -61,6 +75,8 @@ export class Game {
   private tickAccumulator = 0;
   private selectedTool = 2;
   private modal: Modal | null = null;
+  private advisorMessage: AdvisorMessage | null = null;
+  private advisorTimer = 0;
   private dataMap: DataMapValue = DataMap.none;
   private message = "";
   private messageTimer = 0;
@@ -91,6 +107,7 @@ export class Game {
       TOOLS.map((tool) => tool.icon),
       this.tileset,
     );
+    this.sprites = buildSprites();
     this.state = state;
     this.simulation = new Simulation(state);
     this.view = new MapView(state.map, this.tileset);
@@ -151,6 +168,7 @@ export class Game {
       this.messageTimer -= delta;
       if (this.messageTimer <= 0) this.message = "";
     }
+    this.updateAdvisor(delta);
 
     // 予算画面など、ウィンドウが開いている間は時間を止めて操作だけを受け付ける。
     if (this.simulation.pendingBudget && !this.modal) {
@@ -166,6 +184,32 @@ export class Game {
     this.updateWindows();
     this.updateBuilding();
     this.updateSimulation(delta);
+  }
+
+  /**
+   * アドバイザーの吹き出しの出し入れを行う。
+   * @param delta 前のフレームからの経過秒数。
+   */
+  private updateAdvisor(delta: number): void {
+    if (this.advisorMessage) {
+      this.advisorTimer -= delta;
+      // クリックでも読み飛ばせるようにする。
+      if (this.advisorTimer <= 0 || (this.input.clicked && !this.modal)) {
+        this.advisorMessage = null;
+      }
+      return;
+    }
+    const next = this.state.messages.shift();
+    if (next) this.showAdvice(next);
+  }
+
+  /**
+   * アドバイザーの一言を表示する。
+   * @param message 表示する助言。
+   */
+  private showAdvice(message: AdvisorMessage): void {
+    this.advisorMessage = message;
+    this.advisorTimer = ADVISOR_DURATION;
   }
 
   /** 開いているウィンドウへの入力を処理する。 */
@@ -184,6 +228,11 @@ export class Game {
       this.modal = new BudgetModal(this.state, () => this.simulation.settleBudget());
     }
     if (this.input.wasPressed("KeyE")) this.modal = new EvaluationModal(this.state);
+    if (this.input.wasPressed("KeyD")) {
+      this.modal = new DisasterModal(this.state, this.simulation.disasters, (message) =>
+        this.showAdvice({ text: message, tone: "warning" }),
+      );
+    }
     if (this.input.wasPressed("KeyG")) this.modal = new GraphModal(this.state);
 
     if (this.input.wasPressed("KeyV")) {
@@ -298,6 +347,7 @@ export class Game {
   private draw(): void {
     this.screen.clear(COLOR.black);
     this.view.draw(this.screen, this.animationFrame);
+    drawDisasterEntities(this.screen, this.state, this.sprites, this.view, this.animationFrame);
     drawDataMap(this.screen, this.state, this.view, this.dataMap);
     if (this.dataMap !== DataMap.none) {
       this.font.drawTextShadow(
@@ -315,7 +365,12 @@ export class Game {
     const cursor = pointer.inside ? this.view.tileAt(pointer.x, pointer.y) : null;
     const tool = TOOLS[this.selectedTool];
 
-    drawPanel(this.screen, this.font, this.icons, TOOLS.length, this.selectedTool, {
+    if (this.advisorMessage) {
+      drawAdvisor(this.screen, this.font, this.sprites, this.advisorMessage);
+    }
+
+    const locked = TOOLS.map((t) => !isToolUnlocked(t.id, this.state.stats.population));
+    drawPanel(this.screen, this.font, this.icons, locked, this.selectedTool, {
       cityName: this.state.cityName,
       year: this.state.year,
       month: this.state.month,

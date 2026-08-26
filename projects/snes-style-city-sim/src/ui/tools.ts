@@ -12,6 +12,7 @@ import {
   bulldoze,
 } from "../sim/build.js";
 import { ZoneType, buildingById, buildingOfTile } from "../sim/buildings.js";
+import { TOOL_UNLOCK_POPULATION, isToolUnlocked } from "../sim/milestones.js";
 import { TileFlag } from "../sim/map.js";
 import type { CityState } from "../sim/state.js";
 import {
@@ -239,6 +240,10 @@ export function describeTile(state: CityState, x: number, y: number): string {
  * @param y カーソルのタイルY座標。
  */
 export function applyTool(state: CityState, tool: ToolDef, x: number, y: number): BuildResult {
+  if (!isToolUnlocked(tool.id, state.stats.population)) {
+    const required = TOOL_UNLOCK_POPULATION[tool.id];
+    return { ok: false, cost: 0, message: `人口${required}人から建てられます` };
+  }
   const origin = toolOrigin(tool, x, y);
 
   switch (tool.id) {

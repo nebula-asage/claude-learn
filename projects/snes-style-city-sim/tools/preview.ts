@@ -43,7 +43,11 @@ const { buildNetwork, buildStructure, buildZone, placeStructure } =
 const { Simulation } = await import("../src/sim/simulation.js");
 const { TICKS_PER_MONTH } = await import("../src/sim/state.js");
 const { DATA_MAP_NAMES, DataMap, drawDataMap } = await import("../src/render/overlays.js");
-const { BudgetModal, EvaluationModal, GraphModal } = await import("../src/ui/modals.js");
+const { BudgetModal, DisasterModal, EvaluationModal, GraphModal } =
+  await import("../src/ui/modals.js");
+const { buildSprites } = await import("../src/render/art/sprites.js");
+const { drawAdvisor, drawDisasterEntities } = await import("../src/render/entities.js");
+const { DisasterKind } = await import("../src/sim/disasters.js");
 const { encodePng } = await import("./png.js");
 
 mkdirSync("dist-tools", { recursive: true });
@@ -127,20 +131,27 @@ const icons = buildIconAtlas(
   TOOLS.map((tool) => tool.icon),
   tileset,
 );
-drawPanel(screen, font, icons, TOOLS.length, 2, {
-  cityName: "ドットメトロポリス",
-  year: 1900,
-  month: 1,
-  funds: 20000,
-  population: 12345,
-  demand: { residential: 0.8, commercial: 0.25, industrial: -0.6 },
-  speedName: "標準",
-  powerShortage: false,
-  toolName: "道路",
-  toolCost: 10,
-  message: "",
-  cursor: { x: 60, y: 50 },
-});
+drawPanel(
+  screen,
+  font,
+  icons,
+  TOOLS.map(() => false),
+  2,
+  {
+    cityName: "ドットメトロポリス",
+    year: 1900,
+    month: 1,
+    funds: 20000,
+    population: 12345,
+    demand: { residential: 0.8, commercial: 0.25, industrial: -0.6 },
+    speedName: "標準",
+    powerShortage: false,
+    toolName: "道路",
+    toolCost: 10,
+    message: "",
+    cursor: { x: 60, y: 50 },
+  },
+);
 save(screen, "dist-tools/screen.png");
 
 // 4枚目: マップ全体の俯瞰と、地形の内訳。
@@ -287,20 +298,27 @@ function saveOverlay(path: string, overlay: () => void): void {
   cityScreen.clear(COLOR.black);
   cityView.draw(cityScreen, 0);
   overlay();
-  drawPanel(cityScreen, font, icons, TOOLS.length, 6, {
-    cityName: grown.cityName,
-    year: grown.year,
-    month: grown.month,
-    funds: grown.funds,
-    population: grown.stats.population,
-    demand: grown.demand,
-    speedName: "標準",
-    powerShortage: false,
-    toolName: "住宅区画",
-    toolCost: 100,
-    message: "",
-    cursor: { x: 20, y: 12 },
-  });
+  drawPanel(
+    cityScreen,
+    font,
+    icons,
+    TOOLS.map(() => false),
+    6,
+    {
+      cityName: grown.cityName,
+      year: grown.year,
+      month: grown.month,
+      funds: grown.funds,
+      population: grown.stats.population,
+      demand: grown.demand,
+      speedName: "標準",
+      powerShortage: false,
+      toolName: "住宅区画",
+      toolCost: 100,
+      message: "",
+      cursor: { x: 20, y: 12 },
+    },
+  );
   save(cityScreen, path);
 }
 
@@ -335,6 +353,49 @@ saveOverlay("dist-tools/window-evaluation.png", () => {
 saveOverlay("dist-tools/window-graph.png", () => {
   new GraphModal(grown).draw(cityScreen, font);
 });
+
+saveOverlay("dist-tools/window-disaster.png", () => {
+  new DisasterModal(grown, simulation.disasters, () => undefined).draw(cityScreen, font);
+});
+
+// 災害の最中の画面。竜巻と怪獣を出し、火事も起こしてから少し進める。
+const sprites = buildSprites();
+simulation.disasters.trigger(DisasterKind.tornado);
+simulation.disasters.trigger(DisasterKind.monster);
+simulation.disasters.trigger(DisasterKind.fire);
+for (const entity of grown.entities) {
+  entity.x = 20 + (entity.kind === "tornado" ? -4 : 4);
+  entity.y = 12;
+}
+for (let i = 0; i < 30; i++) simulation.disasters.tick();
+saveOverlay("dist-tools/disaster.png", () => {
+  drawDisasterEntities(cityScreen, grown, sprites, cityView, 0);
+  drawAdvisor(cityScreen, font, sprites, {
+    text: "怪獣が現れました! 公害がひどい街には近づいてくるようです。",
+    tone: "warning",
+  });
+});
+
+// スプライトの絵の確認。
+const spriteSheet = new Screen(200, 48);
+spriteSheet.clear(COLOR.grass);
+let sx = 4;
+for (const frames of [sprites.tornado, sprites.monster, sprites.advisor]) {
+  for (const frame of frames) {
+    spriteSheet.blit(
+      frame.pixels,
+      frame.width,
+      0,
+      0,
+      frame.width,
+      frame.height,
+      sx,
+      44 - frame.height,
+    );
+    sx += frame.width + 4;
+  }
+}
+save(spriteSheet, "dist-tools/sprites.png");
 
 // 最後: フォントの表示確認。
 const fontSheet = new Screen(256, 96);

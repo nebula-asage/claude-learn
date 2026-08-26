@@ -93,7 +93,7 @@ export function toolIndexAt(screenX: number, screenY: number, toolCount: number)
  * @param screen 描画先。
  * @param font 使用するフォント。
  * @param icons 道具アイコンのアトラス。
- * @param toolCount 道具の数。
+ * @param locked 道具ごとの、まだ使えないかどうか。
  * @param selected 選択中の道具の番号。
  * @param info 表示する情報。
  */
@@ -101,7 +101,7 @@ export function drawPanel(
   screen: Screen,
   font: BitmapFont,
   icons: Tileset,
-  toolCount: number,
+  locked: readonly boolean[],
   selected: number,
   info: PanelInfo,
 ): void {
@@ -110,9 +110,17 @@ export function drawPanel(
   screen.fillRect(0, PANEL_Y + 1, screen.width, 1, COLOR.panelShadow);
 
   // 道具アイコン列。
-  for (let i = 0; i < toolCount; i++) {
+  for (let i = 0; i < locked.length; i++) {
     const x = i * TILE_SIZE;
     screen.blit(icons.pixels, TILE_SIZE, 0, i * TILE_SIZE, TILE_SIZE, TILE_SIZE, x, TOOLBAR_Y);
+    if (locked[i]) {
+      // まだ使えない道具は、網掛けで暗くする。
+      for (let py = 0; py < TILE_SIZE; py++) {
+        for (let px = py & 1; px < TILE_SIZE; px += 2) {
+          screen.setPixel(x + px, TOOLBAR_Y + py, COLOR.panelShadow);
+        }
+      }
+    }
     if (i === selected) {
       screen.strokeRect(x, TOOLBAR_Y, TILE_SIZE, TILE_SIZE, COLOR.uiYellow);
     } else {

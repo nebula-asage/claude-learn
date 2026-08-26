@@ -19,7 +19,10 @@ import { hasRoadAccess } from "../../src/sim/traffic.js";
 function makeState(width = 24, height = 16): CityState {
   const map = new CityMap(width, height);
   map.tiles.fill(TileId.Grass);
-  return new CityState(map, new Rng(20260827), 1000000, "テスト市");
+  const state = new CityState(map, new Rng(20260827), 1000000, "テスト市");
+  // 成長の検証が災害に邪魔されないよう、テストでは自然発生を止めておく。
+  state.disastersEnabled = false;
+  return state;
 }
 
 /**

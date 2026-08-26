@@ -18,6 +18,12 @@ import {
   hitTest,
 } from "../render/windows.js";
 import { MAX_TAX_RATE, computeBudget } from "../sim/budget.js";
+import {
+  DISASTER_NAMES,
+  DisasterKind,
+  type DisasterKindValue,
+  type DisasterSystem,
+} from "../sim/disasters.js";
 import { evaluateCity } from "../sim/evaluation.js";
 import type { CityState } from "../sim/state.js";
 
@@ -290,6 +296,87 @@ export class GraphModal implements Modal {
    * @param y 画面上のY座標。
    */
   click(x: number, y: number): void {
+    if (hitTest(this.closeButton, x, y)) this.done = true;
+  }
+}
+
+/** 災害を手動で起こすウィンドウ。 */
+export class DisasterModal implements Modal {
+  /** 閉じてよいか。 */
+  done = false;
+
+  private readonly window: Rect = { x: 40, y: 28, width: 176, height: 132 };
+  private readonly kinds: DisasterKindValue[] = [
+    DisasterKind.fire,
+    DisasterKind.flood,
+    DisasterKind.tornado,
+    DisasterKind.earthquake,
+    DisasterKind.monster,
+    DisasterKind.meltdown,
+  ];
+  private readonly autoButton: Rect = { x: 48, y: 140, width: 88, height: 14 };
+  private readonly closeButton: Rect = { x: 152, y: 140, width: 56, height: 14 };
+
+  /**
+   * @param state 都市の状態。
+   * @param disasters 災害の進行役。
+   * @param onTriggered 災害を起こしたときに呼ばれる処理。
+   */
+  constructor(
+    private readonly state: CityState,
+    private readonly disasters: DisasterSystem,
+    private readonly onTriggered: (message: string) => void,
+  ) {}
+
+  /**
+   * 災害ボタンの位置を求める。
+   * @param index ボタンの番号。
+   */
+  private buttonRect(index: number): Rect {
+    return {
+      x: 48 + (index % 2) * 84,
+      y: 44 + Math.floor(index / 2) * 22,
+      width: 76,
+      height: 16,
+    };
+  }
+
+  /**
+   * ウィンドウを描く。
+   * @param screen 描画先。
+   * @param font 使用するフォント。
+   */
+  draw(screen: Screen, font: BitmapFont): void {
+    dimScreen(screen);
+    drawWindowFrame(screen, font, this.window, "災害");
+    this.kinds.forEach((kind, i) => {
+      drawButton(screen, font, this.buttonRect(i), DISASTER_NAMES[kind]);
+    });
+    drawButton(
+      screen,
+      font,
+      this.autoButton,
+      this.state.disastersEnabled ? "自然発生: ON" : "自然発生: OFF",
+      this.state.disastersEnabled,
+    );
+    drawButton(screen, font, this.closeButton, "閉じる", true);
+  }
+
+  /**
+   * クリックを処理する。
+   * @param x 画面上のX座標。
+   * @param y 画面上のY座標。
+   */
+  click(x: number, y: number): void {
+    this.kinds.forEach((kind, i) => {
+      if (!hitTest(this.buttonRect(i), x, y)) return;
+      const message = this.disasters.trigger(kind);
+      this.onTriggered(message ?? `${DISASTER_NAMES[kind]}は起こせませんでした`);
+      this.done = true;
+    });
+    if (hitTest(this.autoButton, x, y)) {
+      this.state.disastersEnabled = !this.state.disastersEnabled;
+    }
     if (hitTest(this.closeButton, x, y)) this.done = true;
   }
 }

@@ -13,6 +13,7 @@ import {
   BUILDINGS,
   COAL_PLANT,
   FIRE_STATION,
+  MAYOR_HOUSE,
   NUCLEAR_PLANT,
   PARK,
   POLICE_STATION,
@@ -450,6 +451,33 @@ function airport(): ArtCanvas {
   return canvas;
 }
 
+/** 市長公舎を描く。 */
+function mayorHouse(): ArtCanvas {
+  const canvas = lot(3, 3, COLOR.grass);
+  // 前庭と小道。
+  canvas.rect(20, 34, 8, 14, COLOR.sand);
+  canvas.rect(2, 30, 44, 2, COLOR.sand);
+  // 本館。
+  canvas.rect(6, 14, 36, 18, COLOR.wall);
+  canvas.frame(6, 14, 36, 18, COLOR.black);
+  for (let i = 0; i < 4; i++) canvas.rect(10 + i * 8, 20, 4, 8, COLOR.window);
+  // 屋根とドーム。
+  canvas.rect(4, 10, 40, 5, COLOR.roofRed);
+  canvas.frame(4, 10, 40, 5, COLOR.black);
+  canvas.rect(18, 4, 12, 7, COLOR.roofRed);
+  canvas.rect(20, 1, 8, 4, COLOR.roofRed);
+  canvas.frame(18, 4, 12, 7, COLOR.black);
+  canvas.rect(23, 0, 2, 2, COLOR.uiYellow);
+  // 玄関と柱。
+  canvas.rect(21, 24, 6, 8, COLOR.brown);
+  canvas.rect(18, 18, 2, 14, COLOR.lightGray);
+  canvas.rect(28, 18, 2, 14, COLOR.lightGray);
+  // 庭木。
+  canvas.rect(4, 36, 6, 6, COLOR.forest);
+  canvas.rect(38, 36, 6, 6, COLOR.forest);
+  return canvas;
+}
+
 /**
  * 建物の絵を1棟ぶん作る。アイコン生成でも使うためexportしている。
  * @param def 建物定義。
@@ -479,6 +507,8 @@ export function buildingArt(def: BuildingDef): ArtCanvas {
       return seaport();
     case AIRPORT.id:
       return airport();
+    case MAYOR_HOUSE.id:
+      return mayorHouse();
     default:
       throw new Error(`絵が用意されていない建物です: ${def.id}`);
   }

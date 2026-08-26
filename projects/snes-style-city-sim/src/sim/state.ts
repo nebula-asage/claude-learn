@@ -4,8 +4,10 @@
  */
 import type { BudgetFunding, BudgetReport } from "./budget.js";
 import type { Demand } from "./demand.js";
+import type { DisasterEntity } from "./disasters.js";
 import { CityFields } from "./fields.js";
 import { CityHistory } from "./history.js";
+import { MessageQueue } from "./messages.js";
 import type { CityMap } from "./map.js";
 import type { PowerReport } from "./power.js";
 import type { Rng } from "./rng.js";
@@ -50,6 +52,14 @@ export class CityState {
   autoBudget = false;
   /** 年ごとの推移の記録。 */
   readonly history = new CityHistory();
+  /** 地図の上を動き回っている災害（竜巻・怪獣）。 */
+  readonly entities: DisasterEntity[] = [];
+  /** 到達済みの称号の番号。 */
+  milestoneIndex = 0;
+  /** 災害が自然に起きるかどうか。 */
+  disastersEnabled = true;
+  /** アドバイザーからの助言の待ち行列。 */
+  readonly messages = new MessageQueue();
 
   /**
    * @param map 遊ぶマップ。

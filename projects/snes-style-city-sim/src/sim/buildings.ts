@@ -283,6 +283,23 @@ export const AIRPORT = define({
   upkeep: 100,
 });
 
+/** 市長公舎。人口の節目に、ご褒美として自動で建つ。 */
+export const MAYOR_HOUSE = define({
+  id: "mayor-house",
+  name: "市長公舎",
+  width: 3,
+  height: 3,
+  zone: ZoneType.none,
+  level: 0,
+  capacity: 0,
+  powerDemand: 1,
+  powerSupply: 0,
+  pollution: 0,
+  fireRisk: 1,
+  cost: 0,
+  upkeep: 0,
+});
+
 /** 建物タイルとして確保したIDの総数。 */
 export const BUILDING_TILE_COUNT = nextTileBase - BUILDING_TILE_BASE;
 

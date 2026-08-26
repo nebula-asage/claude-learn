@@ -9,8 +9,11 @@
 import { applyAnnualBudget, decayUnderfundedRoads } from "./budget.js";
 import { ZoneType, buildingByKind } from "./buildings.js";
 import { computeDemand } from "./demand.js";
+import { DisasterKind, type DisasterKindValue, DisasterSystem } from "./disasters.js";
 import { updateFields } from "./fields.js";
 import { TileFlag } from "./map.js";
+import { adviseOn } from "./messages.js";
+import { checkMilestone } from "./milestones.js";
 import { updatePower } from "./power.js";
 import { MONTHS_PER_YEAR, TICKS_PER_MONTH, type CityState } from "./state.js";
 import { collectStats } from "./stats.js";
@@ -42,12 +45,15 @@ export class Simulation {
   private cursor = 0;
   /** 年度末の決算待ちかどうか。予算画面を出している間は `true`。 */
   pendingBudget = false;
+  /** 災害の進行役。UIから手動で災害を起こすときにも使う。 */
+  readonly disasters: DisasterSystem;
 
   /**
    * @param state 進行させる都市の状態。
    */
   constructor(state: CityState) {
     this.state = state;
+    this.disasters = new DisasterSystem(state);
     this.refresh();
   }
 
@@ -91,11 +97,42 @@ export class Simulation {
         collectStats(state.map, state.stats);
         state.demand = computeDemand(state.stats, state.taxRate);
         break;
+      case 4:
+        this.monthlyEvents();
+        break;
       default:
         break;
     }
 
     this.updateZoneSlice();
+    this.disasters.tick();
+  }
+
+  /** 月に一度の出来事（称号の判定・助言・災害の抽選）を処理する。 */
+  private monthlyEvents(): void {
+    const state = this.state;
+
+    const milestone = checkMilestone(state);
+    if (milestone) state.messages.push(milestone, "good");
+
+    const advice = adviseOn(state);
+    if (advice) state.messages.push(advice.text, advice.tone);
+
+    if (!state.disastersEnabled) return;
+    // 火災が一番起きやすく、他の災害はまれ。
+    const kinds: DisasterKindValue[] = [
+      DisasterKind.fire,
+      DisasterKind.fire,
+      DisasterKind.fire,
+      DisasterKind.flood,
+      DisasterKind.tornado,
+      DisasterKind.earthquake,
+      DisasterKind.monster,
+    ];
+    if (state.rng.chance(0.02)) {
+      const message = this.disasters.trigger(state.rng.pick(kinds));
+      if (message) state.messages.push(message, "warning");
+    }
   }
 
   /** 年度末の決算を行う。予算画面で確定したときにも呼ばれる。 */
