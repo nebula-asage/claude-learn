@@ -32,14 +32,14 @@ uv add <パッケージ名>
 
 ## Lint / Format
 
-開発用依存として `flake8`（lint）・`black`（フォーマッタ）を導入済み。
+開発用依存として `ruff`（lint）・`black`（フォーマッタ）を導入済み。
 
 ```bash
 uv run black .
-uv run flake8 .
+uv run ruff check .
 ```
 
-`black` の整形（1行88文字・スライスの空白など）とflake8のデフォルト設定は一部競合するため、`.flake8` で `max-line-length = 88` と `E203` の無視を設定している。
+`ruff` の設定は `pyproject.toml` の `[tool.ruff.lint]` にまとめている（`flake8` と違って別ファイルが不要）。
 
 ## テスト / カバレッジ
 
@@ -60,15 +60,15 @@ uv run pytest --cov --cov-report=html
 
 ## ドキュメンテーションコメント / APIドキュメント生成
 
-公開関数・モジュールへのdocstring記述は開発用依存の `flake8-docstrings`（pydocstyle）により `flake8` の実行時に強制される。docstringが無い、あるいは1行目がおかしい場合は `D1xx`/`D2xx` 等のエラーで検出される。
+公開関数・モジュールへのdocstring記述は `ruff` の `D`（pydocstyle由来）ルールにより強制される。docstringが無い、あるいは1行目がおかしい場合は `D1xx`/`D2xx` 等のエラーで検出される。
 
-さらに、docstringの `Args:` に書いた引数名が実際の関数シグネチャと一致しているかは `pydoclint` により検証される。引数名の誤記や過不足があると `DOC103` のエラーで検出される（型注釈の一致までは要求しない設定にしている）。
+さらに、docstringの `Args:` に書いた引数名が実際の関数シグネチャと一致しているかは `ruff` の `DOC`（pydoclint由来）ルールにより検証される。引数名の誤記や過不足があると `undocumented-param`（引数の記述漏れ）や `docstring-extraneous-parameter`（シグネチャに無い引数の記述）のエラーで検出される（型注釈の一致までは要求しない）。
 
 ```bash
-uv run flake8 .
+uv run ruff check .
 ```
 
-docstringは [Google スタイル](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)（`Args:`/`Returns:` セクション）で書く。英語の文章作法を前提にした `D400`（ピリオド終端）・`D401`（命令形）・`D415` は日本語のdocstringには馴染まないため `.flake8` で無視している。`tests/` 配下のテスト関数はpytestの慣習としてdocstring不要のため、`per-file-ignores` で `flake8-docstrings`（`D`）と `pydoclint`（`DOC`）どちらも除外している。
+docstringは [Google スタイル](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)（`Args:`/`Returns:` セクション）で書く。英語の文章作法を前提にした `D400`（ピリオド終端）・`D401`（命令形）・`D415` は日本語のdocstringには馴染まないため `pyproject.toml` の `[tool.ruff.lint]` で無視している。`tests/` 配下のテスト関数はpytestの慣習としてdocstring不要のため、`per-file-ignores` で `D`・`DOC` どちらも除外している。
 
 APIドキュメントはdocstringから `pdoc` でHTML生成する。
 
