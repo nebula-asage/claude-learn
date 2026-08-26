@@ -12,6 +12,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH, Screen } from "../render/screen.js";
 import type { Tileset } from "../render/tileset.js";
 import { canPlaceStructure } from "../sim/build.js";
 import { Rng } from "../sim/rng.js";
+import { SPEEDS, Simulation } from "../sim/simulation.js";
 import { CityState } from "../sim/state.js";
 import { generateTerrain } from "../sim/terrain.js";
 import { TILE_SIZE, type TilePos } from "../sim/tiles.js";
@@ -51,8 +52,11 @@ export class Game {
   private readonly tileset: Tileset;
   private readonly icons: Tileset;
   private readonly state: CityState;
+  private readonly simulation: Simulation;
   private readonly view: MapView;
 
+  private speed = 2;
+  private tickAccumulator = 0;
   private selectedTool = 2;
   private message = "";
   private messageTimer = 0;
@@ -84,6 +88,7 @@ export class Game {
       this.tileset,
     );
     this.state = state;
+    this.simulation = new Simulation(state);
     this.view = new MapView(state.map, this.tileset);
     this.view.centerOn(state.map.width / 2, state.map.height / 2);
 
@@ -146,6 +151,41 @@ export class Game {
     this.updateScroll(delta);
     this.updateToolSelection();
     this.updateBuilding();
+    this.updateSimulation(delta);
+  }
+
+  /**
+   * 経過時間に応じてシミュレーションを進める。
+   * @param delta 前のフレームからの経過秒数。
+   */
+  private updateSimulation(delta: number): void {
+    if (this.input.wasPressed("Space")) {
+      this.speed = this.speed === 0 ? 2 : 0;
+      this.notify(`進行: ${SPEEDS[this.speed].name}`);
+    }
+    if (this.input.wasPressed("Minus") && this.speed > 0) {
+      this.speed--;
+      this.notify(`進行: ${SPEEDS[this.speed].name}`);
+    }
+    if (this.input.wasPressed("Equal") && this.speed < SPEEDS.length - 1) {
+      this.speed++;
+      this.notify(`進行: ${SPEEDS[this.speed].name}`);
+    }
+
+    const ticksPerSecond = SPEEDS[this.speed].ticksPerSecond;
+    if (ticksPerSecond <= 0) {
+      this.tickAccumulator = 0;
+      return;
+    }
+
+    this.tickAccumulator += delta * ticksPerSecond;
+    // 処理が追いつかないときに際限なく溜め込まないよう、1フレームの上限を決めておく。
+    let budget = 8;
+    while (this.tickAccumulator >= 1 && budget-- > 0) {
+      this.tickAccumulator -= 1;
+      this.simulation.tick();
+    }
+    if (budget <= 0) this.tickAccumulator = 0;
   }
 
   /**
@@ -211,6 +251,8 @@ export class Game {
     this.lastBuiltTile = target;
     const result = applyTool(this.state, tool, target.x, target.y);
     this.notify(result.message);
+    // 建てた直後に通電状態を反映させ、送電線をつないだ手応えがすぐ出るようにする。
+    if (result.ok && result.cost > 0) this.simulation.refreshPower();
   }
 
   /** 1フレーム分の描画。 */
@@ -228,7 +270,10 @@ export class Game {
       year: this.state.year,
       month: this.state.month,
       funds: this.state.funds,
-      population: 0,
+      population: this.state.stats.population,
+      demand: this.state.demand,
+      speedName: SPEEDS[this.speed].name,
+      powerShortage: this.state.power.demand > this.state.power.supply,
       toolName: tool.name,
       toolCost: tool.cost,
       message: this.message,

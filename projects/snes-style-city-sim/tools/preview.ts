@@ -40,6 +40,8 @@ const { CityState } = await import("../src/sim/state.js");
 const { BUILDINGS, ZoneType, buildingById, zoneBuilding } = await import("../src/sim/buildings.js");
 const { buildNetwork, buildStructure, buildZone, placeStructure } =
   await import("../src/sim/build.js");
+const { Simulation } = await import("../src/sim/simulation.js");
+const { TICKS_PER_MONTH } = await import("../src/sim/state.js");
 const { encodePng } = await import("./png.js");
 
 mkdirSync("dist-tools", { recursive: true });
@@ -129,6 +131,9 @@ drawPanel(screen, font, icons, TOOLS.length, 2, {
   month: 1,
   funds: 20000,
   population: 12345,
+  demand: { residential: 0.8, commercial: 0.25, industrial: -0.6 },
+  speedName: "標準",
+  powerShortage: false,
   toolName: "道路",
   toolCost: 10,
   message: "",
@@ -203,7 +208,68 @@ for (let ty = 0; ty < demoMap.height; ty++) {
 }
 save(demoScreen, "dist-tools/city.png");
 
-// 6枚目: フォントの表示確認。
+// 6枚目: 実際にシミュレーションを回して育てた街。
+const grownMap = new CityMap(40, 30);
+grownMap.tiles.fill(TileId.Grass);
+const grown = new CityState(grownMap, new Rng(4242), 500000, "テスト市");
+
+// 5タイル周期の街区にする。0が道路、1〜3が区画、4が送電線用の空き地。
+for (let x = 0; x < 40; x += 5) {
+  for (let y = 0; y < 30; y++) buildNetwork(grown, x, y, "road");
+}
+for (let y = 0; y < 30; y += 5) {
+  for (let x = 0; x < 40; x++) buildNetwork(grown, x, y, "road");
+}
+for (let x = 4; x < 40; x += 5) {
+  for (let y = 0; y < 30; y++) buildNetwork(grown, x, y, "wire");
+}
+for (let y = 4; y < 30; y += 5) {
+  for (let x = 0; x < 40; x++) buildNetwork(grown, x, y, "wire");
+}
+
+let zoneIndex = 0;
+const kinds = [
+  ZoneType.residential,
+  ZoneType.residential,
+  ZoneType.commercial,
+  ZoneType.industrial,
+];
+for (let y = 1; y < 29; y += 5) {
+  for (let x = 1; x < 39; x += 5) {
+    if (x === 26 && y === 21) continue; // 発電所の場所は空けておく
+    buildZone(grown, x, y, kinds[zoneIndex % kinds.length]);
+    zoneIndex++;
+  }
+}
+// 発電所は送電線の通っている空き地に面する位置に置く。
+buildStructure(grown, 26, 21, buildingById("coal-plant"));
+
+const simulation = new Simulation(grown);
+console.log("シミュレーション経過:");
+for (let month = 0; month <= 12 * 30; month++) {
+  if (month % 60 === 0) {
+    const s = grown.stats;
+    const average = (field: Uint8Array): string =>
+      (field.reduce((sum, v) => sum + v, 0) / field.length).toFixed(0);
+    console.log(
+      `  ${grown.year}年: 人口 ${s.population} (住民 ${s.residents} / 商業 ${s.commercialJobs} / 工業 ${s.industrialJobs})` +
+        ` 需要 R${grown.demand.residential.toFixed(2)} C${grown.demand.commercial.toFixed(2)} I${grown.demand.industrial.toFixed(2)}` +
+        ` 地価${average(grown.fields.landValue)} 公害${average(grown.fields.pollution)} 犯罪${average(grown.fields.crime)} 交通${average(grown.fields.traffic)}`,
+    );
+  }
+  for (let t = 0; t < TICKS_PER_MONTH; t++) simulation.tick();
+}
+
+const grownScreen = new Screen(grownMap.width * TILE_SIZE, grownMap.height * TILE_SIZE);
+grownScreen.clear(COLOR.black);
+for (let ty = 0; ty < grownMap.height; ty++) {
+  for (let tx = 0; tx < grownMap.width; tx++) {
+    drawTile(grownScreen, grownMap.get(tx, ty), tx * TILE_SIZE, ty * TILE_SIZE);
+  }
+}
+save(grownScreen, "dist-tools/grown.png");
+
+// 7枚目: フォントの表示確認。
 const fontSheet = new Screen(256, 96);
 fontSheet.clear(COLOR.panelShadow);
 const samples = [

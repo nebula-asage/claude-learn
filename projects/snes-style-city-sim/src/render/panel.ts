@@ -5,6 +5,7 @@
  * 道具のアイコン列と、日付・資金などの常時表示情報をまとめる。
  * @packageDocumentation
  */
+import type { Demand } from "../sim/demand.js";
 import { TILE_SIZE, type TilePos } from "../sim/tiles.js";
 import type { BitmapFont } from "./font/font.js";
 import { VIEW_HEIGHT } from "./mapview.js";
@@ -33,6 +34,12 @@ export interface PanelInfo {
   funds: number;
   /** 人口。 */
   population: number;
+  /** 住宅・商業・工業の需要。 */
+  demand: Demand;
+  /** 進行速度の名前。 */
+  speedName: string;
+  /** 電力が足りていないか。 */
+  powerShortage: boolean;
   /** 選んでいる道具の名前。 */
   toolName: string;
   /** 選んでいる道具の費用。0なら表示しない。 */
@@ -124,8 +131,20 @@ export function drawPanel(
     infoY + 14,
     COLOR.lightGray,
   );
-  font.drawText(screen, `$${formatNumber(info.funds)}`, 62, infoY + 14, COLOR.uiYellow);
-  font.drawText(screen, `人口 ${formatNumber(info.population)}`, 118, infoY + 14, COLOR.white);
+  font.drawText(screen, info.speedName, 58, infoY + 14, COLOR.lightBlue);
+  font.drawText(
+    screen,
+    `$${formatNumber(info.funds)}`,
+    78,
+    infoY + 14,
+    info.funds < 0 ? COLOR.red : COLOR.uiYellow,
+  );
+  font.drawText(screen, `人口 ${formatNumber(info.population)}`, 122, infoY + 14, COLOR.white);
+  if (info.powerShortage) {
+    font.drawText(screen, "電力不足", 122, infoY + 3, COLOR.red);
+  }
+
+  drawDemandMeter(screen, font, 174, infoY + 1, info.demand);
 
   // 右側は、通知があればそれを、なければ選択中の道具を出す。
   if (info.message) {
@@ -144,4 +163,40 @@ export function drawPanel(
       COLOR.lightGray,
     );
   }
+}
+
+/**
+ * 住宅・商業・工業の需要メーターを描く。中央の線から上に伸びれば需要あり、
+ * 下に伸びれば供給過剰。
+ * @param screen 描画先。
+ * @param font 使用するフォント。
+ * @param x 左端。
+ * @param y 上端。
+ * @param demand 表示する需要。
+ */
+export function drawDemandMeter(
+  screen: Screen,
+  font: BitmapFont,
+  x: number,
+  y: number,
+  demand: Demand,
+): void {
+  const bars: readonly [string, number, number][] = [
+    ["R", demand.residential, COLOR.green],
+    ["C", demand.commercial, COLOR.lightBlue],
+    ["I", demand.industrial, COLOR.uiYellow],
+  ];
+  const maxHeight = 6;
+  const centerY = y + maxHeight + 1;
+
+  screen.fillRect(x - 1, centerY, 20, 1, COLOR.gray);
+  bars.forEach(([label, value, color], i) => {
+    const bx = x + i * 6;
+    const height = Math.round(Math.abs(value) * maxHeight);
+    if (height > 0) {
+      if (value > 0) screen.fillRect(bx, centerY - height, 4, height, color);
+      else screen.fillRect(bx, centerY + 1, 4, height, color);
+    }
+    font.drawText(screen, label, bx, centerY + maxHeight + 1, COLOR.lightGray);
+  });
 }
