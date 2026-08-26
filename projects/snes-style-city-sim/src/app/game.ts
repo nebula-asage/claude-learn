@@ -7,6 +7,7 @@ import { buildIconAtlas } from "../render/art/icons.js";
 import { BitmapFont, loadFont } from "../render/font/font.js";
 import { MapView, VIEW_HEIGHT, VIEW_WIDTH } from "../render/mapview.js";
 import { COLOR } from "../render/palette.js";
+import { DATA_MAP_NAMES, DataMap, type DataMapValue, drawDataMap } from "../render/overlays.js";
 import { drawPanel, toolIndexAt } from "../render/panel.js";
 import { SCREEN_HEIGHT, SCREEN_WIDTH, Screen } from "../render/screen.js";
 import type { Tileset } from "../render/tileset.js";
@@ -17,6 +18,7 @@ import { CityState } from "../sim/state.js";
 import { generateTerrain } from "../sim/terrain.js";
 import { TILE_SIZE, type TilePos } from "../sim/tiles.js";
 import { Input } from "../ui/input.js";
+import { BudgetModal, EvaluationModal, GraphModal, type Modal } from "../ui/modals.js";
 import { TOOLS, applyTool, toolOrigin } from "../ui/tools.js";
 
 /** キーボードでスクロールするときの速さ（ドット毎秒）。 */
@@ -58,6 +60,8 @@ export class Game {
   private speed = 2;
   private tickAccumulator = 0;
   private selectedTool = 2;
+  private modal: Modal | null = null;
+  private dataMap: DataMapValue = DataMap.none;
   private message = "";
   private messageTimer = 0;
   private lastBuiltTile: TilePos | null = null;
@@ -148,10 +152,45 @@ export class Game {
       if (this.messageTimer <= 0) this.message = "";
     }
 
+    // 予算画面など、ウィンドウが開いている間は時間を止めて操作だけを受け付ける。
+    if (this.simulation.pendingBudget && !this.modal) {
+      this.modal = new BudgetModal(this.state, () => this.simulation.settleBudget());
+    }
+    if (this.modal) {
+      this.updateModal();
+      return;
+    }
+
     this.updateScroll(delta);
     this.updateToolSelection();
+    this.updateWindows();
     this.updateBuilding();
     this.updateSimulation(delta);
+  }
+
+  /** 開いているウィンドウへの入力を処理する。 */
+  private updateModal(): void {
+    const modal = this.modal;
+    if (!modal) return;
+    if (this.input.clicked) modal.click(this.input.pointer.x, this.input.pointer.y);
+    // 年度末の予算は「決定」でしか閉じられない（決算を飛ばせないようにする）。
+    const closable = !this.simulation.pendingBudget;
+    if (modal.done || (closable && this.input.wasPressed("Escape"))) this.modal = null;
+  }
+
+  /** ウィンドウの開閉とデータマップの切り替えを処理する。 */
+  private updateWindows(): void {
+    if (this.input.wasPressed("KeyB")) {
+      this.modal = new BudgetModal(this.state, () => this.simulation.settleBudget());
+    }
+    if (this.input.wasPressed("KeyE")) this.modal = new EvaluationModal(this.state);
+    if (this.input.wasPressed("KeyG")) this.modal = new GraphModal(this.state);
+
+    if (this.input.wasPressed("KeyV")) {
+      const modes = Object.values(DataMap);
+      this.dataMap = modes[(modes.indexOf(this.dataMap) + 1) % modes.length];
+      this.notify(DATA_MAP_NAMES[this.dataMap]);
+    }
   }
 
   /**
@@ -259,7 +298,18 @@ export class Game {
   private draw(): void {
     this.screen.clear(COLOR.black);
     this.view.draw(this.screen, this.animationFrame);
-    this.drawCursor();
+    drawDataMap(this.screen, this.state, this.view, this.dataMap);
+    if (this.dataMap !== DataMap.none) {
+      this.font.drawTextShadow(
+        this.screen,
+        DATA_MAP_NAMES[this.dataMap],
+        4,
+        4,
+        COLOR.white,
+        COLOR.black,
+      );
+    }
+    if (!this.modal) this.drawCursor();
 
     const pointer = this.input.pointer;
     const cursor = pointer.inside ? this.view.tileAt(pointer.x, pointer.y) : null;
@@ -280,6 +330,7 @@ export class Game {
       cursor,
     });
 
+    this.modal?.draw(this.screen, this.font);
     this.screen.present(this.ctx);
   }
 

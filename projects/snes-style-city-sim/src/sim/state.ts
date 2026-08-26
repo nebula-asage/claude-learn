@@ -2,8 +2,10 @@
  * 都市の状態一式。シミュレーションもUIも、ここを唯一の情報源として読む。
  * @packageDocumentation
  */
+import type { BudgetFunding, BudgetReport } from "./budget.js";
 import type { Demand } from "./demand.js";
 import { CityFields } from "./fields.js";
+import { CityHistory } from "./history.js";
 import type { CityMap } from "./map.js";
 import type { PowerReport } from "./power.js";
 import type { Rng } from "./rng.js";
@@ -40,6 +42,14 @@ export class CityState {
   demand: Demand = { residential: 0, commercial: 0, industrial: 0 };
   /** 直近の電力の需給。 */
   power: PowerReport = { supply: 0, demand: 0, powered: 0, unpowered: 0 };
+  /** 予算の配分。 */
+  funding: BudgetFunding = { roads: 1, police: 1, fire: 1 };
+  /** 直近の年間収支。まだ決算していなければ `null`。 */
+  lastBudget: BudgetReport | null = null;
+  /** 年度末に予算画面を出さず、自動で決算するか。 */
+  autoBudget = false;
+  /** 年ごとの推移の記録。 */
+  readonly history = new CityHistory();
 
   /**
    * @param map 遊ぶマップ。

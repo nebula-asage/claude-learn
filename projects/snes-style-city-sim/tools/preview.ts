@@ -42,6 +42,8 @@ const { buildNetwork, buildStructure, buildZone, placeStructure } =
   await import("../src/sim/build.js");
 const { Simulation } = await import("../src/sim/simulation.js");
 const { TICKS_PER_MONTH } = await import("../src/sim/state.js");
+const { DATA_MAP_NAMES, DataMap, drawDataMap } = await import("../src/render/overlays.js");
+const { BudgetModal, EvaluationModal, GraphModal } = await import("../src/ui/modals.js");
 const { encodePng } = await import("./png.js");
 
 mkdirSync("dist-tools", { recursive: true });
@@ -244,6 +246,7 @@ for (let y = 1; y < 29; y += 5) {
 // 発電所は送電線の通っている空き地に面する位置に置く。
 buildStructure(grown, 26, 21, buildingById("coal-plant"));
 
+grown.autoBudget = true; // プレビューでは予算画面を出さずに自動決算する
 const simulation = new Simulation(grown);
 console.log("シミュレーション経過:");
 for (let month = 0; month <= 12 * 30; month++) {
@@ -269,7 +272,71 @@ for (let ty = 0; ty < grownMap.height; ty++) {
 }
 save(grownScreen, "dist-tools/grown.png");
 
-// 7枚目: フォントの表示確認。
+// 7枚目以降: データマップと各ウィンドウ。
+const cityScreen = new Screen();
+const cityView = new MapView(grownMap, tileset);
+cityView.centerOn(20, 12);
+
+/**
+ * 育てた街を背景に、指定した内容を重ねて書き出す。
+ *
+ * @param path 出力先のパス。
+ * @param overlay 背景を描いたあとに実行する処理。
+ */
+function saveOverlay(path: string, overlay: () => void): void {
+  cityScreen.clear(COLOR.black);
+  cityView.draw(cityScreen, 0);
+  overlay();
+  drawPanel(cityScreen, font, icons, TOOLS.length, 6, {
+    cityName: grown.cityName,
+    year: grown.year,
+    month: grown.month,
+    funds: grown.funds,
+    population: grown.stats.population,
+    demand: grown.demand,
+    speedName: "標準",
+    powerShortage: false,
+    toolName: "住宅区画",
+    toolCost: 100,
+    message: "",
+    cursor: { x: 20, y: 12 },
+  });
+  save(cityScreen, path);
+}
+
+saveOverlay("dist-tools/datamap-landvalue.png", () => {
+  drawDataMap(cityScreen, grown, cityView, DataMap.landValue);
+  font.drawTextShadow(
+    cityScreen,
+    DATA_MAP_NAMES[DataMap.landValue],
+    4,
+    4,
+    COLOR.white,
+    COLOR.black,
+  );
+});
+saveOverlay("dist-tools/datamap-pollution.png", () => {
+  drawDataMap(cityScreen, grown, cityView, DataMap.pollution);
+  font.drawTextShadow(
+    cityScreen,
+    DATA_MAP_NAMES[DataMap.pollution],
+    4,
+    4,
+    COLOR.white,
+    COLOR.black,
+  );
+});
+saveOverlay("dist-tools/window-budget.png", () => {
+  new BudgetModal(grown, () => undefined).draw(cityScreen, font);
+});
+saveOverlay("dist-tools/window-evaluation.png", () => {
+  new EvaluationModal(grown).draw(cityScreen, font);
+});
+saveOverlay("dist-tools/window-graph.png", () => {
+  new GraphModal(grown).draw(cityScreen, font);
+});
+
+// 最後: フォントの表示確認。
 const fontSheet = new Screen(256, 96);
 fontSheet.clear(COLOR.panelShadow);
 const samples = [

@@ -6,12 +6,13 @@
  * 別々のtickに散らして負荷を平らにしている。
  * @packageDocumentation
  */
+import { applyAnnualBudget, decayUnderfundedRoads } from "./budget.js";
 import { ZoneType, buildingByKind } from "./buildings.js";
 import { computeDemand } from "./demand.js";
 import { updateFields } from "./fields.js";
 import { TileFlag } from "./map.js";
 import { updatePower } from "./power.js";
-import { TICKS_PER_MONTH, type CityState } from "./state.js";
+import { MONTHS_PER_YEAR, TICKS_PER_MONTH, type CityState } from "./state.js";
 import { collectStats } from "./stats.js";
 import { decayTraffic } from "./traffic.js";
 import { updateZone } from "./zones.js";
@@ -39,6 +40,8 @@ export class Simulation {
   private zones: number[] = [];
   /** 一覧のどこまで評価したか。 */
   private cursor = 0;
+  /** 年度末の決算待ちかどうか。予算画面を出している間は `true`。 */
+  pendingBudget = false;
 
   /**
    * @param state 進行させる都市の状態。
@@ -67,6 +70,12 @@ export class Simulation {
     const state = this.state;
     state.ticks++;
 
+    if (state.ticks % (TICKS_PER_MONTH * MONTHS_PER_YEAR) === 0) {
+      collectStats(state.map, state.stats);
+      if (state.autoBudget) this.settleBudget();
+      else this.pendingBudget = true;
+    }
+
     switch (state.ticks % TICKS_PER_MONTH) {
       case 0:
         this.rebuildZoneList();
@@ -87,6 +96,14 @@ export class Simulation {
     }
 
     this.updateZoneSlice();
+  }
+
+  /** 年度末の決算を行う。予算画面で確定したときにも呼ばれる。 */
+  settleBudget(): void {
+    applyAnnualBudget(this.state);
+    decayUnderfundedRoads(this.state);
+    this.state.history.record(this.state);
+    this.pendingBudget = false;
   }
 
   /** マップを走査して区画の一覧を作り直す。 */

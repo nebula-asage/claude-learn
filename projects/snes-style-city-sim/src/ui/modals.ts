@@ -1,0 +1,295 @@
+/**
+ * 重ねて表示するウィンドウ（予算・評価・グラフ）。
+ *
+ * ウィンドウが開いている間はシミュレーションを止め、クリックはすべてこちらが受け取る。
+ * @packageDocumentation
+ */
+import type { BitmapFont } from "../render/font/font.js";
+import { COLOR } from "../render/palette.js";
+import { formatNumber } from "../render/panel.js";
+import type { Screen } from "../render/screen.js";
+import {
+  type Rect,
+  dimScreen,
+  drawButton,
+  drawGauge,
+  drawLineGraph,
+  drawWindowFrame,
+  hitTest,
+} from "../render/windows.js";
+import { MAX_TAX_RATE, computeBudget } from "../sim/budget.js";
+import { evaluateCity } from "../sim/evaluation.js";
+import type { CityState } from "../sim/state.js";
+
+/** 重ね表示するウィンドウの共通の形。 */
+export interface Modal {
+  /** 閉じてよくなったら `true`。 */
+  readonly done: boolean;
+  /**
+   * ウィンドウを描く。
+   * @param screen 描画先。
+   * @param font 使用するフォント。
+   */
+  draw(screen: Screen, font: BitmapFont): void;
+  /**
+   * クリックを処理する。
+   * @param x 画面上のX座標。
+   * @param y 画面上のY座標。
+   */
+  click(x: number, y: number): void;
+}
+
+/** 予算ウィンドウ。税率と各項目への配分を決める。 */
+export class BudgetModal implements Modal {
+  /** 閉じてよいか。 */
+  done = false;
+
+  private readonly window: Rect = { x: 16, y: 16, width: 224, height: 154 };
+  private readonly rows: { label: string; get: () => string; change: (delta: number) => void }[];
+  private readonly confirmButton: Rect = { x: 168, y: 152, width: 56, height: 14 };
+  private readonly autoButton: Rect = { x: 24, y: 152, width: 72, height: 14 };
+
+  /**
+   * @param state 都市の状態。
+   * @param onConfirm 「決定」を押したときに呼ばれる処理。
+   */
+  constructor(
+    private readonly state: CityState,
+    private readonly onConfirm: () => void,
+  ) {
+    const adjustFunding = (key: "roads" | "police" | "fire") => (delta: number) => {
+      const next = Math.round((state.funding[key] + delta * 0.1) * 10) / 10;
+      state.funding[key] = Math.max(0, Math.min(1, next));
+    };
+    const percent = (key: "roads" | "police" | "fire") => () =>
+      `${Math.round(state.funding[key] * 100)}%`;
+
+    this.rows = [
+      {
+        label: "税率",
+        get: () => `${state.taxRate}%`,
+        change: (delta) => {
+          state.taxRate = Math.max(0, Math.min(MAX_TAX_RATE, state.taxRate + delta));
+        },
+      },
+      { label: "道路の維持", get: percent("roads"), change: adjustFunding("roads") },
+      { label: "警察", get: percent("police"), change: adjustFunding("police") },
+      { label: "消防", get: percent("fire"), change: adjustFunding("fire") },
+    ];
+  }
+
+  /**
+   * 行の位置を求める。
+   * @param index 行番号。
+   */
+  private rowY(index: number): number {
+    return 48 + index * 20;
+  }
+
+  /**
+   * 行のマイナスボタンの位置を求める。
+   * @param index 行番号。
+   */
+  private minusRect(index: number): Rect {
+    return { x: 104, y: this.rowY(index) - 2, width: 12, height: 12 };
+  }
+
+  /**
+   * 行のプラスボタンの位置を求める。
+   * @param index 行番号。
+   */
+  private plusRect(index: number): Rect {
+    return { x: 152, y: this.rowY(index) - 2, width: 12, height: 12 };
+  }
+
+  /**
+   * ウィンドウを描く。
+   * @param screen 描画先。
+   * @param font 使用するフォント。
+   */
+  draw(screen: Screen, font: BitmapFont): void {
+    const report = computeBudget(this.state);
+    dimScreen(screen);
+    drawWindowFrame(screen, font, this.window, `${this.state.year}年度 予算`);
+
+    font.drawText(screen, `税収 $${formatNumber(report.taxIncome)}`, 24, 32, COLOR.uiYellow);
+
+    const amounts = [
+      "",
+      `$${formatNumber(report.roadSpending)} / $${formatNumber(report.roadRequired)}`,
+      `$${formatNumber(report.policeSpending)} / $${formatNumber(report.policeRequired)}`,
+      `$${formatNumber(report.fireSpending)} / $${formatNumber(report.fireRequired)}`,
+    ];
+
+    this.rows.forEach((row, i) => {
+      const y = this.rowY(i);
+      font.drawText(screen, row.label, 24, y, COLOR.white);
+      drawButton(screen, font, this.minusRect(i), "-");
+      font.drawTextCentered(screen, row.get(), 134, y, COLOR.uiYellow);
+      drawButton(screen, font, this.plusRect(i), "+");
+      if (amounts[i]) font.drawTextRight(screen, amounts[i], 232, y, COLOR.lightGray);
+    });
+
+    font.drawText(screen, `支出 $${formatNumber(report.totalSpending)}`, 24, 128, COLOR.white);
+    font.drawText(
+      screen,
+      `収支 ${report.balance < 0 ? "-" : "+"}$${formatNumber(Math.abs(report.balance))}`,
+      24,
+      140,
+      report.balance < 0 ? COLOR.red : COLOR.green,
+    );
+
+    drawButton(
+      screen,
+      font,
+      this.autoButton,
+      this.state.autoBudget ? "自動: ON" : "自動: OFF",
+      this.state.autoBudget,
+    );
+    drawButton(screen, font, this.confirmButton, "決定", true);
+  }
+
+  /**
+   * クリックを処理する。
+   * @param x 画面上のX座標。
+   * @param y 画面上のY座標。
+   */
+  click(x: number, y: number): void {
+    this.rows.forEach((row, i) => {
+      if (hitTest(this.minusRect(i), x, y)) row.change(-1);
+      if (hitTest(this.plusRect(i), x, y)) row.change(1);
+    });
+    if (hitTest(this.autoButton, x, y)) this.state.autoBudget = !this.state.autoBudget;
+    if (hitTest(this.confirmButton, x, y)) {
+      this.onConfirm();
+      this.done = true;
+    }
+  }
+}
+
+/** 市政の評価を見るウィンドウ。 */
+export class EvaluationModal implements Modal {
+  /** 閉じてよいか。 */
+  done = false;
+
+  private readonly window: Rect = { x: 32, y: 24, width: 192, height: 136 };
+  private readonly closeButton: Rect = { x: 96, y: 140, width: 64, height: 14 };
+
+  /**
+   * @param state 都市の状態。
+   */
+  constructor(private readonly state: CityState) {}
+
+  /**
+   * ウィンドウを描く。
+   * @param screen 描画先。
+   * @param font 使用するフォント。
+   */
+  draw(screen: Screen, font: BitmapFont): void {
+    const evaluation = evaluateCity(this.state);
+    const stats = this.state.stats;
+    dimScreen(screen);
+    drawWindowFrame(screen, font, this.window, "市政の評価");
+
+    font.drawText(screen, `人口 ${formatNumber(stats.population)}人`, 40, 42, COLOR.white);
+    font.drawText(screen, `支持率 ${evaluation.approval}%`, 40, 54, COLOR.white);
+    drawGauge(
+      screen,
+      40,
+      66,
+      176,
+      evaluation.approval / 100,
+      evaluation.approval >= 50 ? COLOR.green : COLOR.red,
+    );
+
+    font.drawText(screen, "市民が挙げた問題:", 40, 78, COLOR.lightGray);
+    if (evaluation.issues.length === 0) {
+      font.drawText(screen, "  特にありません", 40, 90, COLOR.green);
+    } else {
+      evaluation.issues.forEach((issue, i) => {
+        font.drawText(screen, `  ${i + 1}. ${issue}`, 40, 90 + i * 10, COLOR.uiYellow);
+      });
+    }
+
+    font.drawText(
+      screen,
+      `住宅 ${stats.residentialZones} / 商業 ${stats.commercialZones} / 工業 ${stats.industrialZones}`,
+      40,
+      128,
+      COLOR.lightGray,
+    );
+
+    drawButton(screen, font, this.closeButton, "閉じる", true);
+  }
+
+  /**
+   * クリックを処理する。
+   * @param x 画面上のX座標。
+   * @param y 画面上のY座標。
+   */
+  click(x: number, y: number): void {
+    if (hitTest(this.closeButton, x, y)) this.done = true;
+  }
+}
+
+/** 推移のグラフを見るウィンドウ。 */
+export class GraphModal implements Modal {
+  /** 閉じてよいか。 */
+  done = false;
+
+  private readonly window: Rect = { x: 16, y: 20, width: 224, height: 144 };
+  private readonly closeButton: Rect = { x: 172, y: 144, width: 56, height: 14 };
+
+  /**
+   * @param state 都市の状態。
+   */
+  constructor(private readonly state: CityState) {}
+
+  /**
+   * ウィンドウを描く。
+   * @param screen 描画先。
+   * @param font 使用するフォント。
+   */
+  draw(screen: Screen, font: BitmapFont): void {
+    const samples = this.state.history.samples;
+    dimScreen(screen);
+    drawWindowFrame(screen, font, this.window, "年ごとの推移");
+
+    if (samples.length === 0) {
+      font.drawTextCentered(screen, "まだ記録がありません", 128, 70, COLOR.lightGray);
+      drawButton(screen, font, this.closeButton, "閉じる", true);
+      return;
+    }
+
+    const graphs: readonly [string, number[], number][] = [
+      ["人口", samples.map((s) => s.population), COLOR.green],
+      ["資金", samples.map((s) => s.funds), COLOR.uiYellow],
+      ["公害", samples.map((s) => s.pollution), COLOR.red],
+    ];
+
+    graphs.forEach(([label, values, color], i) => {
+      const y = 34 + i * 36;
+      font.drawText(screen, label, 24, y, COLOR.white);
+      font.drawTextRight(screen, formatNumber(values[values.length - 1]), 232, y, color);
+      drawLineGraph(screen, 24, y + 10, 208, 22, values, color);
+    });
+
+    font.drawText(
+      screen,
+      `${samples[0].year}年 〜 ${samples[samples.length - 1].year}年`,
+      24,
+      144,
+      COLOR.lightGray,
+    );
+    drawButton(screen, font, this.closeButton, "閉じる", true);
+  }
+
+  /**
+   * クリックを処理する。
+   * @param x 画面上のX座標。
+   * @param y 画面上のY座標。
+   */
+  click(x: number, y: number): void {
+    if (hitTest(this.closeButton, x, y)) this.done = true;
+  }
+}

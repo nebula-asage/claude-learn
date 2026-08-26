@@ -26,6 +26,10 @@ export interface CityStats {
   roadTiles: number;
   /** 線路タイルの数。 */
   railTiles: number;
+  /** 警察署の数。 */
+  policeStations: number;
+  /** 消防署の数。 */
+  fireStations: number;
   /** 電気が来ていない建物の数。 */
   unpoweredBuildings: number;
 }
@@ -42,6 +46,8 @@ export function emptyStats(): CityStats {
     industrialZones: 0,
     roadTiles: 0,
     railTiles: 0,
+    policeStations: 0,
+    fireStations: 0,
     unpoweredBuildings: 0,
   };
 }
@@ -74,6 +80,8 @@ export function collectStats(map: CityMap, stats: CityStats): void {
       stats.industrialJobs += def.capacity;
     }
 
+    if (def.id === "police-station") stats.policeStations++;
+    if (def.id === "fire-station") stats.fireStations++;
     if (def.powerDemand > 0 && (flags & TileFlag.powered) === 0) stats.unpoweredBuildings++;
   }
 

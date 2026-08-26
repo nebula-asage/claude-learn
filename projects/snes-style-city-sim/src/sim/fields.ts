@@ -200,8 +200,13 @@ export function updateFields(state: CityState): void {
       const def = buildingByKind(map.buildingKind[i]);
       if (def.pollution > 0) fields.add(fields.pollution, x, y, def.pollution);
       if (def.capacity > 0) fields.add(fields.populationDensity, x, y, def.capacity);
-      if (def.id === "police-station") spread(fields, fields.policeCoverage, x, y, 12, 200);
-      if (def.id === "fire-station") spread(fields, fields.fireCoverage, x, y, 12, 200);
+      // 予算を切り詰めると、その分だけ手の届く範囲も薄くなる。
+      if (def.id === "police-station") {
+        spread(fields, fields.policeCoverage, x, y, 12, 200 * state.funding.police);
+      }
+      if (def.id === "fire-station") {
+        spread(fields, fields.fireCoverage, x, y, 12, 200 * state.funding.fire);
+      }
     }
   }
 
