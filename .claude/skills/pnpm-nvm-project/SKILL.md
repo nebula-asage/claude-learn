@@ -1,13 +1,13 @@
 ---
 name: pnpm-nvm-project
-description: Node.js(TypeScript)の練習・開発プロジェクト一式（nvm+pnpm前提+TypeScript/ESLint/Prettier/Vitest+JSDoc/TypeDocによるAPIドキュメント生成+Husky/lint-stagedのGit hooks）をホスト環境に直接構築するスキル。「pnpm/Node.jsの環境・プロジェクトを作って」「TypeScriptのlint/format/testを入れて」「JSDoc/TypeDocでAPIドキュメントを生成したい」「コミット時に自動でlint/formatかけたい」など、pnpmベースのNode.js/TypeScriptプロジェクトの新規作成や、既存プロジェクトへのlint/test/ドキュメンテーション/Git hooks追加を頼まれたら必ず使うこと。Docker/devcontainerには依存せず、pnpm本体はcorepackではなくnpm経由で導入しサプライチェーン攻撃対策も組み込む。devcontainer自体の構築はdevcontainer-ubuntu-jaスキルを使う。
+description: Node.js(TypeScript)の練習・開発プロジェクト一式（nvm+pnpm前提+TypeScript/ESLint/Prettier/Vitest+JSDoc/TypeDocによるAPIドキュメント生成+Husky/lint-stagedのGit hooks）をホスト環境に直接構築するスキル。「pnpm/Node.jsの環境・プロジェクトを作って」「TypeScriptのlint/format/testを入れて」「JSDoc/TypeDocでAPIドキュメントを生成したい」「コミット時に自動でlint/formatかけたい」など、pnpmベースのNode.js/TypeScriptプロジェクトの新規作成や、既存プロジェクトへのlint/test/ドキュメンテーション/Git hooks追加を頼まれたら必ず使うこと。配置先が既にVS Code向けの`.vscode/`ディレクトリを持つ場合は、ESLint(flat config)/Prettier/Vitestに対応したTypeScript向けのsettings.json・拡張機能のおすすめ設定に加え、Coverage Gutters拡張によるカバレッジのエディタ上可視化（被覆/未被覆行のガター色付け）設定も追加する。Docker/devcontainerには依存せず、pnpm本体はcorepackではなくnpm経由で導入しサプライチェーン攻撃対策も組み込む。devcontainer自体の構築はdevcontainer-ubuntu-jaスキルを使う。
 ---
 
 # pnpm-nvm-project
 
 **nvm + pnpm前提**のNode.js環境構築条件を組み込んだプロジェクト一式を、Docker/devcontainerに依存せずホスト環境に直接配置するスキル。`.devcontainer/`（このリポジトリのdevcontainer環境）で一度構築・検証済みの条件（nvmでのNode.js導入・pnpmのバージョン固定・サプライチェーン攻撃対策）に加え、`projects/gitlab-mcp-server/`で実際に運用・検証済みのTypeScript開発環境（TypeScript + tscビルド、ESLint(flat config, typescript-eslint) + Prettier、Vitest、eslint-plugin-jsdoc + TypeDocによるJSDoc必須化とAPIドキュメント生成、Husky + lint-stagedによるpre-commit時の自動lint/format）を、コンテナに依存しない形でテンプレート化したもの。
 
-このスキルは [[devcontainer-ubuntu-ja]] などのdevcontainer系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。devcontainer/コンテナ環境そのものの構築を頼まれたときはそちらのスキルを使うこと。
+このスキルはdevcontainer系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。devcontainer/コンテナ環境そのものの構築を頼まれたときは別スキル（例: devcontainer-ubuntu-ja）を使うこと。
 
 ## このスキルが前提とする条件（変更しない）
 
@@ -78,12 +78,21 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（nvm
    - `.claude/skills/pnpm-nvm-project/templates/scripts/install-husky.mjs` → `<配置先>/scripts/install-husky.mjs`（置換不要。パスはすべて実行時に動的に求めているため、どのプロジェクト名・配置先でもそのまま使える）
    - `.claude/skills/pnpm-nvm-project/templates/.husky/pre-commit` → `<配置先>/.husky/pre-commit`（`__PROJECT_PATH__`を、リポジトリルートから見た配置先の相対パスに置換する。このリポジトリの通常の配置なら`projects/<project-name>`になる）
 
-6. **依存関係を同期し、動作確認する**
+6. **配置先がVS Codeプロジェクトの場合、TypeScript向けのVS Code設定を追加する**
+   - 判定は`<配置先>/.vscode/`ディレクトリ（`settings.json`または`extensions.json`）の有無で行う。存在しなければVS Code向けの設定は持たないプロジェクトとみなし、この手順はスキップする（`.vscode/`を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、`.vscode/`を新規作成したうえで以下と同じ内容を配置してよい）。
+   - **`settings.json`を配置する**: `.claude/skills/pnpm-nvm-project/templates/vscode/settings.json`の内容を`<配置先>/.vscode/settings.json`にマージする。ファイルが既に存在する場合は、Edit系ツールで直接編集し、既存のキー（言語非依存の共通設定など）を残したまま`[typescript]`ブロックと`coverage-gutters.*`系のキーを追加する（同じキーが既にあれば上書きせず、内容を確認したうえでユーザーに判断を仰ぐ）。ファイルが無ければ新規作成する。
+     - `coverage-gutters.*`の設定はCoverage Gutters拡張（後述）向けで、`pnpm run test:coverage`を実行すると`@vitest/coverage-v8`のデフォルトレポータ（`clover`/`json`）が生成する`coverage/clover.xml`・`coverage/coverage-final.json`を読み込み、エディタの行番号横に被覆行（緑）・未被覆行（赤）を色付け表示する。この2ファイルはCoverage Gutters拡張がデフォルトで認識するファイル名なので、`vitest.config.ts`側でレポータを追加する必要はない。既存の`test:coverage`スクリプトが出すHTMLレポート（`coverage/index.html`）運用に加えて使う追加のレポート形式であり、どちらかを置き換えるものではない。`coverage/`はテスト実行のたびに再生成される成果物なのでコミット対象に含めない（テンプレートの`.gitignore`で除外済み）。
+   - **拡張機能のおすすめ設定を配置する**: 配置先の判定はさらに`<配置先>/.devcontainer/devcontainer.json`の有無で分岐する（この判定も「devcontainer環境を構築するスキルが動いたかどうか」ではなく、あくまでファイルの有無で行う）。
+     - `devcontainer.json`が存在する場合: `.vscode/extensions.json`は使わず、`.claude/skills/pnpm-nvm-project/templates/vscode/extensions.json`の`recommendations`配列の中身（拡張機能IDのみ。コメントは転記しなくてよい）を`<配置先>/.devcontainer/devcontainer.json`の`customizations.vscode.extensions`配列にEdit系ツールで直接マージする（重複を除いて追記。既存の`customizations.vscode.settings`等は残す）。
+     - `devcontainer.json`が存在しない場合: `.claude/skills/pnpm-nvm-project/templates/vscode/extensions.json`の内容を`<配置先>/.vscode/extensions.json`にマージする（既存の`recommendations`があれば重複を除いて追記し、既存のTypeScript以外の推奨拡張機能はそのまま残す）。
+   - `settings.json`/`extensions.json`（および`devcontainer.json`）はJSONC（コメント付きJSON）として解釈されるため、標準の`jq`に通す前にコメント行を取り除くか、目視でカンマ・かっこの対応を確認する。
+
+7. **依存関係を同期し、動作確認する**
    `<配置先>`に移動し、以下を確認する。確認後、テストで作った一時的な依存追加や`pnpm-lock.yaml`/`node_modules`/`dist`/`coverage`/`docs`は元に戻す/削除すること。
    - `pnpm install`を実行し、`pnpm-lock.yaml`が生成されることを確認する（これはコミット対象）。
    - `pnpm run build`（`tsc`ビルド）と`pnpm start`（`dist/index.js`を実行）が動くことを確認する。
    - `pnpm run typecheck`・`pnpm run lint`・`pnpm run format:check`・`pnpm test`（テンプレート同梱のサンプルテストが通る）がいずれもエラーなく完了することを確認する。
-   - `pnpm run test:coverage`を実行し、`coverage/`配下にHTMLレポート（`coverage/index.html`）が生成されることを確認する。
+   - `pnpm run test:coverage`を実行し、`coverage/`配下にHTMLレポート（`coverage/index.html`）が生成されることを確認する。手順6でVS Code向け設定を配置した場合は、同時に`coverage/clover.xml`・`coverage/coverage-final.json`も生成されていることを確認する（VS Codeで開いてCoverage Gutters拡張の「Watch」コマンドを実行すると、テストから呼ばれていない行があればエディタのガターに未被覆として表示されるはずだが、これはVS Code上での見た目の確認なので必須ではない）。
    - `pnpm run docs`を実行し、`docs/api/`配下にHTMLのAPIリファレンス（`docs/api/index.html`）が生成されることを確認する。`pnpm run docs:check`もエラーなく完了することを確認する（テンプレートの`src/index.ts`にはJSDoc必須ルールに準拠したexport例`greet`を同梱しており、これが記述漏れ検出の動作確認を兼ねる）。
    - `pnpm config get minimum-release-age`が`10080`、`npm config get min-release-age`が`7`を返すことを確認する。
    - `ignore-scripts`が効いているかは、postinstallスクリプトを持つ適当なパッケージを試験的に追加し、そのスクリプトのログが出力されないことを確認する。確認後はそのパッケージを取り除く。
@@ -91,7 +100,7 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（nvm
    - フックの動作確認として、`src/`配下にわざとフォーマット崩れの`.ts`ファイルを追加して`git add`し、`git commit`（コミット自体は成立させず、テスト用に作ったファイルなので確認後は`git reset`でステージを戻す）を試みて、`pnpm exec lint-staged`（または`git commit`のフック経由）が`eslint --fix`/`prettier --write`でファイルを自動整形することを確認する。確認用に追加したファイルは元に戻す/削除する。
    - 確認が終わったら、`git config --unset core.hooksPath`でこの動作確認中に設定されたローカル設定を元に戻す（そのプロジェクトを今後も使い続ける前提であれば、`pnpm run prepare`済みのまま残してよいかユーザーに確認してから判断する）。
 
-7. **（任意）bash補完を有効化する**
+8. **（任意）bash補完を有効化する**
    - nvmの補完は公式インストーラーが`~/.bashrc`に自動追記済みのため、追加作業は不要。
    - pnpmの補完はroot権限なしで使えるユーザー単位のディレクトリに配置する:
      ```bash
@@ -102,6 +111,7 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（nvm
 
 ## このスキルの対象外
 
-- Docker/devcontainer環境の構築自体はこのスキルの対象外。コンテナ環境が欲しいと言われたら[[devcontainer-ubuntu-ja]]スキルを使う（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
+- Docker/devcontainer環境の構築自体はこのスキルの対象外。コンテナ環境が欲しいと言われたら別スキル（例: devcontainer-ubuntu-ja）を使う（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
+- `.vscode/`ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはTypeScript固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/`を新規作成したうえでTypeScript向け設定を配置してよい。
 - corepackを使わない方針、pnpmを10系に固定する方針、`.npmrc`の3設定、TypeScript/ESLint/Prettier/Vitest+カバレッジ計測(`@vitest/coverage-v8`)+JSDoc必須化(`eslint-plugin-jsdoc`)/TypeDocによるAPIドキュメント生成+Git hooks(Husky/lint-staged)の開発環境一式はこのリポジトリで検証済みの固定条件として扱い、単なる「pnpm環境作って」的な依頼でも省略しない。
 - ビルドバンドラ（Vite等）は含まない。`projects/gitlab-mcp-server/`はNode.js向けMCPサーバであり、ブラウザ向けバンドルを必要としないため`tsc`ビルドのみで完結している。ブラウザ向けアプリ等でバンドラが必要な場合は、テンプレートに`vite`等を追加導入すること。
