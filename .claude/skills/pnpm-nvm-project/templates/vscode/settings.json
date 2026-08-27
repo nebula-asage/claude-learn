@@ -1,0 +1,15 @@
+{
+  // ESLint(flat config: eslint.config.js)は拡張機能側が自動検出するため追加設定は不要
+  // フォーマットはPrettierに統一し、保存時に自動フォーマットする
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  // カバレッジの可視化（Coverage Gutters拡張）: `pnpm run test:coverage` を実行すると
+  // @vitest/coverage-v8のデフォルトレポータ(clover/json)が生成する coverage/clover.xml・
+  // coverage/coverage-final.json を読み込み、被覆行を緑、未被覆行を赤でガター（行番号横）に表示する
+  "coverage-gutters.coverageFileNames": ["clover.xml", "coverage-final.json"],
+  "coverage-gutters.showGutterCoverage": true,
+  "coverage-gutters.showRulerCoverage": true,
+  "coverage-gutters.showLineCoverage": false
+}
