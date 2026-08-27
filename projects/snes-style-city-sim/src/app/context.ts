@@ -2,6 +2,7 @@
  * 画面・入力・絵といった、全画面で共有する道具立て。
  * @packageDocumentation
  */
+import { AudioSystem } from "../audio/audio.js";
 import { buildTileset } from "../render/art/index.js";
 import { buildIconAtlas } from "../render/art/icons.js";
 import { type SpriteImage, type SpriteName, buildSprites } from "../render/art/sprites.js";
@@ -29,6 +30,8 @@ export interface GameContext {
   icons: Tileset;
   /** スプライトの絵。 */
   sprites: Record<SpriteName, SpriteImage[]>;
+  /** 効果音とBGM。 */
+  audio: AudioSystem;
 }
 
 /**
@@ -55,6 +58,7 @@ export function createContext(canvas: HTMLCanvasElement, font: BitmapFont): Game
       tileset,
     ),
     sprites: buildSprites(),
+    audio: new AudioSystem(),
   };
 }
 

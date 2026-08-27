@@ -105,6 +105,11 @@ export class Input {
     this.pointer.inside = true;
   }
 
+  /** このフレームで何かキーが押されたか。 */
+  get anyKeyPressed(): boolean {
+    return this.pressed.size > 0;
+  }
+
   /**
    * キーが押されているか。
    * @param code `KeyboardEvent.code` の値。

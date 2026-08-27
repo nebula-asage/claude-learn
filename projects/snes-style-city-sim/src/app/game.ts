@@ -78,6 +78,7 @@ export class Game implements UiScreen {
   private animationFrame = 0;
   private animationTimer = 0;
   private finished = false;
+  private wasCalm = true;
 
   /**
    * @param context 共有の道具立て。
@@ -141,7 +142,8 @@ export class Game implements UiScreen {
 
     // 予算画面など、ウィンドウが開いている間は時間を止めて操作だけを受け付ける。
     if (this.simulation.pendingBudget && !this.modal) {
-      this.modal = new BudgetModal(this.state, () => this.simulation.settleBudget());
+      this.modal = this.createBudgetModal();
+      this.context.audio.play("window");
     }
     if (this.modal) {
       this.updateModal();
@@ -153,7 +155,25 @@ export class Game implements UiScreen {
     this.updateWindows();
     this.updateBuilding();
     this.updateSimulation(delta);
+    this.updateMusic();
     this.checkScenario();
+  }
+
+  /** 災害の有無に合わせてBGMを切り替える。 */
+  private updateMusic(): void {
+    const inDanger = this.state.entities.length > 0 || this.simulation.disasters.burningCount > 0;
+    // 落ち着いた状態から急に危険になった瞬間だけ、災害の効果音を鳴らす。
+    if (inDanger && this.wasCalm) this.context.audio.play("disaster");
+    this.wasCalm = !inDanger;
+    this.context.audio.playMusic(inDanger ? "disaster" : "city");
+  }
+
+  /** 予算ウィンドウを作る。決算したときに音を鳴らす。 */
+  private createBudgetModal(): Modal {
+    return new BudgetModal(this.state, () => {
+      this.simulation.settleBudget();
+      this.context.audio.play("coin");
+    });
   }
 
   /**
@@ -170,7 +190,10 @@ export class Game implements UiScreen {
       return;
     }
     const next = this.state.messages.shift();
-    if (next) this.showAdvice(next);
+    if (next) {
+      if (next.tone === "good") this.context.audio.play("milestone");
+      this.showAdvice(next);
+    }
   }
 
   /** 開いているウィンドウへの入力を処理する。 */
@@ -187,9 +210,8 @@ export class Game implements UiScreen {
   /** ウィンドウの開閉とデータマップの切り替えを処理する。 */
   private updateWindows(): void {
     const input = this.context.input;
-    if (input.wasPressed("KeyB")) {
-      this.modal = new BudgetModal(this.state, () => this.simulation.settleBudget());
-    }
+    const before = this.modal;
+    if (input.wasPressed("KeyB")) this.modal = this.createBudgetModal();
     if (input.wasPressed("KeyE")) this.modal = new EvaluationModal(this.state);
     if (input.wasPressed("KeyG")) this.modal = new GraphModal(this.state);
     if (input.wasPressed("KeyX")) {
@@ -202,6 +224,7 @@ export class Game implements UiScreen {
         this.nav.showTitle(),
       );
     }
+    if (this.modal !== before) this.context.audio.play("window");
 
     if (input.wasPressed("KeyV")) {
       const modes = Object.values(DataMap);
@@ -288,6 +311,7 @@ export class Game implements UiScreen {
   /** 道具の選択を処理する。 */
   private updateToolSelection(): void {
     const input = this.context.input;
+    const previous = this.selectedTool;
     TOOL_HOTKEYS.forEach((code, index) => {
       if (input.wasPressed(code) && index < TOOLS.length) this.selectedTool = index;
     });
@@ -301,6 +325,7 @@ export class Game implements UiScreen {
       const index = toolIndexAt(input.pointer.x, input.pointer.y, TOOLS.length);
       if (index !== null) this.selectedTool = index;
     }
+    if (this.selectedTool !== previous) this.context.audio.play("select");
   }
 
   /** マップ上の建設操作を処理する。 */
@@ -328,8 +353,14 @@ export class Game implements UiScreen {
     this.lastBuiltTile = target;
     const result = applyTool(this.state, tool, target.x, target.y);
     this.notify(result.message);
-    // 建てた直後に通電状態を反映させ、送電線をつないだ手応えがすぐ出るようにする。
-    if (result.ok && result.cost > 0) this.simulation.refreshPower();
+
+    if (result.ok && result.cost > 0) {
+      this.context.audio.play(tool.id === "bulldoze" ? "bulldoze" : "build");
+      // 建てた直後に通電状態を反映させ、送電線をつないだ手応えがすぐ出るようにする。
+      this.simulation.refreshPower();
+    } else if (!result.ok && result.message) {
+      this.context.audio.play("error");
+    }
   }
 
   /** 1フレーム分の描画。 */

@@ -465,6 +465,7 @@ const stubCanvas = {
 };
 
 const { Input } = await import("../src/ui/input.js");
+const { AudioSystem } = await import("../src/audio/audio.js");
 const { NewCityScreen, ScenarioScreen, TitleScreen } = await import("../src/ui/screens.js");
 
 const uiScreen = new Screen();
@@ -476,6 +477,7 @@ const uiContext = {
   tileset,
   icons,
   sprites,
+  audio: new AudioSystem(),
 } as unknown as import("../src/app/context.js").GameContext;
 const noopNav = {
   startFreePlay: () => undefined,
@@ -494,6 +496,19 @@ for (const [name, uiPage] of [
   uiPage.draw();
   save(uiScreen, `dist-tools/screen-${name}.png`);
 }
+
+// 実際のゲーム画面クラスをそのまま動かしてみる（起動できることの確認も兼ねる）。
+const { Game } = await import("../src/app/game.js");
+const playState = new CityState(
+  generateTerrain(new Rng(31337), { width: 60, height: 45 }),
+  new Rng(31337),
+  20000,
+  "しれん市",
+);
+const game = new Game(uiContext, playState, SCENARIOS[0], noopNav);
+for (let frame = 0; frame < 90; frame++) game.update(1 / 60);
+game.draw();
+save(uiScreen, "dist-tools/screen-play.png");
 
 // 最後: フォントの表示確認。
 const fontSheet = new Screen(256, 96);

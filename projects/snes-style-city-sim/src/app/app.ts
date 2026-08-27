@@ -23,6 +23,7 @@ export class App implements AppNavigation {
    */
   constructor(context: GameContext) {
     this.context = context;
+    context.audio.playMusic("title");
     this.current = new TitleScreen(context, this);
     window.addEventListener("resize", () => fitToWindow(context.canvas));
     fitToWindow(context.canvas);
@@ -30,6 +31,7 @@ export class App implements AppNavigation {
 
   /** タイトル画面へ戻る。 */
   showTitle(): void {
+    this.context.audio.playMusic("title");
     this.current = new TitleScreen(this.context, this);
   }
 
@@ -81,6 +83,11 @@ export class App implements AppNavigation {
     const frame = (now: number): void => {
       const delta = Math.min(0.1, (now - this.lastTime) / 1000);
       this.lastTime = now;
+      // ブラウザは利用者の操作より前に音を鳴らせないので、入力のたびに音源を起こす。
+      if (this.context.input.clicked || this.context.input.anyKeyPressed) {
+        this.context.audio.unlock();
+      }
+      if (this.context.input.wasPressed("KeyM")) this.context.audio.toggle();
       this.current.update(delta);
       this.current.draw();
       this.context.screen.present(this.context.ctx);
