@@ -81,8 +81,11 @@ export class Screen {
    */
   setPixel(x: number, y: number, color: number): void {
     if (color === 0) return;
-    if (x < this.clipX0 || x >= this.clipX1 || y < this.clipY0 || y >= this.clipY1) return;
-    this.pixels[y * this.width + x] = PALETTE[color];
+    // 座標に小数が混ざると添字が行をまたいでずれるため、必ず整数に丸めてから書く。
+    const px = Math.round(x);
+    const py = Math.round(y);
+    if (px < this.clipX0 || px >= this.clipX1 || py < this.clipY0 || py >= this.clipY1) return;
+    this.pixels[py * this.width + px] = PALETTE[color];
   }
 
   /**
@@ -95,10 +98,10 @@ export class Screen {
    */
   fillRect(x: number, y: number, w: number, h: number, color: number): void {
     if (color === 0) return;
-    const x0 = Math.max(x, this.clipX0);
-    const y0 = Math.max(y, this.clipY0);
-    const x1 = Math.min(x + w, this.clipX1);
-    const y1 = Math.min(y + h, this.clipY1);
+    const x0 = Math.max(Math.round(x), this.clipX0);
+    const y0 = Math.max(Math.round(y), this.clipY0);
+    const x1 = Math.min(Math.round(x + w), this.clipX1);
+    const y1 = Math.min(Math.round(y + h), this.clipY1);
     if (x0 >= x1 || y0 >= y1) return;
     const value = PALETTE[color];
     for (let py = y0; py < y1; py++) {
@@ -142,6 +145,8 @@ export class Screen {
     dstX: number,
     dstY: number,
   ): void {
+    dstX = Math.round(dstX);
+    dstY = Math.round(dstY);
     // クリップにかかる分だけ転送元の読み出し位置もずらす。
     const clipLeft = Math.max(0, this.clipX0 - dstX);
     const clipTop = Math.max(0, this.clipY0 - dstY);
@@ -182,6 +187,8 @@ export class Screen {
     color: number,
   ): void {
     if (color === 0) return;
+    dstX = Math.round(dstX);
+    dstY = Math.round(dstY);
     const value = PALETTE[color];
     for (let row = 0; row < height; row++) {
       const y = dstY + row;

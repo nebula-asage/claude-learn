@@ -1,7 +1,7 @@
 /**
- * ブラウザ側のエントリポイント。起動処理は `app/game.ts` に任せる。
+ * ブラウザ側のエントリポイント。起動処理は `app/app.ts` に任せる。
  * @packageDocumentation
  */
-import { startGame } from "./app/game.js";
+import { startApp } from "./app/app.js";
 
-void startGame("screen");
+void startApp("screen");

@@ -129,7 +129,7 @@ export class Simulation {
       DisasterKind.earthquake,
       DisasterKind.monster,
     ];
-    if (state.rng.chance(0.02)) {
+    if (state.rng.chance(state.disasterChance)) {
       const message = this.disasters.trigger(state.rng.pick(kinds));
       if (message) state.messages.push(message, "warning");
     }

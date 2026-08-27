@@ -48,6 +48,8 @@ const { BudgetModal, DisasterModal, EvaluationModal, GraphModal } =
 const { buildSprites } = await import("../src/render/art/sprites.js");
 const { drawAdvisor, drawDisasterEntities } = await import("../src/render/entities.js");
 const { DisasterKind } = await import("../src/sim/disasters.js");
+const { SCENARIOS } = await import("../src/sim/scenario.js");
+const { averageWhereDeveloped } = await import("../src/sim/fields.js");
 const { encodePng } = await import("./png.js");
 
 mkdirSync("dist-tools", { recursive: true });
@@ -258,6 +260,7 @@ for (let y = 1; y < 29; y += 5) {
 buildStructure(grown, 26, 21, buildingById("coal-plant"));
 
 grown.autoBudget = true; // プレビューでは予算画面を出さずに自動決算する
+grown.disastersEnabled = false; // 成長の様子を見たいので、災害は別途あとで起こす
 const simulation = new Simulation(grown);
 console.log("シミュレーション経過:");
 for (let month = 0; month <= 12 * 30; month++) {
@@ -360,6 +363,7 @@ saveOverlay("dist-tools/window-disaster.png", () => {
 
 // 災害の最中の画面。竜巻と怪獣を出し、火事も起こしてから少し進める。
 const sprites = buildSprites();
+grown.disastersEnabled = true;
 simulation.disasters.trigger(DisasterKind.tornado);
 simulation.disasters.trigger(DisasterKind.monster);
 simulation.disasters.trigger(DisasterKind.fire);
@@ -396,6 +400,100 @@ for (const frames of [sprites.tornado, sprites.monster, sprites.advisor]) {
   }
 }
 save(spriteSheet, "dist-tools/sprites.png");
+
+// シナリオの下ごしらえ結果。
+for (const scenario of SCENARIOS) {
+  const state = scenario.build();
+  const pollution = state.fields.pollution;
+  const averagePollution = pollution.reduce((sum, v) => sum + v, 0) / pollution.length;
+  const developedPollution = averageWhereDeveloped(state.fields, state.fields.pollution);
+  console.log(
+    `シナリオ「${scenario.name}」: 人口 ${state.stats.population}` +
+      ` 区画 R${state.stats.residentialZones}/C${state.stats.commercialZones}/I${state.stats.industrialZones}` +
+      ` 電力 ${state.power.demand}/${state.power.supply}` +
+      ` 公害 全体${averagePollution.toFixed(1)}/市街${developedPollution.toFixed(1)}` +
+      ` 資金 ${state.funds}`,
+  );
+
+  const shot = new Screen();
+  const shotView = new MapView(state.map, tileset);
+  shotView.centerOn(state.map.width / 2, state.map.height / 2);
+  shot.clear(COLOR.black);
+  shotView.draw(shot, 0);
+  drawPanel(
+    shot,
+    font,
+    icons,
+    TOOLS.map(() => false),
+    2,
+    {
+      cityName: state.cityName,
+      year: state.year,
+      month: state.month,
+      funds: state.funds,
+      population: state.stats.population,
+      demand: state.demand,
+      speedName: "停止",
+      powerShortage: state.power.demand > state.power.supply,
+      toolName: "道路",
+      toolCost: 10,
+      message: "",
+      cursor: null,
+    },
+  );
+  save(shot, `dist-tools/scenario-${scenario.id}.png`);
+}
+
+// タイトル・新しい街・シナリオ選択の各画面。
+// これらは入力やlocalStorageに触れるので、node用に最低限の代わりを用意してから作る。
+const stubCanvas = {
+  width: 256,
+  height: 224,
+  style: {},
+  addEventListener: () => undefined,
+  setPointerCapture: () => undefined,
+  getBoundingClientRect: () => ({ left: 0, top: 0, width: 256, height: 224 }),
+};
+(globalThis as unknown as { window: unknown }).window = {
+  addEventListener: () => undefined,
+  innerWidth: 1024,
+  innerHeight: 768,
+};
+(globalThis as unknown as { localStorage: unknown }).localStorage = {
+  getItem: () => null,
+  setItem: () => undefined,
+};
+
+const { Input } = await import("../src/ui/input.js");
+const { NewCityScreen, ScenarioScreen, TitleScreen } = await import("../src/ui/screens.js");
+
+const uiScreen = new Screen();
+const uiContext = {
+  canvas: stubCanvas,
+  screen: uiScreen,
+  input: new Input(stubCanvas as unknown as HTMLCanvasElement),
+  font,
+  tileset,
+  icons,
+  sprites,
+} as unknown as import("../src/app/context.js").GameContext;
+const noopNav = {
+  startFreePlay: () => undefined,
+  startScenario: () => undefined,
+  loadSlot: () => undefined,
+  showTitle: () => undefined,
+  showNewCity: () => undefined,
+  showScenarios: () => undefined,
+};
+
+for (const [name, uiPage] of [
+  ["title", new TitleScreen(uiContext, noopNav)],
+  ["newcity", new NewCityScreen(uiContext, noopNav)],
+  ["scenario-select", new ScenarioScreen(uiContext, noopNav)],
+] as const) {
+  uiPage.draw();
+  save(uiScreen, `dist-tools/screen-${name}.png`);
+}
 
 // 最後: フォントの表示確認。
 const fontSheet = new Screen(256, 96);

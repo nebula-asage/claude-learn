@@ -1,35 +1,31 @@
 /**
- * ゲーム全体の組み立てとメインループ。
+ * 遊んでいる最中の画面。入力・シミュレーション・描画をつなぐ。
  * @packageDocumentation
  */
-import { buildTileset } from "../render/art/index.js";
-import { buildIconAtlas } from "../render/art/icons.js";
-import { type SpriteImage, type SpriteName, buildSprites } from "../render/art/sprites.js";
 import { drawAdvisor, drawDisasterEntities } from "../render/entities.js";
-import { BitmapFont, loadFont } from "../render/font/font.js";
 import { MapView, VIEW_HEIGHT, VIEW_WIDTH } from "../render/mapview.js";
-import { COLOR } from "../render/palette.js";
 import { DATA_MAP_NAMES, DataMap, type DataMapValue, drawDataMap } from "../render/overlays.js";
+import { COLOR } from "../render/palette.js";
 import { drawPanel, toolIndexAt } from "../render/panel.js";
-import { SCREEN_HEIGHT, SCREEN_WIDTH, Screen } from "../render/screen.js";
-import type { Tileset } from "../render/tileset.js";
 import { canPlaceStructure } from "../sim/build.js";
-import { Rng } from "../sim/rng.js";
 import type { AdvisorMessage } from "../sim/messages.js";
-import { isToolUnlocked } from "../sim/milestones.js";
+import { isToolUnlocked, titleFor } from "../sim/milestones.js";
+import { type Scenario, scenarioStatus } from "../sim/scenario.js";
 import { SPEEDS, Simulation } from "../sim/simulation.js";
-import { CityState } from "../sim/state.js";
-import { generateTerrain } from "../sim/terrain.js";
+import type { CityState } from "../sim/state.js";
 import { TILE_SIZE, type TilePos } from "../sim/tiles.js";
-import { Input } from "../ui/input.js";
 import {
   BudgetModal,
   DisasterModal,
   EvaluationModal,
   GraphModal,
   type Modal,
+  ResultModal,
+  SystemModal,
 } from "../ui/modals.js";
+import type { AppNavigation, UiScreen } from "../ui/screens.js";
 import { TOOLS, applyTool, toolOrigin } from "../ui/tools.js";
+import type { GameContext } from "./context.js";
 
 /** キーボードでスクロールするときの速さ（ドット毎秒）。 */
 const SCROLL_SPEED = 220;
@@ -37,7 +33,7 @@ const SCROLL_SPEED = 220;
 /** アニメーションを1コマ進める間隔（秒）。 */
 const ANIMATION_INTERVAL = 0.2;
 
-/** 通知を表示し続ける秒数。 */
+/** パネルの通知を表示し続ける秒数。 */
 const MESSAGE_DURATION = 2.5;
 
 /** アドバイザーの吹き出しを表示し続ける秒数。 */
@@ -57,17 +53,15 @@ const TOOL_HOTKEYS = [
   "Digit0",
 ];
 
-/** ゲーム本体。描画・入力・シミュレーションをつなぐ。 */
-export class Game {
-  private readonly canvas: HTMLCanvasElement;
-  private readonly ctx: CanvasRenderingContext2D;
-  private readonly screen: Screen;
-  private readonly input: Input;
-  private readonly font: BitmapFont;
-  private readonly tileset: Tileset;
-  private readonly icons: Tileset;
-  private readonly sprites: Record<SpriteName, SpriteImage[]>;
-  private readonly state: CityState;
+/** 遊んでいる最中の画面。 */
+export class Game implements UiScreen {
+  private readonly context: GameContext;
+  private readonly nav: AppNavigation;
+  /** 遊んでいる都市の状態。 */
+  readonly state: CityState;
+  /** 遊んでいるシナリオ。自由に遊ぶモードなら `null`。 */
+  readonly scenario: Scenario | null;
+
   private readonly simulation: Simulation;
   private readonly view: MapView;
 
@@ -75,73 +69,39 @@ export class Game {
   private tickAccumulator = 0;
   private selectedTool = 2;
   private modal: Modal | null = null;
+  private dataMap: DataMapValue = DataMap.none;
   private advisorMessage: AdvisorMessage | null = null;
   private advisorTimer = 0;
-  private dataMap: DataMapValue = DataMap.none;
   private message = "";
   private messageTimer = 0;
   private lastBuiltTile: TilePos | null = null;
   private animationFrame = 0;
   private animationTimer = 0;
-  private lastTime = 0;
+  private finished = false;
 
   /**
-   * @param canvas 描画先のcanvas要素。
-   * @param font 読み込み済みのフォント。
+   * @param context 共有の道具立て。
    * @param state 遊ぶ都市の状態。
+   * @param scenario 遊ぶシナリオ。自由に遊ぶモードなら `null`。
+   * @param nav 画面切り替えの窓口。
    */
-  constructor(canvas: HTMLCanvasElement, font: BitmapFont, state: CityState) {
-    this.canvas = canvas;
-    canvas.width = SCREEN_WIDTH;
-    canvas.height = SCREEN_HEIGHT;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("2Dコンテキストを取得できません");
-    this.ctx = ctx;
-
-    this.screen = new Screen();
-    this.input = new Input(canvas);
-    this.font = font;
-    this.tileset = buildTileset();
-    this.icons = buildIconAtlas(
-      TOOLS.map((tool) => tool.icon),
-      this.tileset,
-    );
-    this.sprites = buildSprites();
+  constructor(
+    context: GameContext,
+    state: CityState,
+    scenario: Scenario | null,
+    nav: AppNavigation,
+  ) {
+    this.context = context;
     this.state = state;
+    this.scenario = scenario;
+    this.nav = nav;
     this.simulation = new Simulation(state);
-    this.view = new MapView(state.map, this.tileset);
+    this.view = new MapView(state.map, context.tileset);
     this.view.centerOn(state.map.width / 2, state.map.height / 2);
 
-    window.addEventListener("resize", () => this.fitToWindow());
-    this.fitToWindow();
-  }
-
-  /** 画面をウィンドウに合わせて整数倍で拡大する。 */
-  private fitToWindow(): void {
-    const scale = Math.max(
-      1,
-      Math.min(
-        Math.floor(window.innerWidth / SCREEN_WIDTH),
-        Math.floor(window.innerHeight / SCREEN_HEIGHT),
-      ),
-    );
-    this.canvas.style.width = `${SCREEN_WIDTH * scale}px`;
-    this.canvas.style.height = `${SCREEN_HEIGHT * scale}px`;
-  }
-
-  /** メインループを開始する。 */
-  start(): void {
-    this.lastTime = performance.now();
-    const frame = (now: number): void => {
-      const delta = Math.min(0.1, (now - this.lastTime) / 1000);
-      this.lastTime = now;
-      this.update(delta);
-      this.draw();
-      this.input.endFrame();
-      requestAnimationFrame(frame);
-    };
-    requestAnimationFrame(frame);
+    if (scenario) {
+      state.messages.push(`${scenario.name}: ${scenario.goalText}`, "info");
+    }
   }
 
   /**
@@ -155,10 +115,19 @@ export class Game {
   }
 
   /**
+   * アドバイザーの一言を表示する。
+   * @param message 表示する助言。
+   */
+  private showAdvice(message: AdvisorMessage): void {
+    this.advisorMessage = message;
+    this.advisorTimer = ADVISOR_DURATION;
+  }
+
+  /**
    * 1フレーム分の状態更新。
    * @param delta 前のフレームからの経過秒数。
    */
-  private update(delta: number): void {
+  update(delta: number): void {
     this.animationTimer += delta;
     while (this.animationTimer >= ANIMATION_INTERVAL) {
       this.animationTimer -= ANIMATION_INTERVAL;
@@ -184,6 +153,7 @@ export class Game {
     this.updateWindows();
     this.updateBuilding();
     this.updateSimulation(delta);
+    this.checkScenario();
   }
 
   /**
@@ -194,7 +164,7 @@ export class Game {
     if (this.advisorMessage) {
       this.advisorTimer -= delta;
       // クリックでも読み飛ばせるようにする。
-      if (this.advisorTimer <= 0 || (this.input.clicked && !this.modal)) {
+      if (this.advisorTimer <= 0 || (this.context.input.clicked && !this.modal)) {
         this.advisorMessage = null;
       }
       return;
@@ -203,39 +173,37 @@ export class Game {
     if (next) this.showAdvice(next);
   }
 
-  /**
-   * アドバイザーの一言を表示する。
-   * @param message 表示する助言。
-   */
-  private showAdvice(message: AdvisorMessage): void {
-    this.advisorMessage = message;
-    this.advisorTimer = ADVISOR_DURATION;
-  }
-
   /** 開いているウィンドウへの入力を処理する。 */
   private updateModal(): void {
     const modal = this.modal;
     if (!modal) return;
-    if (this.input.clicked) modal.click(this.input.pointer.x, this.input.pointer.y);
+    const input = this.context.input;
+    if (input.clicked) modal.click(input.pointer.x, input.pointer.y);
     // 年度末の予算は「決定」でしか閉じられない（決算を飛ばせないようにする）。
-    const closable = !this.simulation.pendingBudget;
-    if (modal.done || (closable && this.input.wasPressed("Escape"))) this.modal = null;
+    const closable = !this.simulation.pendingBudget && !this.finished;
+    if (modal.done || (closable && input.wasPressed("Escape"))) this.modal = null;
   }
 
   /** ウィンドウの開閉とデータマップの切り替えを処理する。 */
   private updateWindows(): void {
-    if (this.input.wasPressed("KeyB")) {
+    const input = this.context.input;
+    if (input.wasPressed("KeyB")) {
       this.modal = new BudgetModal(this.state, () => this.simulation.settleBudget());
     }
-    if (this.input.wasPressed("KeyE")) this.modal = new EvaluationModal(this.state);
-    if (this.input.wasPressed("KeyD")) {
+    if (input.wasPressed("KeyE")) this.modal = new EvaluationModal(this.state);
+    if (input.wasPressed("KeyG")) this.modal = new GraphModal(this.state);
+    if (input.wasPressed("KeyX")) {
       this.modal = new DisasterModal(this.state, this.simulation.disasters, (message) =>
         this.showAdvice({ text: message, tone: "warning" }),
       );
     }
-    if (this.input.wasPressed("KeyG")) this.modal = new GraphModal(this.state);
+    if (input.wasPressed("Escape")) {
+      this.modal = new SystemModal(this.state, this.scenario?.id ?? null, () =>
+        this.nav.showTitle(),
+      );
+    }
 
-    if (this.input.wasPressed("KeyV")) {
+    if (input.wasPressed("KeyV")) {
       const modes = Object.values(DataMap);
       this.dataMap = modes[(modes.indexOf(this.dataMap) + 1) % modes.length];
       this.notify(DATA_MAP_NAMES[this.dataMap]);
@@ -247,15 +215,16 @@ export class Game {
    * @param delta 前のフレームからの経過秒数。
    */
   private updateSimulation(delta: number): void {
-    if (this.input.wasPressed("Space")) {
+    const input = this.context.input;
+    if (input.wasPressed("Space")) {
       this.speed = this.speed === 0 ? 2 : 0;
       this.notify(`進行: ${SPEEDS[this.speed].name}`);
     }
-    if (this.input.wasPressed("Minus") && this.speed > 0) {
+    if (input.wasPressed("Minus") && this.speed > 0) {
       this.speed--;
       this.notify(`進行: ${SPEEDS[this.speed].name}`);
     }
-    if (this.input.wasPressed("Equal") && this.speed < SPEEDS.length - 1) {
+    if (input.wasPressed("Equal") && this.speed < SPEEDS.length - 1) {
       this.speed++;
       this.notify(`進行: ${SPEEDS[this.speed].name}`);
     }
@@ -276,48 +245,68 @@ export class Game {
     if (budget <= 0) this.tickAccumulator = 0;
   }
 
+  /** シナリオの達成・失敗を判定する。 */
+  private checkScenario(): void {
+    if (!this.scenario || this.finished) return;
+    const status = scenarioStatus(this.scenario, this.state);
+    if (status === "playing") return;
+
+    this.finished = true;
+    this.speed = 0;
+    this.modal = new ResultModal(
+      status === "achieved",
+      this.scenario.name,
+      status === "achieved"
+        ? `${this.scenario.goalText} を達成しました!`
+        : `期限の${this.scenario.years}年が過ぎました。`,
+      this.state,
+      () => this.nav.showTitle(),
+    );
+  }
+
   /**
    * スクロール操作を処理する。
    * @param delta 前のフレームからの経過秒数。
    */
   private updateScroll(delta: number): void {
+    const input = this.context.input;
     const step = SCROLL_SPEED * delta;
     let dx = 0;
     let dy = 0;
-    if (this.input.isAnyDown("ArrowLeft", "KeyA")) dx -= step;
-    if (this.input.isAnyDown("ArrowRight", "KeyD")) dx += step;
-    if (this.input.isAnyDown("ArrowUp", "KeyW")) dy -= step;
-    if (this.input.isAnyDown("ArrowDown", "KeyS")) dy += step;
+    if (input.isAnyDown("ArrowLeft", "KeyA")) dx -= step;
+    if (input.isAnyDown("ArrowRight", "KeyD")) dx += step;
+    if (input.isAnyDown("ArrowUp", "KeyW")) dy -= step;
+    if (input.isAnyDown("ArrowDown", "KeyS")) dy += step;
     if (dx !== 0 || dy !== 0) this.view.scrollBy(dx, dy);
 
     // 右ドラッグは地図の移動。掴んだ場所が指に付いてくるように動かす。
-    if (this.input.pointer.rightDown && this.input.pointer.y < VIEW_HEIGHT) {
-      this.view.scrollBy(-this.input.pointerDelta.x, -this.input.pointerDelta.y);
+    if (input.pointer.rightDown && input.pointer.y < VIEW_HEIGHT) {
+      this.view.scrollBy(-input.pointerDelta.x, -input.pointerDelta.y);
     }
   }
 
   /** 道具の選択を処理する。 */
   private updateToolSelection(): void {
+    const input = this.context.input;
     TOOL_HOTKEYS.forEach((code, index) => {
-      if (this.input.wasPressed(code) && index < TOOLS.length) this.selectedTool = index;
+      if (input.wasPressed(code) && index < TOOLS.length) this.selectedTool = index;
     });
-    if (this.input.wasPressed("BracketLeft")) {
+    if (input.wasPressed("BracketLeft")) {
       this.selectedTool = (this.selectedTool + TOOLS.length - 1) % TOOLS.length;
     }
-    if (this.input.wasPressed("BracketRight")) {
+    if (input.wasPressed("BracketRight")) {
       this.selectedTool = (this.selectedTool + 1) % TOOLS.length;
     }
-
-    const pointer = this.input.pointer;
-    if (this.input.clicked) {
-      const index = toolIndexAt(pointer.x, pointer.y, TOOLS.length);
+    if (input.clicked) {
+      const index = toolIndexAt(input.pointer.x, input.pointer.y, TOOLS.length);
       if (index !== null) this.selectedTool = index;
     }
   }
 
   /** マップ上の建設操作を処理する。 */
   private updateBuilding(): void {
-    const pointer = this.input.pointer;
+    const input = this.context.input;
+    const pointer = input.pointer;
     if (!pointer.down) {
       this.lastBuiltTile = null;
       return;
@@ -334,7 +323,7 @@ export class Game {
       this.lastBuiltTile.x !== target.x ||
       this.lastBuiltTile.y !== target.y;
     if (!isNewTile) return;
-    if (!this.input.clicked && !tool.drag) return;
+    if (!input.clicked && !tool.drag) return;
 
     this.lastBuiltTile = target;
     const result = applyTool(this.state, tool, target.x, target.y);
@@ -344,34 +333,38 @@ export class Game {
   }
 
   /** 1フレーム分の描画。 */
-  private draw(): void {
-    this.screen.clear(COLOR.black);
-    this.view.draw(this.screen, this.animationFrame);
-    drawDisasterEntities(this.screen, this.state, this.sprites, this.view, this.animationFrame);
-    drawDataMap(this.screen, this.state, this.view, this.dataMap);
+  draw(): void {
+    const { screen, font, sprites, icons, input } = this.context;
+    screen.clear(COLOR.black);
+    this.view.draw(screen, this.animationFrame);
+    drawDisasterEntities(screen, this.state, sprites, this.view, this.animationFrame);
+    drawDataMap(screen, this.state, this.view, this.dataMap);
     if (this.dataMap !== DataMap.none) {
-      this.font.drawTextShadow(
-        this.screen,
-        DATA_MAP_NAMES[this.dataMap],
+      font.drawTextShadow(screen, DATA_MAP_NAMES[this.dataMap], 4, 4, COLOR.white, COLOR.black);
+    }
+    if (this.scenario) {
+      const remaining = this.scenario.years - (this.state.year - 1900);
+      font.drawTextShadow(
+        screen,
+        `${this.scenario.name}  のこり${Math.max(0, remaining)}年`,
         4,
-        4,
-        COLOR.white,
+        VIEW_HEIGHT - 12,
+        COLOR.uiYellow,
         COLOR.black,
       );
     }
     if (!this.modal) this.drawCursor();
 
-    const pointer = this.input.pointer;
-    const cursor = pointer.inside ? this.view.tileAt(pointer.x, pointer.y) : null;
-    const tool = TOOLS[this.selectedTool];
-
     if (this.advisorMessage) {
-      drawAdvisor(this.screen, this.font, this.sprites, this.advisorMessage);
+      drawAdvisor(screen, font, sprites, this.advisorMessage);
     }
 
+    const cursor = input.pointer.inside ? this.view.tileAt(input.pointer.x, input.pointer.y) : null;
+    const tool = TOOLS[this.selectedTool];
     const locked = TOOLS.map((t) => !isToolUnlocked(t.id, this.state.stats.population));
-    drawPanel(this.screen, this.font, this.icons, locked, this.selectedTool, {
-      cityName: this.state.cityName,
+
+    drawPanel(screen, font, icons, locked, this.selectedTool, {
+      cityName: `${this.state.cityName}(${titleFor(this.state.stats.population)})`,
       year: this.state.year,
       month: this.state.month,
       funds: this.state.funds,
@@ -385,13 +378,13 @@ export class Game {
       cursor,
     });
 
-    this.modal?.draw(this.screen, this.font);
-    this.screen.present(this.ctx);
+    this.modal?.draw(screen, font);
   }
 
   /** 選択中の道具が占める範囲をカーソルとして描く。 */
   private drawCursor(): void {
-    const pointer = this.input.pointer;
+    const { screen, input } = this.context;
+    const pointer = input.pointer;
     if (!pointer.inside || pointer.y >= VIEW_HEIGHT) return;
     const target = this.view.tileAt(pointer.x, pointer.y);
     if (!target) return;
@@ -401,33 +394,18 @@ export class Game {
     const size = tool.footprint;
     const placeable =
       tool.footprint === 1 || canPlaceStructure(this.state.map, origin.x, origin.y, size, size);
-    const color = !this.state.canAfford(tool.cost) || !placeable ? COLOR.red : COLOR.white;
+    const affordable = this.state.canAfford(tool.cost);
+    const unlocked = isToolUnlocked(tool.id, this.state.stats.population);
+    const color = !affordable || !placeable || !unlocked ? COLOR.red : COLOR.white;
 
-    this.screen.setClip(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
-    this.screen.strokeRect(
+    screen.setClip(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+    screen.strokeRect(
       origin.x * TILE_SIZE - this.view.scrollX,
       origin.y * TILE_SIZE - this.view.scrollY,
       TILE_SIZE * size,
       TILE_SIZE * size,
       color,
     );
-    this.screen.resetClip();
+    screen.resetClip();
   }
-}
-
-/**
- * 指定したcanvas要素でゲームを起動する。
- * @param canvasId 描画先となるcanvas要素のid。
- */
-export async function startGame(canvasId: string): Promise<void> {
-  const canvas = document.getElementById(canvasId);
-  if (!(canvas instanceof HTMLCanvasElement)) {
-    throw new Error(`画面用のcanvas要素が見つかりません: #${canvasId}`);
-  }
-
-  const font = await loadFont();
-  const seed = Date.now() & 0xffffffff;
-  const map = generateTerrain(new Rng(seed));
-  const state = new CityState(map, new Rng(seed ^ 0x5bf03635), 20000, "ドットメトロポリス");
-  new Game(canvas, font, state).start();
 }

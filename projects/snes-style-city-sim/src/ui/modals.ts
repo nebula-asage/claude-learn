@@ -25,7 +25,9 @@ import {
   type DisasterSystem,
 } from "../sim/disasters.js";
 import { evaluateCity } from "../sim/evaluation.js";
+import { titleFor } from "../sim/milestones.js";
 import type { CityState } from "../sim/state.js";
+import { SAVE_SLOTS, describeSlot, saveCity } from "./storage.js";
 
 /** 重ね表示するウィンドウの共通の形。 */
 export interface Modal {
@@ -378,5 +380,158 @@ export class DisasterModal implements Modal {
       this.state.disastersEnabled = !this.state.disastersEnabled;
     }
     if (hitTest(this.closeButton, x, y)) this.done = true;
+  }
+}
+
+/** ゲーム中のメニュー。保存・読み込み・タイトルへの復帰を扱う。 */
+export class SystemModal implements Modal {
+  /** 閉じてよいか。 */
+  done = false;
+
+  private readonly window: Rect = { x: 32, y: 24, width: 192, height: 140 };
+  private readonly titleButton: Rect = { x: 40, y: 142, width: 88, height: 14 };
+  private readonly closeButton: Rect = { x: 136, y: 142, width: 80, height: 14 };
+  private notice = "";
+
+  /**
+   * @param state 都市の状態。
+   * @param scenarioId 遊んでいるシナリオの識別子。
+   * @param onQuit タイトルへ戻るときに呼ばれる処理。
+   */
+  constructor(
+    private readonly state: CityState,
+    private readonly scenarioId: string | null,
+    private readonly onQuit: () => void,
+  ) {}
+
+  /**
+   * 保存枠のボタンの位置を求める。
+   * @param slot 枠の番号。
+   */
+  private slotRect(slot: number): Rect {
+    return { x: 40, y: 44 + slot * 20, width: 176, height: 16 };
+  }
+
+  /**
+   * ウィンドウを描く。
+   * @param screen 描画先。
+   * @param font 使用するフォント。
+   */
+  draw(screen: Screen, font: BitmapFont): void {
+    dimScreen(screen);
+    drawWindowFrame(screen, font, this.window, "メニュー");
+    font.drawText(screen, "クリックした枠に保存します", 40, 34, COLOR.lightGray);
+
+    for (let slot = 0; slot < SAVE_SLOTS; slot++) {
+      const description = describeSlot(slot);
+      drawButton(
+        screen,
+        font,
+        this.slotRect(slot),
+        `枠${slot + 1}: ${description ?? "空き"}`,
+        false,
+      );
+    }
+
+    if (this.notice) font.drawText(screen, this.notice, 40, 110, COLOR.green);
+    font.drawText(
+      screen,
+      `${this.state.cityName} / ${titleFor(this.state.stats.population)}`,
+      40,
+      124,
+      COLOR.white,
+    );
+
+    drawButton(screen, font, this.titleButton, "タイトルへ");
+    drawButton(screen, font, this.closeButton, "ゲームに戻る", true);
+  }
+
+  /**
+   * クリックを処理する。
+   * @param x 画面上のX座標。
+   * @param y 画面上のY座標。
+   */
+  click(x: number, y: number): void {
+    for (let slot = 0; slot < SAVE_SLOTS; slot++) {
+      if (!hitTest(this.slotRect(slot), x, y)) continue;
+      saveCity(this.state, slot, this.scenarioId);
+      this.notice = `枠${slot + 1}に保存しました`;
+    }
+    if (hitTest(this.titleButton, x, y)) {
+      this.onQuit();
+      this.done = true;
+    }
+    if (hitTest(this.closeButton, x, y)) this.done = true;
+  }
+}
+
+/** シナリオの結果を伝えるウィンドウ。 */
+export class ResultModal implements Modal {
+  /** 閉じてよいか。 */
+  done = false;
+
+  private readonly window: Rect = { x: 32, y: 48, width: 192, height: 112 };
+  private readonly closeButton: Rect = { x: 88, y: 140, width: 80, height: 14 };
+
+  /**
+   * @param achieved 目標を達成したか。
+   * @param title シナリオの名前。
+   * @param detail 結果の説明。
+   * @param state 都市の状態。
+   * @param onClose 閉じたときに呼ばれる処理。
+   */
+  constructor(
+    private readonly achieved: boolean,
+    private readonly title: string,
+    private readonly detail: string,
+    private readonly state: CityState,
+    private readonly onClose: () => void,
+  ) {}
+
+  /**
+   * ウィンドウを描く。
+   * @param screen 描画先。
+   * @param font 使用するフォント。
+   */
+  draw(screen: Screen, font: BitmapFont): void {
+    dimScreen(screen);
+    drawWindowFrame(screen, font, this.window, this.achieved ? "目標達成!" : "任期終了");
+
+    font.drawTextCentered(screen, this.title, 128, 68, COLOR.white);
+    font.drawTextCentered(
+      screen,
+      this.detail,
+      128,
+      84,
+      this.achieved ? COLOR.green : COLOR.uiYellow,
+    );
+    font.drawTextCentered(
+      screen,
+      `最終人口 ${formatNumber(this.state.stats.population)}人`,
+      128,
+      104,
+      COLOR.white,
+    );
+    font.drawTextCentered(
+      screen,
+      `支持率 ${evaluateCity(this.state).approval}%`,
+      128,
+      116,
+      COLOR.white,
+    );
+
+    drawButton(screen, font, this.closeButton, "タイトルへ", true);
+  }
+
+  /**
+   * クリックを処理する。
+   * @param x 画面上のX座標。
+   * @param y 画面上のY座標。
+   */
+  click(x: number, y: number): void {
+    if (hitTest(this.closeButton, x, y)) {
+      this.onClose();
+      this.done = true;
+    }
   }
 }

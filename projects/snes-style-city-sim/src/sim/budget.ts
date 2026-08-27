@@ -6,6 +6,7 @@
  * @packageDocumentation
  */
 import { refreshNetworkAround } from "./build.js";
+import { averageWhereDeveloped } from "./fields.js";
 import type { CityState } from "./state.js";
 import type { CityStats } from "./stats.js";
 import { TileId, isRoad } from "./tiles.js";
@@ -79,15 +80,7 @@ export function computeTaxIncome(
  * @param state 都市の状態。
  */
 export function averageDevelopedLandValue(state: CityState): number {
-  const { landValue, populationDensity } = state.fields;
-  let sum = 0;
-  let count = 0;
-  for (let i = 0; i < landValue.length; i++) {
-    if (populationDensity[i] === 0) continue;
-    sum += landValue[i];
-    count++;
-  }
-  return count === 0 ? 0 : sum / count;
+  return averageWhereDeveloped(state.fields, state.fields.landValue);
 }
 
 /**

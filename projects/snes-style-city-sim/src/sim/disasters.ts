@@ -68,10 +68,10 @@ export interface DisasterEntity {
 }
 
 /** 火災が自然に消える確率（消防の管轄が無い場合）。 */
-const BASE_EXTINGUISH_CHANCE = 0.015;
+const BASE_EXTINGUISH_CHANCE = 0.05;
 
-/** 火災が隣へ燃え移る確率。 */
-const SPREAD_CHANCE = 0.06;
+/** 火災が隣へ燃え移る確率。延焼より鎮火のほうが起きやすくしておかないと、街全体が焼ける。 */
+const SPREAD_CHANCE = 0.04;
 
 /** 浸水が引くまでのtick数。 */
 const FLOOD_DURATION = 40;
@@ -108,15 +108,10 @@ export class DisasterSystem {
     if (!isFlammable(tile)) return false;
 
     if (isBuilding(tile)) {
-      // 建物は構造ごと失われる。跡地の全タイルが燃え広がる火元になる。
-      const origin = map.originOf(x, y);
-      const def = buildingByKind(map.buildingKind[map.index(origin.x, origin.y)]);
+      // 建物は構造ごと失われて瓦礫になり、火がついたマスだけが燃え続ける。
+      // 建物の全タイルを火にすると、大きな建物ほど火元が増えて街ごと燃えてしまう。
       demolishBuilding(map, x, y);
-      for (let dy = 0; dy < def.height; dy++) {
-        for (let dx = 0; dx < def.width; dx++) {
-          this.setFire(origin.x + dx, origin.y + dy);
-        }
-      }
+      this.setFire(x, y);
       return true;
     }
 

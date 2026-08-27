@@ -29,14 +29,22 @@ function countFires(state: CityState): number {
 }
 
 describe("火災", () => {
-  it("建物に火をつけると建物ごと燃える", () => {
+  it("建物に火をつけると建物は失われ、火のついたマスが燃え続ける", () => {
     const state = makeState();
     buildZone(state, 5, 5, ZoneType.residential);
     const disasters = new DisasterSystem(state);
 
     expect(disasters.ignite(6, 6)).toBe(true);
-    expect(countFires(state)).toBe(9);
-    expect(isBuilding(state.map.get(6, 6))).toBe(false);
+    // 火元は1マス。建物の残りは瓦礫になる。
+    expect(countFires(state)).toBe(1);
+    expect(isFire(state.map.get(6, 6))).toBe(true);
+    for (let y = 5; y < 8; y++) {
+      for (let x = 5; x < 8; x++) {
+        if (x === 6 && y === 6) continue;
+        expect(state.map.get(x, y)).toBe(TileId.Rubble);
+      }
+    }
+    expect(isBuilding(state.map.get(5, 5))).toBe(false);
   });
 
   it("草地や道路には火がつかない", () => {

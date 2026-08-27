@@ -82,8 +82,8 @@ export function drawButton(
   font.drawTextCentered(
     screen,
     label,
-    rect.x + rect.width / 2,
-    rect.y + (rect.height - 8) / 2 + 1,
+    rect.x + Math.floor(rect.width / 2),
+    rect.y + Math.floor((rect.height - 8) / 2) + 1,
     COLOR.white,
   );
 }

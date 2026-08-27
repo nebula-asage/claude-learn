@@ -58,6 +58,8 @@ export class CityState {
   milestoneIndex = 0;
   /** 災害が自然に起きるかどうか。 */
   disastersEnabled = true;
+  /** 1か月あたりに災害が自然発生する確率。難易度で変わる。 */
+  disasterChance = 0.02;
   /** アドバイザーからの助言の待ち行列。 */
   readonly messages = new MessageQueue();
 

@@ -152,6 +152,25 @@ function spread(
 }
 
 /**
+ * 人が住んでいる場所だけを対象に、面データの平均を求める。開発が無ければ0。
+ *
+ * 市全体の平均だと、手つかずの土地に薄められて実感と合わない値になるため、
+ * 「街の様子」を語るときはこちらを使う。
+ * @param fields 面データ一式。
+ * @param field 平均をとる面データ。
+ */
+export function averageWhereDeveloped(fields: CityFields, field: Uint8Array): number {
+  let sum = 0;
+  let count = 0;
+  for (let i = 0; i < field.length; i++) {
+    if (fields.populationDensity[i] === 0) continue;
+    sum += field[i];
+    count++;
+  }
+  return count === 0 ? 0 : sum / count;
+}
+
+/**
  * 都市の中心（開発が集中している場所）を求める。まだ何も無ければマップ中央。
  * @param map 対象のマップ。
  */
@@ -210,7 +229,8 @@ export function updateFields(state: CityState): void {
     }
   }
 
-  smoothField(fields.pollution, fields.width, fields.height, 2);
+  // ぼかしすぎると公害が薄く広がってしまい、工業地帯の近さが効かなくなる。
+  smoothField(fields.pollution, fields.width, fields.height, 1);
   smoothField(fields.populationDensity, fields.width, fields.height, 1);
   smoothField(fields.policeCoverage, fields.width, fields.height, 1);
   smoothField(fields.fireCoverage, fields.width, fields.height, 1);
