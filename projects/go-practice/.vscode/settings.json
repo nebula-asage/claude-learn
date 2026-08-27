@@ -1,0 +1,27 @@
+{
+  // 保存時にファイル末尾に改行を1行だけ入れる（改行なし/複数改行の食い違いを防ぐ）
+  "files.insertFinalNewline": true,
+  // 保存時に行末の余分な空白を自動的に削除する
+  "files.trimTrailingWhitespace": true,
+  // 改行コードをLFに統一する（Windows由来のCRLF混入を防ぐ）
+  "files.eol": "\n",
+  // ファイルの文字エンコーディングを内容から自動推測する
+  "files.autoGuessEncoding": true,
+  // インデント幅・タブ/スペースをファイルの内容から自動検出する
+  "editor.detectIndentation": true,
+  // 桁の目安となる縦線を表示する（80桁・120桁）
+  "editor.rulers": [80, 120],
+  // 選択範囲に関わらず、空白文字を常に可視化する
+  "editor.renderWhitespace": "all",
+  // 差分表示で行頭・行末の空白の違いも差分として表示する
+  "diffEditor.ignoreTrimWhitespace": false,
+  // ソース管理ビューでファイルをツリー表示にする
+  "scm.defaultViewMode": "tree",
+  // JSON/JSONC（コメント付きJSON）はVS Code組み込みフォーマッタで完結するため、保存時に自動整形する
+  "[json]": {
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.formatOnSave": true
+  }
+}

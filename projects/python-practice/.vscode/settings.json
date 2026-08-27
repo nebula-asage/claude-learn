@@ -1,0 +1,47 @@
+{
+  // 保存時にファイル末尾に改行を1行だけ入れる（改行なし/複数改行の食い違いを防ぐ）
+  "files.insertFinalNewline": true,
+  // 保存時に行末の余分な空白を自動的に削除する
+  "files.trimTrailingWhitespace": true,
+  // 改行コードをLFに統一する（Windows由来のCRLF混入を防ぐ）
+  "files.eol": "\n",
+  // ファイルの文字エンコーディングを内容から自動推測する
+  "files.autoGuessEncoding": true,
+  // インデント幅・タブ/スペースをファイルの内容から自動検出する
+  "editor.detectIndentation": true,
+  // 桁の目安となる縦線を表示する（80桁・120桁）
+  "editor.rulers": [80, 120],
+  // 選択範囲に関わらず、空白文字を常に可視化する
+  "editor.renderWhitespace": "all",
+  // 差分表示で行頭・行末の空白の違いも差分として表示する
+  "diffEditor.ignoreTrimWhitespace": false,
+  // ソース管理ビューでファイルをツリー表示にする
+  "scm.defaultViewMode": "tree",
+  // JSON/JSONC（コメント付きJSON）はVS Code組み込みフォーマッタで完結するため、保存時に自動整形する
+  "[json]": {
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.formatOnSave": true
+  },
+  // uvが作る仮想環境(.venv)をPythonインタプリタとして使う
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  // ターミナルを開いたときに仮想環境を自動で有効化する
+  "python.terminal.activateEnvironment": true,
+  // lintはruff（pyproject.tomlの[tool.ruff.lint]設定を読み込む）、
+  // フォーマットはblackに統一し、保存時に自動フォーマットする
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true
+  },
+  // テストランナーはpytest（uv add --devで導入済み）を使う
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": ["tests"],
+  // カバレッジの可視化（Coverage Gutters拡張）: `uv run pytest --cov --cov-report=lcov` で
+  // 生成される coverage.lcov を読み込み、被覆行を緑、未被覆行を赤でガター（行番号横）に表示する
+  "coverage-gutters.coverageFileNames": ["coverage.lcov"],
+  "coverage-gutters.showGutterCoverage": true,
+  "coverage-gutters.showRulerCoverage": true,
+  "coverage-gutters.showLineCoverage": false
+}
