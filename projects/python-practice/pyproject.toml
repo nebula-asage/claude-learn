@@ -13,5 +13,41 @@ exclude-newer = "7 days"
 [dependency-groups]
 dev = [
     "black>=26.5.1",
-    "flake8>=7.3.0",
+    "pdoc>=16.0.0",
+    "pytest>=8.4.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.16.0",
 ]
+
+[tool.ruff.lint]
+# pydoclint由来のDOC系ルールはruff側でまだpreview(不安定)扱いのため明示的に有効化する。
+# 将来のruffのアップデートでルール内容が変わる可能性がある点に注意。
+preview = true
+select = ["E4", "E7", "E9", "F", "D", "DOC"]
+# D400/D401/D415: 英語の文章作法（ピリオド終端・命令形）を前提にしたルールで、
+# 日本語のdocstringには馴染まないため無視する（存在チェックのD1xx系は有効なまま）
+ignore = ["D400", "D401", "D415"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# テスト関数はdocstring不要（pytestの慣習としてテスト名で内容を表す）
+"tests/*" = ["D", "DOC"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# main.py はパッケージ化していないプロジェクト直下のモジュールなので、
+# pytestのデフォルトのimportモードのままだとtestsディレクトリからは見えない。
+# pythonpathでプロジェクトルートをsys.pathに加え、`from main import ...`を可能にする。
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    ".venv/*",
+    "tests/*",
+]
+
+[tool.coverage.report]
+show_missing = true
