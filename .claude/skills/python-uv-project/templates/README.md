@@ -32,10 +32,10 @@ uv add <パッケージ名>
 
 ## Lint / Format
 
-開発用依存として `ruff`（lint）・`black`（フォーマッタ）を導入済み。
+開発用依存として `ruff` を導入済み。lint・フォーマット（`ruff format`）どちらもruffに一本化している。
 
 ```bash
-uv run black .
+uv run ruff format .
 uv run ruff check .
 ```
 

@@ -4,3 +4,4 @@ coverage/
 docs/api/
 .env
 test-env/.env.test
+.pnpm-store/
