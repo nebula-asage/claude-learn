@@ -22,7 +22,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     git \
     curl \
     ca-certificates \
-    build-essential \
     bash-completion \
     && locale-gen ja_JP.UTF-8 \
     && update-locale LANG=ja_JP.UTF-8 \
