@@ -20,3 +20,6 @@ venv/
 
 # Claude Code 会話ログ（個人の作業ログ、共有対象外）
 .claude/conversations/
+
+# Claude Code 作業用TODOリスト（個人の作業メモ、共有対象外）
+.claude/TODO.md
