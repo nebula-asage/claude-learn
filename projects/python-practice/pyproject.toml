@@ -12,7 +12,6 @@ exclude-newer = "7 days"
 
 [dependency-groups]
 dev = [
-    "black>=26.5.1",
     "pdoc>=16.0.0",
     "pytest>=8.4.0",
     "pytest-cov>=6.0.0",

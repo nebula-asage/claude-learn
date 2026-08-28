@@ -3,10 +3,9 @@
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   // ターミナルを開いたときに仮想環境を自動で有効化する
   "python.terminal.activateEnvironment": true,
-  // lintはruff（pyproject.tomlの[tool.ruff.lint]設定を読み込む）、
-  // フォーマットはblackに統一し、保存時に自動フォーマットする
+  // lintもフォーマットもruff（拡張機能がpyproject.tomlの[tool.ruff.lint]設定を読み込む）に統一し、保存時に自動フォーマットする
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true
   },
   // テストランナーはpytest（uv add --devで導入済み）を使う
