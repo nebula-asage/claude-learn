@@ -64,6 +64,8 @@ pnpm run prepare
 
 これにより、コミット時にステージされた `.ts` ファイルへ `eslint --fix` と `prettier --write` が自動適用される（設定は `package.json` の `lint-staged` フィールド、フック本体は `.husky/pre-commit`）。このプロジェクトがmonorepoのサブディレクトリにあり `.git` はリポジトリルート直下にしか無い場合、`scripts/install-husky.mjs` がリポジトリルートを検出したうえで `git config core.hooksPath` をこのプロジェクト配下の `.husky/` に向ける。`core.hooksPath` はGitのローカル設定でありコミット対象外のため、リポジトリを新しく clone した環境では毎回 `pnpm run prepare` の実行が必要。
 
+`core.hooksPath` はリポジトリ全体で1つしか持てず、このフックはリポジトリ内のどのコミットでも発火する。そのため `.husky/pre-commit` は、ステージされたファイルにこのプロジェクト配下が含まれない場合は何もせずに通し、`node_modules` が未導入の作業ツリー（clone直後や `pnpm install` 前の git worktree）では警告を出してスキップする。これにより、このプロジェクトと無関係な変更や別worktreeからのコミットが巻き添えで失敗することはない。
+
 ## APIドキュメント生成
 
 ```bash

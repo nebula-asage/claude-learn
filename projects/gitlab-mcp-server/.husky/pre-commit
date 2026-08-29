@@ -1,2 +1,21 @@
-cd "$(git rev-parse --show-toplevel)/projects/gitlab-mcp-server" || exit 1
+root="$(git rev-parse --show-toplevel)"
+project="projects/gitlab-mcp-server"
+
+# core.hooksPathはリポジトリ全体で1つしか持てず、このフックはリポジトリ内のどのコミットでも
+# 発火する。このプロジェクト配下に変更が無いコミット（他プロジェクトの変更、git worktreeでの
+# 別作業など）では何もせずに通す。
+if ! git diff --cached --name-only --diff-filter=ACMR | grep -q "^$project/"; then
+  exit 0
+fi
+
+cd "$root/$project" || exit 1
+
+# 依存が未導入の作業ツリー（clone直後、`pnpm install`前のgit worktreeなど）ではlint-stagedを
+# 実行できない。コミット自体は止めず、警告を出してスキップする。
+if [ ! -x "node_modules/.bin/lint-staged" ]; then
+  echo "husky - lint-staged が見つからないためpre-commitをスキップしました"
+  echo "husky - 有効にするには $project で 'pnpm install' を実行してください"
+  exit 0
+fi
+
 pnpm exec lint-staged
