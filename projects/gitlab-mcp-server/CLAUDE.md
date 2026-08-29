@@ -36,6 +36,8 @@ GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start   
 
 コミット時、ステージされた `*.ts` に `eslint --fix` → `prettier --write` を自動適用する（lint-staged。設定は `package.json` の `lint-staged` フィールド）。フック本体は `.husky/pre-commit`。
 
+`core.hooksPath` はリポジトリ全体で1つしか持てないため、このフックはリポジトリ内のどのコミットでも発火する。そのため `.husky/pre-commit` は先頭で2つのガードを行う。(1) ステージされたファイルに `projects/gitlab-mcp-server/` 配下が含まれなければ何もせず通す。(2) `node_modules/.bin/lint-staged` が無い作業ツリー（clone直後や `pnpm install` 前の git worktree）では警告を出してスキップする。どちらもコミットを失敗させない。このガードが無いと、このプロジェクトと無関係な変更や別worktreeからのコミットが全て止まる。
+
 このプロジェクトはmonorepo（`claude-learn`）のサブディレクトリにあり `.git` はリポジトリルートにしか存在しないため、Husky標準の `npx husky init` / `husky` コマンド（cwd直下の `.git` しか認識しない）はそのままでは使えない。`scripts/install-husky.mjs` が `git rev-parse --show-toplevel` でリポジトリルートを求め、そこへ `chdir` した上でこのプロジェクト配下 `.husky` を対象に `core.hooksPath` を設定する（`package.json` の `prepare` はこのスクリプトを指す）。`core.hooksPath` はGitのローカル設定でリポジトリには含まれないため、clone後の環境では毎回 `pnpm run prepare` の実行が必要。
 
 ### Lint / Format
