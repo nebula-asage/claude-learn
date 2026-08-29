@@ -51,9 +51,13 @@ RUN if getent group $USER_GID >/dev/null; then \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
 # Node.js（プロジェクトの実行環境 node:24-bookworm-slim に合わせてメジャーバージョンを揃える）
-RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+# NodeSourceのセットアップスクリプトが内部で apt-get update を行うため、上のapt-get installと
+# 同じキャッシュマウントを与えてダウンロードを再利用する。
+# キャッシュマウント配下は末尾で消してはいけない（次回ビルドのキャッシュごと消えるため）。
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/* \
     && npm completion > /etc/bash_completion.d/npm
 
 # pnpm（corepackではなくnpm経由で導入する。プロジェクトのDockerfileと同じ固定方針・バージョン）
