@@ -1,11 +1,5 @@
+# syntax=docker/dockerfile:1
 FROM ubuntu:24.04
-
-ARG USERNAME=vscode
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-ARG NVM_VERSION=v0.40.6
-ARG NODE_MAJOR=24
-ARG PNPM_VERSION=10.34.5
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -15,21 +9,31 @@ ENV LANG=ja_JP.UTF-8
 ENV LANGUAGE=ja_JP:ja
 ENV LC_ALL=ja_JP.UTF-8
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# apt-get用キャッシュはBuildKitのキャッシュマウントで永続化し、ビルドのたびに再ダウンロードしない。
+# docker-cleanの無効化はキャッシュマウント配下の.debを消させないために必要（Debian/Ubuntu公式イメージのデフォルト挙動対策）。
+# キャッシュマウント自体はイメージのレイヤーに含まれないため、末尾の rm -rf /var/lib/apt/lists/* は不要。
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update && apt-get install -y --no-install-recommends \
     locales \
     tzdata \
     sudo \
     git \
     curl \
     ca-certificates \
-    build-essential \
     bash-completion \
     && locale-gen ja_JP.UTF-8 \
     && update-locale LANG=ja_JP.UTF-8 \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone \
-    && dpkg-reconfigure -f noninteractive tzdata \
-    && rm -rf /var/lib/apt/lists/*
+    && dpkg-reconfigure -f noninteractive tzdata
+
+# ARGはここで初めて使うRUNの直前で宣言する。apt-get installより前で宣言すると、
+# USER_UID等のビルドargを変えるたびにapt-get installレイヤーのキャッシュまで無効化されてしまうため。
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
 
 # 非rootユーザーを作成し、パスワードなしでsudoを使えるようにする
 # （ベースイメージに同じUID/GIDが既に存在する場合はそれを再利用する）
@@ -46,19 +50,14 @@ RUN if getent group $USER_GID >/dev/null; then \
     && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
-# 追加でプログラムを導入する場合、bash補完に対応していれば有効化すること。
-# - aptパッケージ: bash-completion導入済みなら、インストール時に自動配置される補完スクリプトが
-#   そのまま有効になる（追加設定は不要）
-# - 単体バイナリ導入等で `<コマンド> completion bash` のようなサブコマンドを持つ場合は、
-#   例: RUN <コマンド> completion bash > /etc/bash_completion.d/<コマンド>
-#   のように生成物を /etc/bash_completion.d/ に配置する（このRUNは USER 切り替えより前、root権限で行う）
-
 USER $USERNAME
 
 # Node.js / npm はLinuxで標準的なnvm(Node Version Manager)で導入する
 # (corepackは将来Node.js本体から切り離される方針のため、pnpmの導入手段としては使わない)
 # nvmのインストーラーが ~/.bashrc に自動でnvm.sh/bash補完の読み込みを追記するため、
 # インタラクティブなbashシェルではnode/npm/pnpmが自動でPATHに載る
+ARG NVM_VERSION=v0.40.6
+ARG NODE_MAJOR=24
 ENV NVM_DIR=/home/$USERNAME/.nvm
 RUN curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash \
     && . "$NVM_DIR/nvm.sh" \
@@ -70,6 +69,7 @@ RUN curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/insta
 # pnpmは11系だとユーザー単位のグローバル設定ファイル(config.yaml)の一部設定が
 # 未文書化の破壊的変更で効かなくなっているため、.npmrcでの設定が確実に効く
 # 10系の最新版にバージョンを固定してインストールする
+ARG PNPM_VERSION=10.34.5
 RUN . "$NVM_DIR/nvm.sh" \
     && npm install -g pnpm@${PNPM_VERSION} \
     && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
