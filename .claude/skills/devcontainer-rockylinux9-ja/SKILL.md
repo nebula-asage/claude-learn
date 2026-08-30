@@ -23,12 +23,18 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
 
 4. **`workspaceFolder` / `workspaceMount` を配置先に合わせる**
    - リポジトリルートに置く場合はテンプレートのまま（`/workspace` にリポジトリ全体をマウント）でよい。
-   - 特定プロジェクト配下に置く場合は、そのプロジェクトディレクトリだけをマウントするよう `workspaceMount` の `source` を調整する（`${localWorkspaceFolder}` はコンテナ設定ファイルのある場所が基準になる点に注意）。
+   - 特定プロジェクト配下（`projects/<name>/`）に置く場合は、**そのプロジェクトディレクトリだけをマウントしてはいけない**。このリポジトリは `.git` がリポジトリルートにしかないmonorepoのため、サブディレクトリだけをbind mountすると `.git` が一切見えず、コンテナ内でgitリポジトリとして認識されない（`git status` が `fatal: not a git repository` になり、VS CodeのSource Controlパネルにも何も表示されない）。代わりにリポジトリルート全体をマウントし、`workspaceFolder` だけを対象プロジェクトのサブパスに向ける。
+     ```json
+     "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/workspace-root,type=bind",
+     "workspaceFolder": "/workspace-root/projects/<name>"
+     ```
+     `${localWorkspaceFolder}` はコンテナ設定ファイルのある場所（`projects/<name>/`）が基準になるため、リポジトリルートまで `../..` で遡る。この相対パス表記はDocker側で正規化されるため、bind mountの `source` にそのまま使える。
 
 5. **動作確認する**
    - `docker build -t <一時タグ> -f <配置先>/.devcontainer/Dockerfile <配置先>` でビルドできることを確認する。
    - `docker run --rm <一時タグ> bash -c 'date; locale; sudo whoami'` を実行し、日本語日時表示・`LANG=ja_JP.UTF-8`・`Asia/Tokyo`・sudo権限が機能していることを確認する。
    - `docker run --rm <一時タグ> bash -ic '_completion_loader git 2>/dev/null; complete -p git'` などでbash補完が有効になっていることも確認する（bash-completionは動的ロード方式のため、`type _git` は実際に補完を試みるまで関数が定義されず誤ってNG判定になる。`_completion_loader` で明示的にロードしてから `complete -p` で登録有無を見るのが確実）。
+   - `workspaceMount` / `workspaceFolder` と同じ設定で `docker run --rm -v <source>:<target> -w <workspaceFolder> <一時タグ> git status` を実行し、`fatal: not a git repository` にならないことを確認する（特にプロジェクト配下に置く場合は必須）。
    - 確認用に作った一時イメージは `docker rmi <一時タグ>` で削除する。
 
 6. **（追加要求があった場合）追加プログラムのbash補完を有効化する**

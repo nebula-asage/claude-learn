@@ -4,8 +4,8 @@
     "dockerfile": "Dockerfile"
   },
   "remoteUser": "vscode",
-  "workspaceFolder": "/workspace",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace-root/projects/python-practice",
+  "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/workspace-root,type=bind",
   "customizations": {
     "vscode": {
       "settings": {
