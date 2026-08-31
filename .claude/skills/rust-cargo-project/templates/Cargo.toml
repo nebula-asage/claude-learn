@@ -1,0 +1,43 @@
+[package]
+name = "__PROJECT_NAME__"
+version = "0.1.0"
+edition = "2024"
+description = "__PROJECT_DESCRIPTION__"
+publish = false
+
+[dependencies]
+
+[dev-dependencies]
+
+# lint の設定は `#![warn(...)]` を各ソースの先頭に書く方式ではなく、Cargo.toml の
+# `[lints]` テーブルに集約している（Rust 1.74 以降で安定）。ソースに散らばらず、
+# lib と bin の両方のターゲットに同じ設定が自動で効くため。
+[lints.rust]
+# 公開アイテム（pub）にドキュメンテーションコメントを必須にする。
+# 注意: このルールは bin クレート（src/main.rs）に対しても「クレートレベルの
+# ドキュメント（//!）が無い」を検出する。src/main.rs 冒頭の `//!` を消すと lint が落ちる。
+missing_docs = "warn"
+# 練習用プロジェクトで unsafe を書く理由はまず無い。"forbid" は
+# `#[allow(unsafe_code)]` による局所的な打ち消しも禁止する強い指定。
+unsafe_code = "forbid"
+
+[lints.clippy]
+# `all` / `pedantic` はグループ指定なので priority を下げ、
+# 後続の個別ルール指定に上書きされる余地を残す（priority 省略だと衝突エラーになる）。
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# private なアイテムにもドキュメンテーションコメントを必須にする。
+# `fn main` と `#[cfg(test)]` 配下は clippy 側が最初から除外するため、
+# テストコードにコメントを書かせるための除外設定は不要。
+missing_docs_in_private_items = "warn"
+# Result / panic する関数には `# Errors` / `# Panics` セクションを必須にする。
+# どちらも pedantic グループに含まれるので指定は重複するが、明示しておけば
+# 将来 pedantic を外したときにドキュメントの強制が黙って失われることがない。
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+
+[lints.rustdoc]
+# `[Foo]` のようなリンク記法が解決できないまま放置されるのを防ぐ。
+broken_intra_doc_links = "deny"
+missing_crate_level_docs = "warn"
+private_intra_doc_links = "warn"

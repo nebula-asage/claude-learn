@@ -1,0 +1,56 @@
+# cargo-deny の設定。`make deny`（= `cargo deny check`）で全チェックが走る。
+#
+# 背景: npm の `min-release-age` や uv の `exclude-newer` に相当する
+# 「公開から N 日未満のバージョンを使わない」機能は cargo に存在しない。
+# `cargo deny check advisories` は RustSec 脆弱性データベースとの照合なので、
+# 「まだ誰も気づいていない攻撃」を待ち時間で避ける効果は無い。代替にはならず、
+# あくまで「既知の悪いものを弾く」層として入れている。
+# `cargo deny init` が出力する全項目版のテンプレートから、既定値のままの説明を
+# 削って方針が変わる箇所だけを残してある。
+
+[advisories]
+# RustSec のアドバイザリDB（脆弱性・メンテ放棄・yanked 済みバージョン）と照合する。
+# 既定でいずれも deny なので、明示的な設定は不要。
+# 誤検知や対応不能なものが出たらここに理由付きで列挙する。
+ignore = []
+
+[licenses]
+# 許可するライセンスを SPDX 識別子で列挙する。ここに無いライセンスの
+# クレートが依存ツリーに入ると check が落ちる。
+# Unicode-3.0 は `unicode-ident` 経由でほぼ全てのプロジェクトに入るため必須。
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+    "CC0-1.0",
+]
+# 許可リストに書いたが依存ツリーに一度も出てこなかったライセンスについての
+# 警告（license-not-encountered）を出さない。依存が少ないうちは許可リストの
+# ほとんどが未使用になり、本当に見るべき出力が埋もれるため。
+unused-allowed-license = "allow"
+
+[licenses.private]
+# このプロジェクト自身は Cargo.toml で `publish = false` にしており、
+# `license` フィールドを持たない。true にしないと自分自身が
+# `error[unlicensed]: ... is unlicensed` として検出されて check が落ちる。
+ignore = true
+
+[bans]
+# 同じクレートの複数バージョンが依存ツリーに入るのは珍しくないので警告止まり。
+multiple-versions = "warn"
+# `foo = "*"` のようなワイルドカード指定は、意図しないメジャーバージョンへ
+# 勝手に上がる余地を作るので禁止する。
+wildcards = "deny"
+
+[sources]
+# crates.io 以外のレジストリや、許可していない git リポジトリからの依存を禁止する。
+# cargo に取得元を限定させる、このリポジトリで最も実効的な供給元の制限。
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

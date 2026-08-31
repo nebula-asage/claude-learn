@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    // Rust の言語サーバ。補完・定義ジャンプ・rustfmt/clippy 連携の本体。
+    "rust-lang.rust-analyzer",
+    // Cargo.toml / rustfmt.toml / deny.toml の構文ハイライトと整形。
+    "tamasfe.even-better-toml",
+    // lcov.info を読んでカバレッジをエディタのガターに表示する。
+    "ryanluker.vscode-coverage-gutters",
+    // Cargo.toml の依存に対して最新版・脆弱性をインラインで表示する。
+    "fill-labs.dependi",
+    // デバッガ。rust-analyzer の「Debug」CodeLens から利用する。
+    "vadimcn.vscode-lldb"
+  ]
+}
