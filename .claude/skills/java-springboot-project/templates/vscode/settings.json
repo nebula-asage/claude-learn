@@ -1,0 +1,50 @@
+{
+  // ---- Java 言語サーバ ----
+  // build.gradle.kts を変更したら確認を挟まずクラスパスを取り込み直す。
+  // "interactive" のままだと、依存を足しても補完が古いままで「なぜか赤線が消えない」状態になる。
+  "java.configuration.updateBuildConfiguration": "automatic",
+  // null 解析。@Nullable / Optional の扱い漏れをエディタ上で指摘させる。
+  "java.compile.nullAnalysis.mode": "automatic",
+  // 保存時に未使用 import を整理する。Spotless の removeUnusedImports と同じ結果になる。
+  "java.saveActions.organizeImports": true,
+
+  // ---- 整形は Spotless に一本化する ----
+  // VS Code 内蔵の Java フォーマッタを有効にすると、google-java-format とは別のルールで
+  // 整形されてしまい、保存するたびに `./gradlew spotlessCheck` が落ちる状態になる。
+  // 整形は `./gradlew spotlessApply` に任せ、エディタ側は無効にしておく。
+  "java.format.enabled": false,
+  "[java]": {
+    "editor.formatOnSave": false,
+    // google-java-format の 1 行あたりの上限に合わせる。
+    "editor.rulers": [100]
+  },
+
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.formatOnSave": true
+  },
+  "[xml]": {
+    "editor.defaultFormatter": "redhat.vscode-xml",
+    "editor.formatOnSave": true
+  },
+
+  // ---- カバレッジの可視化 ----
+  // `./gradlew jacocoTestReport` が出力する JaCoCo の XML を読み、
+  // エディタの行番号横に被覆行（緑）・未被覆行（赤）を表示する。
+  // HTML レポート（build/reports/jacoco/test/html/index.html）の置き換えではなく併用する。
+  "coverage-gutters.coverageFileNames": ["jacocoTestReport.xml"],
+  "coverage-gutters.coverageBaseDir": "build/reports/jacoco/test",
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.showGutterCoverage": true,
+
+  // ---- 検索・監視から生成物を外す ----
+  // build/ と .gradle/ は数万ファイル規模になり、含めるとファイル監視が重くなる。
+  "files.watcherExclude": {
+    "**/build/**": true,
+    "**/.gradle/**": true
+  },
+  "search.exclude": {
+    "**/build": true,
+    "**/.gradle": true
+  }
+}

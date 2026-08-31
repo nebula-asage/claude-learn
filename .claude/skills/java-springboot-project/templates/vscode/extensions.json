@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    // Java 開発の基本セット（言語サーバ・デバッガ・テストランナー・Maven・IntelliCode）。
+    "vscjava.vscode-java-pack",
+    // Gradle のタスクを一覧・実行する。Extension Pack for Java には含まれていない。
+    "vscjava.vscode-gradle",
+    // Spring Boot 向け（application.yaml の補完、Bean の一覧、Boot Dashboard からの起動）。
+    "vmware.vscode-boot-dev-pack",
+    // JaCoCo の XML レポートを読んでカバレッジをエディタのガターに表示する。
+    "ryanluker.vscode-coverage-gutters",
+    // application.yaml の構文チェックと補完。
+    "redhat.vscode-yaml",
+    // config/checkstyle/*.xml など XML 設定ファイルの編集用。
+    "redhat.vscode-xml"
+  ]
+}

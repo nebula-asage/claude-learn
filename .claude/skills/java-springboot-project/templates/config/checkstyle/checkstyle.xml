@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<!--
+  ここでは「整形」は一切見ない。インデントや改行位置は Spotless + google-java-format が
+  自動で直すため、Checkstyle と二重に持つと片方だけ直して落ちる状態になりやすい。
+  Checkstyle の役割は (1) Javadoc の強制 (2) 自動整形では直せない書き方の指摘 の 2 つに絞る。
+-->
+<module name="Checker">
+  <property name="charset" value="UTF-8"/>
+  <property name="severity" value="error"/>
+  <property name="fileExtensions" value="java"/>
+
+  <module name="SuppressionFilter">
+    <property name="file" value="${config_loc}/suppressions.xml"/>
+  </module>
+
+  <module name="NewlineAtEndOfFile"/>
+  <module name="FileTabCharacter"/>
+
+  <module name="TreeWalker">
+    <!-- ===== Javadoc の強制 ===== -->
+    <!-- public な型・メソッドには Javadoc を必ず書かせる。Rust の missing_docs 相当。 -->
+    <module name="MissingJavadocPackage"/>
+    <module name="MissingJavadocType">
+      <property name="scope" value="public"/>
+    </module>
+    <module name="MissingJavadocMethod">
+      <property name="scope" value="public"/>
+      <!-- 既定は 2 行以下のメソッドを免除するが、免除すると getter や 1 行メソッドが
+           そのまま無コメントで通ってしまうので -1 (行数によらず必須) にする -->
+      <property name="minLineCount" value="-1"/>
+      <property name="allowMissingPropertyJavadoc" value="false"/>
+    </module>
+    <!-- @param / @return / @throws の過不足を見る。validateThrows=true にすると
+         本文で throw している例外が @throws に書かれていない場合に落ちる -->
+    <module name="JavadocMethod">
+      <property name="accessModifiers" value="public"/>
+      <property name="validateThrows" value="true"/>
+    </module>
+    <module name="JavadocType">
+      <property name="scope" value="public"/>
+    </module>
+    <!-- @param 等の説明が空のまま置かれるのを防ぐ -->
+    <module name="NonEmptyAtclauseDescription"/>
+    <!--
+      かつて定番だった JavadocStyle は Checkstyle 14 で削除された（設定に残すと
+      「cannot initialize module JavadocStyle」で Checkstyle 自体が起動しない）。
+      代替の SummaryJavadoc / JavadocParagraph は「要約文がピリオドで終わること」を
+      見るもので、句点が「。」の日本語コメントとは相性が悪いため入れていない。
+    -->
+
+    <!-- ===== 自動整形では直らない書き方の指摘 ===== -->
+    <module name="UnusedImports"/>
+    <module name="RedundantImport"/>
+    <module name="IllegalImport"/>
+    <module name="EqualsHashCode"/>
+    <module name="CovariantEquals"/>
+    <module name="StringLiteralEquality"/>
+    <module name="SimplifyBooleanExpression"/>
+    <module name="SimplifyBooleanReturn"/>
+    <module name="MissingOverride"/>
+    <module name="FallThrough"/>
+    <module name="DefaultComesLast"/>
+    <module name="OneTopLevelClass"/>
+    <module name="FinalClass"/>
+    <module name="HideUtilityClassConstructor"/>
+    <module name="MissingSwitchDefault"/>
+    <module name="IllegalCatch"/>
+    <module name="EmptyBlock">
+      <property name="option" value="TEXT"/>
+    </module>
+  </module>
+</module>
