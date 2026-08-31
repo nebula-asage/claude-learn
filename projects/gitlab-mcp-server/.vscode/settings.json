@@ -17,6 +17,8 @@
   "diffEditor.ignoreTrimWhitespace": false,
   // ソース管理ビューでファイルをツリー表示にする
   "scm.defaultViewMode": "tree",
+  // VS Code組み込みのAI機能（インライン提案・チャット等）を無効化する
+  "chat.disableAIFeatures": true,
   // JSON/JSONC（コメント付きJSON）はVS Code組み込みフォーマッタで完結するため、保存時に自動整形する
   "[json]": {
     "editor.formatOnSave": true
