@@ -1,0 +1,9 @@
+# Rust
+/target/
+
+# カバレッジ（Coverage Gutters 拡張が読む lcov 形式のレポート）
+/lcov.info
+
+# Cargo.lock はコミットする（.gitignore に入れない）。
+# バイナリを持つプロジェクトでは、依存バージョンを固定して意図しない更新を
+# 防ぐのが cargo 公式の推奨。`--locked` 付きのコマンドと組み合わせて効く。

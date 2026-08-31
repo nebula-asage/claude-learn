@@ -1,0 +1,161 @@
+---
+name: rust-cargo-project
+description: Rustの練習・開発プロジェクト一式（rustup/cargo前提+Cargo.tomlの[lints]によるclippy/rustfmt設定+cargo testとcargo-llvm-covによるテスト・カバレッジHTML/lcovレポート+missing_docs等によるドキュメンテーションコメント強制とcargo docによるAPIリファレンス生成+cargo-denyによる依存検査）をホスト環境に直接構築するスキル。「rustの環境/プロジェクトを作って」「cargoプロジェクトを作って」「clippyを入れて」「rustのカバレッジを測りたい」「rustdocでAPIドキュメントを生成したい」「Rustの依存の脆弱性/ライセンスを検査したい」など、Rustプロジェクトの新規作成・再作成や、既存プロジェクトへのlint/カバレッジ/ドキュメンテーション/依存検査環境の追加を頼まれたら、明示的に「rust-cargo-project」と言われなくても必ず使うこと。配置先が既にVS Code向けの`.vscode/`ディレクトリを持つ場合は、rust-analyzer（clippy連携）向けのsettings.json・拡張機能のおすすめ設定に加え、Coverage Gutters拡張によるカバレッジのエディタ上可視化設定も追加する。Docker/devcontainerには依存せずホストのユーザーローカル環境（sudo不要）に直接導入する。devcontainer自体の構築を頼まれた場合はdevcontainer-ubuntu-jaスキルを使う。
+---
+
+# rust-cargo-project
+
+**rustupによるツールチェーンのユーザーローカル導入**、**`Cargo.toml` の `[lints]` に集約したclippy/rustdocの静的解析**、**cargo-llvm-covによるカバレッジ計測**、**`cargo doc` によるAPIリファレンス生成**、**cargo-denyによる依存の検査**を組み込んだプロジェクト一式を、Docker/devcontainerに依存せずホスト環境に直接配置するスキル。
+
+このスキルはdevcontainer系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。devcontainer/コンテナ環境そのものの構築を頼まれたときは別スキル（例: devcontainer-ubuntu-ja）を使うこと。
+
+このスキルが用意するのは、リンター・フォーマッター・テスト・カバレッジ計測・ドキュメンテーションコメント環境・依存検査が最初から動く**土台（スキャフォールディング）**であり、`src/greeting.rs` の中身はテンプレートのサンプル実装（`greet` / `try_greet`）のままである。ユーザーが「CLIツールを作りたい」「HTTPサーバーを書きたい」のように具体的な用途を挙げている場合は、手順4でテンプレートを配置した後、その用途に合わせて中身を実装し直すこと（土台を作って終わりにしない）。
+
+## このスキルが前提とする条件（変更しない）
+
+以下はすべて実際に検証して確認した結果に基づく。単なる「Rust環境を作って」的な依頼でも省略しない。
+
+### ツールチェーンの導入方針
+
+- **rustup・cargo-llvm-cov・cargo-denyはユーザーローカルに導入する**。sudoやシステム全体へのインストールには依存しない（`apt install rustc cargo` 等は使わない）。これは、このリポジトリのホストがsudoにパスワードを要求する構成であり、かつ他の言語向けスキルと同じ「システムに触れずユーザー権限だけで開発環境を完結させる」方針に揃えるため。rustupの公式インストーラは既定で `~/.cargo` / `~/.rustup` にインストールするので、この方針にそのまま合致する
+- **`rustfmt` と `clippy` は追加導入しない**。rustupの既定プロファイル（`default`）に最初から含まれるコンポーネントであり、`cargo fmt` / `cargo clippy` がそのまま使える
+- **カバレッジ計測には `cargo-llvm-cov` を使う**（`cargo-tarpaulin` ではない）。LLVMのソースベース計測を使うため行・分岐カバレッジが正確で、ターミナル要約・HTML・lcovの3形式を1つのツールで出力できる。`rustup component add llvm-tools-preview` が別途必要になる点に注意する（これを入れずに実行するとエラーになる）
+
+### プロジェクトの構造
+
+- **ロジックは `src/main.rs` に直接書かず、`src/lib.rs` 側のモジュール（テンプレートでは `src/greeting.rs`）に分離する**。理由: `missing_docs` によるドキュメンテーションコメントの強制と `cargo doc` によるAPIリファレンス生成は、公開API（`pub`）を持つライブラリクレートでないと実質機能しない。bin単体のクレートには外部に公開されるアイテムが無いため、関数レベルのコメント強制がほぼ働かず、`cargo doc` の出力も空に近くなる。加えて、lib側に分離すると `tests/` 配下の統合テストから外部クレートとして `use` でき、「本当に公開APIとして見えているか」をテストできる
+- **ユニットテスト（`#[cfg(test)] mod tests`）と統合テスト（`tests/`）の両方をテンプレートに入れる**。前者はprivateな関数にも到達でき、後者は公開APIだけを検証する。Rustではこの2つが別の役割を持つため、片方だけだと片方の書き方が身につかない
+
+### lintの設定
+
+- **lintの設定は `Cargo.toml` の `[lints]` テーブルに集約する**（Rust 1.74以降で安定）。`src/lib.rs` や `src/main.rs` の先頭に `#![warn(missing_docs)]` を書く方式は使わない。`[lints]` ならlibターゲットとbinターゲットの両方に自動で同じ設定が効き、設定がソースに散らばらない
+- **`[lints.clippy]` でグループ（`all` / `pedantic`）を指定するときは `priority = -1` を付ける**。グループと個別ルールを同じテーブルに並べたとき、priorityを省略すると cargo が優先順位を決められずエラーになる
+- **`clippy::pedantic` を有効にする**。練習用リポジトリとして、慣用的でない書き方を早めに指摘してもらう価値が大きいため。ただしpedanticを入れると、`String` を返す `pub fn` に `#[must_use]` を付けろという `must_use_candidate` が出る。テンプレートの `greet` には `#[must_use]` を付けてあるので、サンプルを書き換えるときも同様に対応すること
+- **`missing_docs` は bin クレート（`src/main.rs`）に対しても「クレートレベルのドキュメント（`//!`）が無い」を検出する**。関数レベルのコメントは強制されないが、ファイル冒頭の `//!` は必須になる。テンプレートの `src/main.rs` 冒頭の `//!` を消すと `make lint` が落ちるので、この点はテンプレート内にもコメントで明記してある
+- **`clippy::missing_docs_in_private_items` は `fn main` と `#[cfg(test)]` 配下を自動的に除外する**。検証で、privateな通常の関数は検出される一方、テストモジュール内のヘルパー関数と `fn main` は検出されないことを確認済み。そのため、Pythonスキルの `per-file-ignores` に相当する「テストコードを除外する設定」は書く必要がない
+- **`clippy::missing_errors_doc` / `missing_panics_doc` を明示的に列挙する**。これらは `pedantic` グループにも含まれており指定は重複するが、明示しておけば将来 `pedantic` を外したときにドキュメント強制が黙って失われることがない
+- **`rustdoc::broken_intra_doc_links` は `deny`**（warnではない）。`` [`Foo`] `` 形式のリンク切れは放置されると気づかれないまま溜まるため。なおこれは `cargo clippy` ではなく `cargo doc` の実行時に検出される
+
+### フォーマッタの設定
+
+- **`rustfmt.toml` にはstableのrustfmtが受け付けるオプションだけを書く**。`group_imports` / `imports_granularity` / `wrap_comments` などは2026年時点でもnightly限定で、stableの `cargo fmt` では「unstable features are only available in nightly」という警告が出たうえで**無視される**。設定したつもりで効いていない状態になりやすいので、テンプレートには入れずコメントで理由を残してある
+
+### テスト・カバレッジ・ドキュメント
+
+- **`Makefile` に入口をまとめる**。`lock` / `run` / `build` / `fmt` / `fmt-check` / `lint` / `test` / `doctest` / `cover` / `cover-html` / `cover-lcov` / `cover-all` / `doc` / `doc-open` / `deny` / `check` / `clean` を用意する。`check` は `fmt-check` → `lint` → `test` → `doctest` → `deny` をまとめて回す
+- **`cargo llvm-cov` は起動のたびに `target/llvm-cov/` を作り直す**。そのため `cover-html` の後に `cover-lcov` を実行するとHTMLレポートが消える（逆も同様）。HTMLとlcovの両方が必要な場合のために、`--no-report` でテストを1回だけ実行してから `cargo llvm-cov report --lcov` / `report --html` で両形式を書き出す `cover-all` ターゲットを用意してある
+- **`make lint` は `--all-targets` と `-D warnings` を付ける**。`--all-targets` が無いと `tests/` 配下がlint対象から外れる。`-D warnings` が無いと `[lints]` で `warn` にしたルールが警告止まりになり、実質的な強制にならない
+- **ドキュメンテーションコメントの例（doctest）を書く**。`` ``` `` で囲んだコード例は `cargo test --doc` で実際にコンパイル・実行されるため、例が古くなった時点で落ちる。テンプレートの `greet` / `try_greet` には `# Examples` セクションを入れてある
+- **`cargo doc` は `--no-deps --document-private-items` で実行する**。依存クレートのドキュメントまで生成すると無駄に重く、privateなアイテムも含めた方が練習用途では読み物として有用なため
+
+### 依存とサプライチェーン対策
+
+- **`Cargo.lock` をコミットし、`Makefile` の全cargoコマンドに `--locked` を付ける**。依存が暗黙に更新されるのを防ぐ。ライブラリクレートでは `Cargo.lock` をコミットしない慣習もあるが、このリポジトリのプロジェクトはbinを持つ実行可能プロジェクトなのでコミットする
+- **`--locked` は `Cargo.lock` が存在しないと `cannot create the lock file ... because --locked was passed` で失敗する**。テンプレートには `Cargo.lock` を含めないので、展開直後は必ず `make lock`（= `cargo generate-lockfile`）を先に実行する。これを飛ばすと `make lint` も `make test` も全部落ちる
+- **`cargo-deny`（`deny.toml`）を標準で入れる**。`[advisories]` でRustSec脆弱性DBと照合し、`[licenses]` で許可ライセンスを列挙し、`[bans] wildcards = "deny"` でワイルドカードのバージョン指定を禁止し、`[sources]` で取得元をcrates.ioに限定する（未知のレジストリ・gitリポジトリからの依存を禁止）
+- **`deny.toml` には `[licenses.private] ignore = true` が必須**。テンプレートの `Cargo.toml` は `publish = false` かつ `license` フィールドを持たないため、これを設定しないとプロジェクト自身が `error[unlicensed]: ... is unlicensed` として検出され `cargo deny check` が落ちる。あわせて `unused-allowed-license = "allow"` を設定し、許可リストのうち依存ツリーに出てこなかったライセンスについての警告で出力が埋もれないようにする
+
+### このリポジトリ共通のサプライチェーン方針との差分（必ずユーザーに報告する）
+
+このリポジトリは全プロジェクト共通で「リリース直後のバージョンを使わない（猶予7日）」「インストール時の任意コード実行を抑制する」の2点を各パッケージマネージャの機能で実現する方針だが、**cargoにはどちらの機能も存在しない**。
+
+- **「公開後N日未満を除外する」機能は cargo に無い**。npm/pnpmの `minimum-release-age` や uvの `exclude-newer` に相当する設定は存在しない。`cargo deny check advisories` は既にRustSecに報告済みの脆弱性を弾くものなので、「まだ誰も気づいていない攻撃を待ち時間でやり過ごす」という `exclude-newer` の目的の代替にはならない
+- **「インストール時の任意コード実行の抑制」も cargo に無い**。npmの `ignore-scripts` に相当する設定は存在せず、cargoは依存クレートの `build.rs` をビルド時に必ず実行する
+
+このスキルを使ってプロジェクトを作ったときは、**この2点が満たせないことを黙って伏せずユーザーに報告する**（リポジトリの `CLAUDE.md` が「同等の設定があるか調べて適用し、無ければその旨を報告する」と定めているため）。代わりに入れている `Cargo.lock` + `--locked`、`[sources]` による取得元の限定、`[advisories]` による脆弱性照合が何を守り何を守らないのかも、あわせて伝えること。この差分はテンプレートの `README.md` にも書いてある。
+
+## 手順
+
+1. **ツールチェーンがホストに導入済みか確認する**
+   - `command -v rustup cargo rustc` と `rustc --version` でツールチェーン本体を確認する。
+   - `rustup component list --installed` で `rustfmt` と `clippy` が入っているか確認する（rustupの既定プロファイルなら入っている）。`llvm-tools` が入っているかもここで見る。
+   - `command -v cargo-llvm-cov cargo-deny` で追加ツールを確認する。
+   - 全て導入済みならステップ3に進んでよい。
+
+2. **未導入の場合、ユーザーローカルに導入する**
+   - **これはホスト環境に実際にソフトウェアを導入する操作であり、rustupの場合はシェル設定ファイル（`~/.bashrc` 等）へのPATH追記も伴う。** ユーザーが今回の依頼で明示的にこの方法を指定していない場合は、実行前に「Rustツールチェーンが入っていないのでユーザーローカルに導入してよいか（sudoは使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
+
+   **rustup（ツールチェーン本体）:**
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+   ```
+   - `~/.cargo` と `~/.rustup` に入り、`~/.cargo/env` を読む行が `~/.bashrc` に追記される。
+   - **注意**: `~/.bashrc` は非対話シェルだと冒頭の `case $- in *i*) ;; *) return;; esac` で早期returnする。そのためシェルツール経由（非対話シェル）で動作確認する際は `source ~/.bashrc` が効かない。`source "$HOME/.cargo/env"` を直接読むか、`export PATH="$HOME/.cargo/bin:$PATH"` をそのコマンド内で明示すること。
+
+   **カバレッジ計測用コンポーネントと追加ツール:**
+   ```bash
+   rustup component add llvm-tools-preview
+   cargo install cargo-llvm-cov cargo-deny --locked
+   ```
+   - `llvm-tools-preview` を入れ忘れると `cargo llvm-cov` が実行時にエラーになる。
+   - `cargo install` はソースからビルドするため、cargo-denyを含めて数分かかる。`--locked` はクレート側の `Cargo.lock` を使わせる指定で、ビルドが壊れにくくなる。
+   - `~/.cargo/bin/` に配置される（rustupが同じディレクトリをPATHに通しているので追加のPATH設定は不要）。
+
+3. **配置先とプロジェクト名を確認する**
+   - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に1プロジェクトとして自己完結させる。
+   - ユーザーがプロジェクト名を明示していなければ、目的から適切な名前を判断してよい（例: 「rustの練習環境」→ `rust-practice`）。判断に迷う場合だけ確認する。
+   - 既に同名のディレクトリが存在する場合は上書きしてよいか必ず確認する。
+
+4. **テンプレートをコピーし、プレースホルダを置換する**
+
+   プレースホルダは3種類ある。`__PROJECT_NAME__` は `__PROJECT_NAME_SNAKE__` の部分文字列にはならない（末尾の `__` が一致しない）ので、置換の順序は問わない。
+
+   | プレースホルダ | 置換する値 |
+   | --- | --- |
+   | `__PROJECT_NAME_SNAKE__` | クレート名のRust識別子形（ハイフンをアンダースコアに: `rust-practice` → `rust_practice`）。`use` 文やドキュメントのパスに使う |
+   | `__PROJECT_NAME__` | パッケージ名（ディレクトリ名そのままでよい。例: `rust-practice`） |
+   | `__PROJECT_DESCRIPTION__` | プロジェクトの1行説明。用途が指定されていればそれに合わせる |
+
+   コピーするファイル:
+   - `templates/Cargo.toml` → `<配置先>/Cargo.toml`
+   - `templates/rustfmt.toml` → `<配置先>/rustfmt.toml`（置換不要）
+   - `templates/deny.toml` → `<配置先>/deny.toml`（置換不要）
+   - `templates/Makefile` → `<配置先>/Makefile`
+   - `templates/src/lib.rs` → `<配置先>/src/lib.rs`
+   - `templates/src/greeting.rs` → `<配置先>/src/greeting.rs`
+   - `templates/src/main.rs` → `<配置先>/src/main.rs`
+   - `templates/tests/greeting.rs` → `<配置先>/tests/greeting.rs`
+   - `templates/README.md` → `<配置先>/README.md`
+   - `templates/.gitignore` → `<配置先>/.gitignore`（置換不要。リポジトリルートの `.gitignore` にRustの項目は無いので、ルート側は変更しない）
+
+   `templates/vscode/` はここではコピーしない（手順5で扱う）。
+
+5. **配置先がVS Codeプロジェクトの場合、Rust向けのVS Code設定を追加する**
+   - 判定は `<配置先>/.vscode/` ディレクトリ（`settings.json` または `extensions.json`）の有無で行う。存在しなければVS Code向けの設定は持たないプロジェクトとみなし、この手順はスキップする（`.vscode/` を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、`.vscode/` を新規作成したうえで以下と同じ内容を配置してよい）。
+   - **`settings.json` を配置する**: `templates/vscode/settings.json` の内容を `<配置先>/.vscode/settings.json` にマージする。既に存在する場合はEdit系ツールで直接編集し、既存のキー（言語非依存の共通設定など）を残したまま `rust-analyzer.*` / `coverage-gutters.*` 系のキーと `[rust]` / `[toml]` ブロックを追加する（同じキーが既にあれば上書きせず、内容を確認したうえでユーザーに判断を仰ぐ）。
+     - `rust-analyzer.check.command` を `clippy` にしているのは、`Cargo.toml` の `[lints]` で設定したルール違反をエディタ上に直接出すため。既定の `cargo check` のままだとclippyのルールがエディタに出ず、`make lint` で初めて気づくことになる。
+     - `coverage-gutters.*` はCoverage Gutters拡張向けで、`make cover-lcov` が生成する `lcov.info` を読み、行番号横に被覆行（緑）・未被覆行（赤）を表示する。`make cover` / `make cover-html` を置き換えるものではなく、追加のレポート形式。`lcov.info` はテストのたびに再生成される成果物なのでコミット対象に含めない（テンプレートの `.gitignore` で除外済み）。
+   - **拡張機能のおすすめ設定を配置する**: 配置先の判定はさらに `<配置先>/.devcontainer/devcontainer.json` の有無で分岐する（この判定も「devcontainerを構築するスキルが動いたかどうか」ではなく、あくまでファイルの有無で行う）。
+     - `devcontainer.json` が存在する場合: `.vscode/extensions.json` は使わず、`templates/vscode/extensions.json` の `recommendations` 配列の中身（拡張機能IDのみ。コメントは転記しなくてよい）を `<配置先>/.devcontainer/devcontainer.json` の `customizations.vscode.extensions` 配列にEdit系ツールで直接マージする（重複を除いて追記。既存の `customizations.vscode.settings` 等は残す）。
+     - `devcontainer.json` が存在しない場合: `templates/vscode/extensions.json` の内容を `<配置先>/.vscode/extensions.json` にマージする（既存の `recommendations` があれば重複を除いて追記し、既存の非Rust系の推奨拡張機能はそのまま残す）。
+   - `settings.json` / `extensions.json`（および `devcontainer.json`）はJSONC（コメント付きJSON）として解釈されるため、標準の `jq` に通す前にコメント行を取り除くか、目視でカンマ・かっこの対応を確認する。
+
+6. **動作確認する**
+
+   `<配置先>` に移動し、以下を順に確認する。非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら `source "$HOME/.cargo/env"` を各コマンドの前に入れる。
+
+   - **`make lock` を最初に実行する。** これを飛ばすと以降の `--locked` 付きコマンドが全て `cannot create the lock file` で落ちる。生成された `Cargo.lock` はコミット対象。
+   - `make fmt-check` が差分なしで終了することを確認する（テンプレートはrustfmt適用済みの状態にしてある）。
+   - `make lint` が警告ゼロで終了することを確認する。
+   - `make run` を実行し、`Hello, world!` が出力されることを確認する。引数付きの動作は `cargo run --locked -- Rust` で確認できる。
+   - `make test` を実行し、ユニットテスト4件・統合テスト3件・doctest 2件が全て通ることを確認する。
+   - `make cover` を実行し、ファイルごとのカバレッジ表と未カバー行番号が表示されることを確認する（`src/main.rs` はテストから呼ばれないので0%になるのが正常）。
+   - `make cover-html` を実行し、`target/llvm-cov/html/index.html` が生成されることを確認する。
+   - 手順5でVS Code向け設定を配置した場合は `make cover-all` を実行し、`lcov.info` と `target/llvm-cov/html/index.html` が**両方同時に**存在することを確認する（`make cover-lcov` を単体で実行するとHTMLレポート側が消えるため、両方を確認したいときは `cover-all` を使う）。
+   - `make doc` を実行し、`target/doc/<スネークケースのクレート名>/index.html` が生成されることを確認する。
+   - `make deny` を実行し、`advisories ok, bans ok, licenses ok, sources ok` と表示されることを確認する。
+   - 最後に `make clean` で `target/` と `lcov.info` を削除し、コミット対象に成果物が残っていないことを `git status` で確かめる。
+
+   **lintが本当に効いているかを反証で確かめる**（設定を書いただけで実は無効、という状態を防ぐため。以下はいずれも検証済みで、確認後は必ず元に戻すこと）:
+   - `src/greeting.rs` の `///` コメントを削ると、`missing documentation for a struct` / `missing documentation for a function`（`pub` と private の両方）と `docs for function returning \`Result\` missing \`# Errors\` section` が `make lint` で検出される。
+   - `src/main.rs` 冒頭の `//!` を削ると `missing documentation for the crate` が検出される。
+   - `src/greeting.rs` の `` [`try_greet`] `` を存在しない名前に書き換えると、`make doc` が `unresolved link to ...` で落ちる（`make lint` では検出されない。rustdocのlintなので `cargo doc` 側で出る）。
+   - `Cargo.toml` の依存を `foo = "*"` のようなワイルドカード指定にすると `make deny` が `error[wildcard]` で落ちる。`cargo add <crate> --git <URL>` でgit依存を足すと `error[source-not-allowed]` で落ちる。
+
+## このスキルの対象外
+
+- Docker/devcontainer環境の構築自体はこのスキルの対象外。コンテナ環境が欲しいと言われたら別スキル（例: devcontainer-ubuntu-ja）を使う（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
+- `.vscode/` ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはRust固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/` を新規作成したうえでRust向け設定を配置してよい。
+- cargoのワークスペース（複数クレートを1つの `Cargo.toml` で束ねる構成）はこのスキルの対象外。このリポジトリは `projects/<name>/` ごとに自己完結させる方針なので、単一パッケージ（lib + bin）構成に固定している。
+- クロスコンパイル、`no_std` 環境、WebAssembly向けビルド、非同期ランタイム（tokio等）の導入はこのスキルの対象外。必要なら土台を作ったうえで別途対応する。
+- Git hooks（コミット時の自動lint/format）の設定はこのスキルの対象外。このリポジトリでは `core.hooksPath` がリポジトリ全体で1つしか持てず、プロジェクトごとにフックを設定すると互いに上書きし合う問題があるため、Rustプロジェクト側では設定しない。

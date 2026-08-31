@@ -1,0 +1,40 @@
+{
+  // rust-analyzer に、保存時のチェックを cargo check ではなく clippy で行わせる。
+  // Cargo.toml の [lints] で設定した clippy のルール違反がエディタ上に直接出る。
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.extraArgs": ["--all-targets", "--all-features"],
+  // tests/ や examples/ も解析対象に含める。
+  "rust-analyzer.cargo.allTargets": true,
+  // 型・引数名のインレイヒント。Rust は型推論が強く、変数の型が読みだけでは
+  // 分かりにくいので既定で出しておく。
+  "rust-analyzer.inlayHints.typeHints.enable": true,
+  "rust-analyzer.inlayHints.parameterHints.enable": true,
+  "rust-analyzer.inlayHints.chainingHints.enable": true,
+
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true,
+    // rustfmt.toml の max_width = 100 に合わせる。
+    "editor.rulers": [100]
+  },
+
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.formatOnSave": true
+  },
+
+  // Coverage Gutters 拡張の設定。`make cover-lcov` が生成する lcov.info を読み、
+  // エディタの行番号横に被覆行（緑）・未被覆行（赤）を表示する。
+  "coverage-gutters.coverageFileNames": ["lcov.info"],
+  "coverage-gutters.coverageBaseDir": ".",
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.showGutterCoverage": true,
+
+  // ビルド成果物はファイル検索・監視の対象から外す（target/ は巨大になる）。
+  "files.watcherExclude": {
+    "**/target/**": true
+  },
+  "search.exclude": {
+    "**/target": true
+  }
+}
