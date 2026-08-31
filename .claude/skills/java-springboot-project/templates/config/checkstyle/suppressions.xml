@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<suppressions>
+  <!--
+    テストコードには Javadoc を強制しない。
+    テストのメソッド名自体が仕様の説明になっている（should〜 / 〜する、など）ため、
+    そこに Javadoc を必須にすると同じことを二度書くだけになり、書かれなくなる。
+  -->
+  <suppress files="[\\/]src[\\/]test[\\/]" checks="MissingJavadoc.*|JavadocMethod|JavadocType|JavadocStyle"/>
+  <!-- テストクラスは public でなくてよく、ユーティリティクラス判定にも意味がない -->
+  <suppress files="[\\/]src[\\/]test[\\/]" checks="HideUtilityClassConstructor|FinalClass"/>
+
+  <!--
+    Spring Boot の起動クラスは main メソッドしか持たないため Checkstyle からは
+    「ユーティリティクラスなのに private コンストラクタが無い」と見える。
+    しかし Spring Boot はこのクラスをインスタンス化可能な設定クラスとして扱うため、
+    private コンストラクタを付けると起動できなくなる。ここだけ除外する。
+  -->
+  <suppress files="Application\.java$" checks="HideUtilityClassConstructor"/>
+</suppressions>

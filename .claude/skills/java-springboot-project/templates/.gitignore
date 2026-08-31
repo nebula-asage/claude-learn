@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+
+# gradle-wrapper.jar はコミットする。
+# これが無いと clone した人が Gradle を別途インストールしないとビルドできない。
+# 中身は Gradle 公式配布のものと同一（README の「Gradle wrapper の出所」を参照）。
+!gradle/wrapper/gradle-wrapper.jar
+
+# gradle.lockfile はコミットする（依存バージョンの固定が目的なので除外しない）。
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+bin/
+.classpath
+.project
+.settings/
+.factorypath
+
+# OS
+.DS_Store

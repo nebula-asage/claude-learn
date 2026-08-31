@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: __PROJECT_NAME__
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 練習用なので health と info だけ公開する。
+        # 本番では公開するエンドポイントを絞らないと内部情報が漏れる。
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    __BASE_PACKAGE__: DEBUG
