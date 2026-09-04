@@ -23,3 +23,6 @@ venv/
 
 # Claude Code 作業用TODOリスト（個人の作業メモ、共有対象外）
 .claude/TODO.md
+
+# Claude Code ローカル権限設定（個人環境依存、共有対象外）
+.claude/settings.local.json
