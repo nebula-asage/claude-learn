@@ -82,3 +82,9 @@ RUN . "$NVM_DIR/nvm.sh" \
 #   新しいバージョンのインストールをスキップする
 # - ignore-scripts: postinstallなどのライフサイクルスクリプトを実行しない
 RUN printf 'ignore-scripts=true\nmin-release-age=7\nminimum-release-age=10080\n' > /home/$USERNAME/.npmrc
+
+# Claude Code CLI の導入
+# 公式ネイティブインストーラを使う（Node.jsに依存せず、$HOME配下にsudo不要で導入される。
+# チェックサム検証込み。CLI自身が自動更新する設計のため、Dockerfileではバージョン固定しない）
+ENV PATH="/home/$USERNAME/.local/bin:$PATH"
+RUN curl -fsSL https://claude.ai/install.sh | bash

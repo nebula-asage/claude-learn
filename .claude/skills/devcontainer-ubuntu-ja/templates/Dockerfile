@@ -60,3 +60,9 @@ RUN if getent group $USER_GID >/dev/null; then \
 #   のように生成物を /etc/bash_completion.d/ に配置する（このRUNは USER 切り替えより前、root権限で行う）
 
 USER $USERNAME
+
+# Claude Code CLI の導入
+# 公式ネイティブインストーラを使う（Node.jsに依存せず、$HOME配下にsudo不要で導入される。
+# チェックサム検証込み。CLI自身が自動更新する設計のため、Dockerfileではバージョン固定しない）
+ENV PATH="/home/$USERNAME/.local/bin:$PATH"
+RUN curl -fsSL https://claude.ai/install.sh | bash
