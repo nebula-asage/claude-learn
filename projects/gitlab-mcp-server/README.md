@@ -98,6 +98,8 @@ GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start
 
 型チェックのみ行う場合は `pnpm run typecheck`。リグレッションテストは `pnpm test`（vitest）で実行する。
 
+カバレッジは `pnpm run test:coverage` で計測する（`coverage/` にHTML・`clover.xml`・`coverage-final.json`を出力）。VS CodeのCoverage Gutters拡張によるガター表示・カバレッジ率表示は、この**CLI実行が生成した `clover.xml` を前提にしている**。Test Explorer（Vitest拡張）の「Run with Coverage」はレポータが `coverage-final.json` のみになり `clover.xml` を生成しないため、Coverage Guttersでは表示されない。エディタ上でカバレッジを確認したい場合は、Test Explorerではなく `pnpm run test:coverage` を実行すること。
+
 ### Git hooks（Husky + lint-staged）
 
 `.npmrc` で `ignore-scripts=true`（サプライチェーン攻撃対策）にしているため、`pnpm install` 時に `prepare` スクリプトは自動実行されない。`pnpm install` の後、**初回のみ手動で以下を実行**してGitのpre-commitフックを有効化すること。
