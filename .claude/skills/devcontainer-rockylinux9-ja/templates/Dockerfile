@@ -23,6 +23,8 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
     curl \
     ca-certificates \
     bash-completion \
+    vim \
+    less \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone
 
