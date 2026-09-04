@@ -53,7 +53,7 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
 - ロケール: `ja_JP.UTF-8`（`LANG`/`LANGUAGE`/`LC_ALL` すべて設定。`glibc-langpack-ja` を導入すればRHEL系ではlocale-gen不要で使えるようになる）
 - タイムゾーン: `Asia/Tokyo`
 - 非rootユーザー `vscode`（UID/GID 1000、パスワードなしsudo）。ベースイメージに同じUID/GIDが既にある場合はリネームして再利用する（`useradd`の重複エラー回避）
-- 導入パッケージ: `glibc-langpack-ja` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion`（すべて必須。ビルドツールチェーン（`gcc`/`gcc-c++`/`make`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
+- 導入パッケージ: `glibc-langpack-ja` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less`（すべて必須。ビルドツールチェーン（`gcc`/`gcc-c++`/`make`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
 - `dnf install` はBuildKitのキャッシュマウント（`RUN --mount=type=cache,target=/var/cache/dnf`）でパッケージキャッシュを永続化する前提。`Dockerfile` 先頭の `# syntax=docker/dockerfile:1` は外さない。追記するRUN命令でパッケージを追加インストールする場合も、同様にキャッシュマウントを使う
 
 言語ランタイム（Node/Python/Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
