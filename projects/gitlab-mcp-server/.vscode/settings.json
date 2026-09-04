@@ -38,7 +38,8 @@
   "coverage-gutters.coverageFileNames": ["clover.xml", "coverage-final.json"],
   "coverage-gutters.showGutterCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
-  "coverage-gutters.showLineCoverage": false,
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.watchOnActivate": true,
   // TypeScript IntelliSenseにVS Code組み込み版ではなくワークスペースの node_modules/typescript を使わせる
   // （設定しても初回はセキュリティ確認のダイアログで「Allow」を1回クリックする必要がある）
   "js/ts.tsdk.path": "node_modules/typescript/lib",
