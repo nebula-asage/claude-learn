@@ -67,6 +67,18 @@ ARG PNPM_VERSION=10.34.5
 RUN npm install -g pnpm@${PNPM_VERSION} \
     && pnpm completion bash > /etc/bash_completion.d/pnpm
 
+# Playwright(Chromium)の導入
+# ブラウザ本体を /opt/ms-playwright に固定する（既定のままだとrootのホーム配下に入り、
+# 後で切り替える非rootユーザーvscodeから読めなくなるため。ENVでコンテナ全体に伝播させる）
+# ここまでの手順と同じくroot権限のまま導入するため、sudo無しでそのままapt操作できる
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    npm install -g playwright \
+    && npx playwright install --with-deps chromium \
+    && apt-get install -y --no-install-recommends fonts-noto-cjk \
+    && chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
+
 USER $USERNAME
 
 # Claude Code CLI の導入
