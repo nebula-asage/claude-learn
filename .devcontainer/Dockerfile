@@ -83,6 +83,22 @@ RUN . "$NVM_DIR/nvm.sh" \
 # - ignore-scripts: postinstallなどのライフサイクルスクリプトを実行しない
 RUN printf 'ignore-scripts=true\nmin-release-age=7\nminimum-release-age=10080\n' > /home/$USERNAME/.npmrc
 
+# Playwright(Chromium)の導入
+# ブラウザ本体を /opt/ms-playwright に固定する（既定のままだと$HOME配下に入り、
+# 他ユーザーや将来のUID変更で読めなくなる可能性があるため。ENVでコンテナ全体に伝播させる）
+# OS依存ライブラリの導入(`install --with-deps`)はapt操作を伴うためsudoで実行する。
+# sudoは既定でPATHをリセットするため、nvmで通したPATHを`env`で明示的に引き継ぐ必要がある
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    . "$NVM_DIR/nvm.sh" \
+    && npm install -g playwright \
+    && sudo env "PATH=$PATH" PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH npx playwright install --with-deps chromium \
+    && sudo apt-get install -y --no-install-recommends fonts-noto-cjk \
+    && sudo chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH" \
+    && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
+    && npm completion > /home/$USERNAME/.local/share/bash-completion/completions/npm
+
 # Claude Code CLI の導入
 # 公式ネイティブインストーラを使う（Node.jsに依存せず、$HOME配下にsudo不要で導入される。
 # チェックサム検証込み。CLI自身が自動更新する設計のため、Dockerfileではバージョン固定しない）
