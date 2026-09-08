@@ -58,7 +58,7 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
 - ロケール: `ja_JP.UTF-8`（`LANG`/`LANGUAGE`/`LC_ALL` すべて設定。`glibc-langpack-ja` を導入すればRHEL系ではlocale-gen不要で使えるようになる）
 - タイムゾーン: `Asia/Tokyo`
 - 非rootユーザー `vscode`（UID/GID 1000、パスワードなしsudo）。ベースイメージに同じUID/GIDが既にある場合はリネームして再利用する（`useradd`の重複エラー回避）
-- 導入パッケージ: `glibc-langpack-ja` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less`（すべて必須。ビルドツールチェーン（`gcc`/`gcc-c++`/`make`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
+- 導入パッケージ: `glibc-langpack-ja` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less` `jq`（すべて必須。ビルドツールチェーン（`gcc`/`gcc-c++`/`make`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
 - `dnf install` はBuildKitのキャッシュマウント（`RUN --mount=type=cache,target=/var/cache/dnf`）でパッケージキャッシュを永続化する前提。`Dockerfile` 先頭の `# syntax=docker/dockerfile:1` は外さない。追記するRUN命令でパッケージを追加インストールする場合も、同様にキャッシュマウントを使う
 - **Node.js（`NODE_MAJOR` ARGで指定、既定24系）とPlaywright（Chromium）を標準搭載する。** これは「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、ブラウザ自動操作・HTML成果物のスクリーンショット確認をコンテナ内で追加導入なしに行えるようにするためのもの（devcontainer-ubuntu-jaと同じ方針）。distro提供の`nodejs`パッケージはバージョンが古くPlaywrightの要求(Node20+)を満たさないため、Node.jsはnvmで導入する
   - **PlaywrightのOS依存ライブラリ自動導入(`playwright install --with-deps`)はRocky Linuxで使えない**（Debian/Ubuntu系専用の実装で、apt-get前提のコマンドを呼んで失敗する）。そのため必要なRPMパッケージを`Dockerfile`に手動で列挙している（`nss` `nspr` `nss-util` `atk` `at-spi2-atk` `at-spi2-core` `cups-libs` `libX11` `libXcomposite` `libXdamage` `libXext` `libXfixes` `libXrandr` `libxcb` `libxkbcommon` `mesa-libgbm` `alsa-lib` `pango` `cairo` `dbus-libs`。実機でのldd検証により洗い出した最小構成で、Playwrightのバージョンアップで増える可能性があるため、テンプレート変更時は必ず手順5のChromium起動確認を実施する）
