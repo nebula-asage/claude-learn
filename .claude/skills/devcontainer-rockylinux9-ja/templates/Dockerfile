@@ -25,6 +25,7 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
     bash-completion \
     vim \
     less \
+    jq \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone
 
