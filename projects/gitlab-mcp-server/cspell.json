@@ -2,6 +2,8 @@
   "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
   "version": "0.2",
   "language": "en",
+  // 標準辞書に加えて、TypeScript/Node/npm/一般的なソフトウェア用語・bash・Markdown・HTML・
+  // フォント関連の辞書を有効化する（devDependenciesやCI設定、READMEの記述で使う語彙をカバーするため）
   "dictionaries": [
     "typescript",
     "node",
@@ -13,19 +15,35 @@
     "fonts"
   ],
   "ignorePaths": [
-    "node_modules/**",
-    "dist/**",
-    "coverage/**",
-    "docs/**",
-    "pnpm-lock.yaml",
-    ".husky/_/**",
-    "test-env/gitlab-data/**",
-    "test-env/gitlab-runner-config/**",
-    "*.log"
+    "node_modules/**", // 依存パッケージ本体。プロジェクトのソースではないので検査不要
+    "dist/**", // tscのビルド生成物
+    "coverage/**", // vitestのカバレッジレポート生成物
+    "docs/**", // typedocが生成するAPIドキュメント（docs/api）の生成物
+    "pnpm-lock.yaml", // pnpmが生成するロックファイル。パッケージ名やハッシュ値だらけで検査対象にならない
+    ".husky/_/**", // huskyが生成する内部スクリプト（コミット対象外）
+    "test-env/gitlab-data/**", // test-env起動時にGitLab CEが生成するデータボリューム
+    "test-env/gitlab-runner-config/**", // test-env起動時にGitLab Runnerが生成する設定
+    "*.log" // 実行時ログ
   ],
+  // このリポジトリのコメント・ドキュメントは日本語が主体で、cspellは英語辞書しか持たないため、
+  // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
+  // これにより日本語部分は素通りし、コード中の識別子や英語のコメント部分だけを検査できる
   "ignoreRegExpList": [
     "/[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f]+/gu"
   ],
+  // 実際に `pnpm run spellcheck` を実行して検出された未知語のうち、誤字ではなく正当な語だったもの。
+  // 内訳:
+  // - Fgrp/Fproj/Frepo/Fsub/ghij: テストコード中のダミーのプロジェクト名・IDなどのフィクスチャ文字列
+  // - Gitaly: GitLabのGitリポジトリストレージコンポーネント名
+  // - glpat: GitLabパーソナルアクセストークンのプレフィックス（例: glpat-xxxx）
+  // - healthcheck/healthz: ヘルスチェック用エンドポイント・Docker Composeのhealthcheck設定で使う語
+  // - mcptestonly: test-env/README.md記載のテスト専用トークン文字列の一部
+  // - modelcontextprotocol: npmスコープ `@modelcontextprotocol/sdk` に由来
+  // - onsessioninitialized: MCP SDKのStreamable HTTPトランスポートが持つコールバックオプション名
+  // - streamable: MCPの「Streamable HTTP」トランスポート名
+  // - toplevel/unstub: コード・コメント中で使われる複合語（ハイフンなし表記）
+  // - worktree: git worktreeを指す用語
+  // - wslconfig: WSL2の設定ファイル `.wslconfig` を指す語
   "words": [
     "Fgrp",
     "Fproj",
