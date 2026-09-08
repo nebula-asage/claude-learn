@@ -25,6 +25,7 @@ pnpm run lint         # eslint . （型情報を使った検査を含む）
 pnpm run lint:fix     # eslint . --fix
 pnpm run format       # prettier --write .
 pnpm run format:check # prettier --check .
+pnpm run spellcheck   # cspell --no-progress . （設定は cspell.json）
 pnpm run docs         # TypeDocでAPIドキュメント(HTML)を docs/api に生成（生成物はgit管理外）
 pnpm run docs:check   # HTMLを出さずにドキュメント記述漏れだけ検証する
 GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start   # dist/index.js を起動

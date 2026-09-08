@@ -1,0 +1,48 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  "language": "en",
+  "dictionaries": [
+    "typescript",
+    "node",
+    "npm",
+    "softwareTerms",
+    "bash",
+    "markdown",
+    "html",
+    "fonts"
+  ],
+  "ignorePaths": [
+    "node_modules/**",
+    "dist/**",
+    "coverage/**",
+    "docs/**",
+    "pnpm-lock.yaml",
+    ".husky/_/**",
+    "test-env/gitlab-data/**",
+    "test-env/gitlab-runner-config/**",
+    "*.log"
+  ],
+  "ignoreRegExpList": [
+    "/[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f]+/gu"
+  ],
+  "words": [
+    "Fgrp",
+    "Fproj",
+    "Frepo",
+    "Fsub",
+    "Gitaly",
+    "ghij",
+    "glpat",
+    "healthcheck",
+    "healthz",
+    "mcptestonly",
+    "modelcontextprotocol",
+    "onsessioninitialized",
+    "streamable",
+    "toplevel",
+    "unstub",
+    "worktree",
+    "wslconfig"
+  ]
+}
