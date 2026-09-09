@@ -1,0 +1,59 @@
+version: '3'
+
+tasks:
+  fmt:
+    desc: gofmtでフォーマットを適用する
+    cmds:
+      - gofmt -l -w .
+
+  lint:
+    desc: golangci-lintで静的解析する
+    cmds:
+      - golangci-lint run ./...
+
+  test:
+    desc: go testで単体テストを実行する
+    cmds:
+      - go test ./... -v
+
+  cover:
+    desc: カバレッジを計測し、関数ごとの被覆率をターミナルに表示する
+    run: once
+    cmds:
+      - go test ./... -coverprofile=coverage.out
+      - go tool cover -func=coverage.out
+
+  cover-html:
+    desc: カバレッジを計測し、coverage.html にHTMLレポートを生成する
+    deps: [cover]
+    cmds:
+      - go tool cover -html=coverage.out -o coverage.html
+
+  cover-lcov:
+    desc: カバレッジを計測し、coverage.lcov（Coverage Gutters拡張向け）を生成する
+    deps: [cover]
+    cmds:
+      - gcov2lcov -infile=coverage.out -outfile=coverage.lcov
+
+  doc:
+    desc: ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力する
+    cmds:
+      - gomarkdoc ./...
+
+  doc-report:
+    desc: 各パッケージディレクトリにAPI.mdとしてAPIドキュメントを生成する
+    cmds:
+      # {{.Dir}} はgomarkdoc自身の出力テンプレート構文。Taskのテンプレート展開と衝突するため、
+      # {{"{{"}} / {{"}}"}} でエスケープしてリテラルの `{{.Dir}}` をgomarkdocに渡す
+      - gomarkdoc --output '{{"{{"}}.Dir{{"}}"}}/API.md' ./...
+
+  run:
+    desc: go runでアプリケーションを実行する
+    cmds:
+      - go run .
+
+  clean:
+    desc: カバレッジ・ドキュメント生成物を削除する
+    cmds:
+      - rm -f coverage.out coverage.html coverage.lcov
+      - find . -name API.md -delete
