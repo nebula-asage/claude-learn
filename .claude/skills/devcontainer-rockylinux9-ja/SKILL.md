@@ -1,11 +1,11 @@
 ---
 name: devcontainer-rockylinux9-ja
-description: Rocky Linux 9ベース・ロケール日本語(ja_JP.UTF-8)・タイムゾーンAsia/Tokyoのdevcontainer環境を配置するときに使う。Node.jsとPlaywright(Chromium、RHEL系向けに手動で洗い出したOS依存ライブラリ込み)を標準搭載し、ブラウザ自動操作やHTML成果物のスクリーンショット確認がコンテナ内で追加導入なしに行える。「Rocky Linuxのdevcontainer作って」「RockyLinux9のコンテナ環境用意して」「このプロジェクト用にRockyLinux9の開発コンテナを作って」「devcontainerにPlaywrightも入れて」など、このリポジトリでRockyLinux9/日本語ロケール/東京タイムゾーンのdevcontainerを新規作成・再作成したい場合にトリガーする。Ubuntu版が欲しい場合はdevcontainer-ubuntu-jaスキルを使うこと。汎用的な他OS・他ロケール向けdevcontainerの相談には使わない。
+description: Rocky Linux 9ベース・ロケール日本語(ja_JP.UTF-8)・タイムゾーンAsia/Tokyoのdevcontainer環境を配置するときに使う。Node.jsとPlaywright(Chromium、RHEL系向けに手動で洗い出したOS依存ライブラリ込み)を標準搭載し、ブラウザ自動操作やHTML成果物のスクリーンショット確認がコンテナ内で追加導入なしに行える。「Rocky Linuxのdevcontainer作って」「RockyLinux9のコンテナ環境用意して」「このプロジェクト用にRockyLinux9の開発コンテナを作って」「devcontainerにPlaywrightも入れて」など、このリポジトリでRockyLinux9/日本語ロケール/東京タイムゾーンのdevcontainerを新規作成・再作成したい場合にトリガーする。Ubuntu版のdevcontainerが欲しい場合はこのスキルの対象外。汎用的な他OS・他ロケール向けdevcontainerの相談には使わない。
 ---
 
 # devcontainer-rockylinux9-ja
 
-Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式（`Dockerfile` + `devcontainer.json`）を配置するスキル。[[devcontainer-ubuntu-ja]] のRocky Linux 9版で、パッケージマネージャ（dnf）とロケール導入方法（glibc-langpack-ja、locale-genは不要）のみディストリビューション差分に合わせて調整している。他OS・他ロケールへの一般化は行わない。
+Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式（`Dockerfile` + `devcontainer.json`）を配置するスキル。パッケージマネージャ（dnf）とロケール導入方法（glibc-langpack-ja、locale-genは不要）をRHEL系ディストリビューションに合わせて固定している。他OS・他ロケールへの一般化は行わない。
 
 ## 手順
 
@@ -60,9 +60,9 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
 - 非rootユーザー `vscode`（UID/GID 1000、パスワードなしsudo）。ベースイメージに同じUID/GIDが既にある場合はリネームして再利用する（`useradd`の重複エラー回避）
 - 導入パッケージ: `glibc-langpack-ja` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less` `jq`（すべて必須。ビルドツールチェーン（`gcc`/`gcc-c++`/`make`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
 - `dnf install` はBuildKitのキャッシュマウント（`RUN --mount=type=cache,target=/var/cache/dnf`）でパッケージキャッシュを永続化する前提。`Dockerfile` 先頭の `# syntax=docker/dockerfile:1` は外さない。追記するRUN命令でパッケージを追加インストールする場合も、同様にキャッシュマウントを使う
-- **Node.js（`NODE_MAJOR` ARGで指定、既定24系）とPlaywright（Chromium）を標準搭載する。** これは「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、ブラウザ自動操作・HTML成果物のスクリーンショット確認をコンテナ内で追加導入なしに行えるようにするためのもの（devcontainer-ubuntu-jaと同じ方針）。distro提供の`nodejs`パッケージはバージョンが古くPlaywrightの要求(Node20+)を満たさないため、Node.jsはnvmで導入する
+- **Node.js（`NODE_MAJOR` ARGで指定、既定24系）とPlaywright（Chromium）を標準搭載する。** これは「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、ブラウザ自動操作・HTML成果物のスクリーンショット確認をコンテナ内で追加導入なしに行えるようにするためのもの。distro提供の`nodejs`パッケージはバージョンが古くPlaywrightの要求(Node20+)を満たさないため、Node.jsはnvmで導入する
   - **PlaywrightのOS依存ライブラリ自動導入(`playwright install --with-deps`)はRocky Linuxで使えない**（Debian/Ubuntu系専用の実装で、apt-get前提のコマンドを呼んで失敗する）。そのため必要なRPMパッケージを`Dockerfile`に手動で列挙している（`nss` `nspr` `nss-util` `atk` `at-spi2-atk` `at-spi2-core` `cups-libs` `libX11` `libXcomposite` `libXdamage` `libXext` `libXfixes` `libXrandr` `libxcb` `libxkbcommon` `mesa-libgbm` `alsa-lib` `pango` `cairo` `dbus-libs`。実機でのldd検証により洗い出した最小構成で、Playwrightのバージョンアップで増える可能性があるため、テンプレート変更時は必ず手順5のChromium起動確認を実施する）
   - CJKフォントは`fonts-noto-cjk`(Debian/Ubuntu名)ではなく`google-noto-sans-cjk-ttc-fonts`（RHEL系のパッケージ名）を使う
-  - ブラウザ本体は `PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright` に固定し、非rootユーザー`vscode`が所有者になるよう`chown`してから`playwright install`を実行する（devcontainer-ubuntu-jaの`sudo`実行方式と違い、Rocky Linux版はOS依存ライブラリのdnf導入とブラウザダウンロードを分離しているため）
+  - ブラウザ本体は `PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright` に固定し、非rootユーザー`vscode`が所有者になるよう`chown`してから`playwright install`を実行する（OS依存ライブラリのdnf導入とブラウザダウンロードを分離しているため）
 
 Node.js以外の言語ランタイム（Python/Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
