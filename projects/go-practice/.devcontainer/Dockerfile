@@ -62,11 +62,33 @@ RUN if getent group $USER_GID >/dev/null; then \
 #   USER切り替え後（vscode権限）で導入するツールの場合は、下のnpm補完のように
 #   /home/$USERNAME/.local/share/bash-completion/completions/ に配置する（root権限ディレクトリに書けないため）
 
+# Go本体・golangci-lintの導入
+# 言語ランタイムは本来devcontainer-ubuntu-jaスキルの対象外だが、このプロジェクトの主目的がGoの
+# 練習環境（go-projectスキル）であるため例外として導入する（Node.jsは後述のPlaywright専用の付随物という位置づけ）。
+# ホスト向け導入手順（go-projectスキル）では手動tarball+sha256検証を使うが、
+# Dockerビルドでは公式イメージからバイナリをCOPYする方が保守しやすく、同等以上の検証が効くためこちらを使う
+# （uvの導入と同じCOPY --from方式）。golangci-lintは`go install`ではなく公式配布バイナリを使う方針
+# （go-projectスキル参照）に合わせ、公式Dockerイメージ内のバイナリをそのまま使う。
+COPY --from=golang:1.26-bookworm /usr/local/go /usr/local/go
+COPY --from=golangci/golangci-lint:v2.12.2 /usr/bin/golangci-lint /usr/local/bin/golangci-lint
+ENV PATH="/usr/local/go/bin:${PATH}"
+RUN golangci-lint completion bash > /etc/bash_completion.d/golangci-lint
+
 USER $USERNAME
 
+# gomarkdoc・gcov2lcov・Task（タスクランナー）はgo installで導入する
+# （Goモジュールの標準機能であるGOSUMDBによるチェックサム検証が効くため、追加の手動検証は不要。
+# go-projectスキルのホスト向け導入手順と同じ方法）
+ENV PATH="/home/$USERNAME/go/bin:${PATH}"
+RUN go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest \
+    && go install github.com/jandelgado/gcov2lcov@latest \
+    && go install github.com/go-task/task/v3/cmd/task@latest \
+    && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
+    && task --completion bash > /home/$USERNAME/.local/share/bash-completion/completions/task
+
 # Node.js / npm はLinuxで標準的なnvm(Node Version Manager)で導入する
-# 言語ランタイムは本来このスキルの対象外だが、Playwrightでのブラウザ自動操作・スクリーンショット取得を
-# 標準機能として持たせるための例外としてNode.jsのみ導入する（他言語ランタイムは対象外のまま）。
+# Goランタイムはこのプロジェクトの主目的なので上記の通り導入済み、Node.jsはPlaywrightでのブラウザ自動操作・
+# スクリーンショット取得を標準機能として持たせるための付随物という位置づけ。
 # nvmのインストーラーが ~/.bashrc に自動でnvm.sh/bash補完の読み込みを追記するため、
 # インタラクティブなbashシェルではnode/npmが自動でPATHに載る
 ARG NVM_VERSION=v0.40.6
