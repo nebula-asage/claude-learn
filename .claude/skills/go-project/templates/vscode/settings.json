@@ -7,7 +7,7 @@
   // lintはgolangci-lint（.golangci.ymlのv2設定を読み込む）に統一する
   "go.lintTool": "golangci-lint",
   "go.lintOnSave": "workspace",
-  // カバレッジの可視化（Coverage Gutters拡張）: `make cover-lcov` で
+  // カバレッジの可視化（Coverage Gutters拡張）: `task cover-lcov` で
   // coverage.out をgcov2lcovでlcov形式に変換したcoverage.lcovを読み込み、
   // 被覆行を緑、未被覆行を赤でガター（行番号横）に表示する
   // (Coverage GuttersはGoのcoverage.out形式をネイティブ対応していないため変換が必要)
