@@ -31,36 +31,24 @@
   "ignoreRegExpList": [
     "/[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f]+/gu"
   ],
-  // 実際に `pnpm run spellcheck` を実行して検出された未知語のうち、誤字ではなく正当な語だったもの。
-  // 内訳:
-  // - Fgrp/Fproj/Frepo/Fsub/ghij: テストコード中のダミーのプロジェクト名・IDなどのフィクスチャ文字列
-  // - Gitaly: GitLabのGitリポジトリストレージコンポーネント名
-  // - glpat: GitLabパーソナルアクセストークンのプレフィックス（例: glpat-xxxx）
-  // - healthcheck/healthz: ヘルスチェック用エンドポイント・Docker Composeのhealthcheck設定で使う語
-  // - mcptestonly: test-env/README.md記載のテスト専用トークン文字列の一部
-  // - modelcontextprotocol: npmスコープ `@modelcontextprotocol/sdk` に由来
-  // - onsessioninitialized: MCP SDKのStreamable HTTPトランスポートが持つコールバックオプション名
-  // - streamable: MCPの「Streamable HTTP」トランスポート名
-  // - toplevel/unstub: コード・コメント中で使われる複合語（ハイフンなし表記）
-  // - worktree: git worktreeを指す用語
-  // - wslconfig: WSL2の設定ファイル `.wslconfig` を指す語
+  // 実際に `pnpm run spellcheck` を実行して検出された未知語のうち、誤字ではなく正当な語だったもの
   "words": [
-    "Fgrp",
-    "Fproj",
-    "Frepo",
-    "Fsub",
-    "Gitaly",
-    "ghij",
-    "glpat",
-    "healthcheck",
-    "healthz",
-    "mcptestonly",
-    "modelcontextprotocol",
-    "onsessioninitialized",
-    "streamable",
-    "toplevel",
-    "unstub",
-    "worktree",
-    "wslconfig"
+    "Fgrp", // test/tools/groups.test.ts: URLエンコードされたダミーのグループ名フィクスチャ（元は"top/grp"）
+    "Fproj", // test/gitlab/client.test.ts: URLエンコードされたダミーのプロジェクト名フィクスチャ
+    "Frepo", // test/gitlab/client.test.ts: URLエンコードされたダミーのリポジトリ名フィクスチャ
+    "Fsub", // test/gitlab/client.test.ts: URLエンコードされたダミーのサブグループ名フィクスチャ
+    "Gitaly", // GitLabのGitリポジトリストレージコンポーネント名
+    "ghij", // test/gitlab/client.test.ts: truncateUtf8のテストで使うダミー文字列("abcdefghij")の一部
+    "glpat", // GitLabパーソナルアクセストークンのプレフィックス（例: glpat-xxxx）
+    "healthcheck", // Docker Composeのhealthcheck設定で使う語
+    "healthz", // ヘルスチェック用エンドポイント（/healthz）
+    "mcptestonly", // test-env/README.md記載のテスト専用トークン文字列の一部
+    "modelcontextprotocol", // npmスコープ `@modelcontextprotocol/sdk` に由来
+    "onsessioninitialized", // MCP SDKのStreamable HTTPトランスポートが持つコールバックオプション名
+    "streamable", // MCPの「Streamable HTTP」トランスポート名
+    "toplevel", // git worktree解説文脈で使う複合語（ハイフンなし表記）
+    "unstub", // vitestのvi.unstubGlobalsに由来するテストコード中の語
+    "worktree", // git worktreeを指す用語
+    "wslconfig" // WSL2の設定ファイル `.wslconfig` を指す語
   ]
 }
