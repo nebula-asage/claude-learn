@@ -24,8 +24,6 @@
     "test-env/gitlab-data/**", // test-env起動時にGitLab CEが生成するデータボリューム
     "test-env/gitlab-runner-config/**", // test-env起動時にGitLab Runnerが生成する設定
     "*.log", // 実行時ログ
-    // 以下はこのプロジェクトでは今のところ使わないが、他言語プロジェクトと足並みを揃えるため
-    // vscode-settingsスキルの共通cspell.jsonテンプレートに合わせてある項目
     "build/**", // ビルド生成物（Gradle等）
     "target/**", // ビルド生成物（Cargo/Rust）
     "htmlcov/**", // カバレッジHTMLレポート生成物（pytest-cov）
