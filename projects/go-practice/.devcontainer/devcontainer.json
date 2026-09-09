@@ -1,0 +1,33 @@
+{
+  "name": "go-practice (Ubuntu 24.04 / ja_JP / Asia-Tokyo)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace-root/projects/go-practice",
+  "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/workspace-root,type=bind",
+  "mounts": [
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind",
+    "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json,type=bind"
+  ],
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        "ms-ceintl.vscode-language-pack-ja",
+        "ms-vscode-remote.vscode-remote-extensionpack",
+        "eamodio.gitlens",
+        "streetsidesoftware.code-spell-checker",
+        "yzhang.markdown-all-in-one",
+        "davidanson.vscode-markdownlint",
+        "shd101wyy.markdown-preview-enhanced",
+        "ritwickdey.liveserver",
+        "ms-azuretools.vscode-docker",
+        "golang.go",
+        "ryanluker.vscode-coverage-gutters"
+      ]
+    }
+  }
+}

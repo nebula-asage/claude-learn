@@ -1,4 +1,5 @@
 coverage.out
 coverage.html
+coverage.lcov
 API.md
 **/API.md
