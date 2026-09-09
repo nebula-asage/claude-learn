@@ -1,6 +1,6 @@
 ---
 name: java-springboot-project
-description: Java + Spring Boot の練習・開発プロジェクト一式（JDK 21 LTS + Spring Boot 4.1 + Gradle Kotlin DSL、Gradle wrapper 同梱で Gradle 本体のインストール不要 + Spotless/google-java-format による整形 + Checkstyle による Javadoc 強制 + SpotBugs によるバグ検出 + JUnit 5 と @WebMvcTest のスライステスト + JaCoCo によるカバレッジ HTML/XML レポートと下限検証 + doclint 付き javadoc による API ドキュメント生成 + gradle.lockfile による依存の固定）をホスト環境に直接構築するスキル。「javaの環境/プロジェクトを作って」「Spring Bootのプロジェクトを作って」「SpringBootでREST APIを作りたい」「Gradleのプロジェクトを作って」「JavaのlintとテストとカバレッジをGradleに入れて」「JaCoCoでカバレッジを測りたい」「JavadocでAPIドキュメントを生成したい」「Checkstyle/SpotBugs/Spotlessを入れて」など、Java/Spring Boot/Gradle プロジェクトの新規作成・再作成や、既存プロジェクトへの整形/lint/テスト/カバレッジ/ドキュメンテーション環境の追加を頼まれたら、明示的に「java-springboot-project」と言われなくても必ず使うこと。配置先が既に VS Code 向けの `.vscode/` ディレクトリを持つ場合は、Extension Pack for Java / Spring Boot Extension Pack 向けの settings.json・拡張機能のおすすめ設定に加え、Coverage Gutters 拡張によるカバレッジのエディタ上可視化設定も追加する。Docker/devcontainer には依存せずホストのユーザーローカル環境（sudo 不要）に直接導入する。devcontainer 自体の構築を頼まれた場合は devcontainer-ubuntu-ja スキルを使う。
+description: Java + Spring Boot の練習・開発プロジェクト一式（JDK 21 LTS + Spring Boot 4.1 + Gradle Kotlin DSL、Gradle wrapper 同梱で Gradle 本体のインストール不要 + Spotless/google-java-format による整形 + Checkstyle による Javadoc 強制 + SpotBugs によるバグ検出 + JUnit 5 と @WebMvcTest のスライステスト + JaCoCo によるカバレッジ HTML/XML レポートと下限検証 + doclint 付き javadoc による API ドキュメント生成 + gradle.lockfile による依存の固定）をホスト環境に直接構築するスキル。「javaの環境/プロジェクトを作って」「Spring Bootのプロジェクトを作って」「SpringBootでREST APIを作りたい」「Gradleのプロジェクトを作って」「JavaのlintとテストとカバレッジをGradleに入れて」「JaCoCoでカバレッジを測りたい」「JavadocでAPIドキュメントを生成したい」「Checkstyle/SpotBugs/Spotlessを入れて」など、Java/Spring Boot/Gradle プロジェクトの新規作成・再作成や、既存プロジェクトへの整形/lint/テスト/カバレッジ/ドキュメンテーション環境の追加を頼まれたら、明示的に「java-springboot-project」と言われなくても必ず使うこと。配置先が既に VS Code 向けの `.vscode/` ディレクトリを持つ場合は、Extension Pack for Java / Spring Boot Extension Pack 向けの settings.json・拡張機能のおすすめ設定に加え、Coverage Gutters 拡張によるカバレッジのエディタ上可視化設定も追加する。Docker/devcontainer には依存せずホストのユーザーローカル環境（sudo 不要）に直接導入する。devcontainer 自体の構築はこのスキルの対象外。
 ---
 
 # java-springboot-project
@@ -12,7 +12,7 @@ description: Java + Spring Boot の練習・開発プロジェクト一式（JDK
 Docker/devcontainer に依存せずホスト環境に直接配置するスキル。
 
 このスキルは devcontainer 系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。
-devcontainer/コンテナ環境そのものの構築を頼まれたときは別スキル（例: devcontainer-ubuntu-ja）を使うこと。
+devcontainer/コンテナ環境そのものの構築を頼まれたときは別スキルの対象であり、このスキルでは扱わない。
 
 このスキルが用意するのは、整形・静的解析・テスト・カバレッジ・ドキュメント生成が最初から動く
 **土台（スキャフォールディング）** であり、`greeting/` 配下はテンプレートのサンプル実装
@@ -347,8 +347,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
 ## このスキルの対象外
 
-- Docker/devcontainer 環境の構築自体はこのスキルの対象外。コンテナ環境が欲しいと言われたら
-  別スキル（例: devcontainer-ubuntu-ja）を使う（このスキルと組み合わせる必要はなく、独立して
+- Docker/devcontainer 環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して
   使われることを想定している）。
 - `.vscode/` ディレクトリが存在しない配置先に、VS Code 向けの設定一式をゼロから新規作成することは
   このスキルの対象外（このスキルが行うのは Java 固有の追加設定のみ）。ユーザーから明示的に

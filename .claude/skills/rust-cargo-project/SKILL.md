@@ -1,13 +1,13 @@
 ---
 name: rust-cargo-project
-description: Rustの練習・開発プロジェクト一式（rustup/cargo前提+Cargo.tomlの[lints]によるclippy/rustfmt設定+cargo testとcargo-llvm-covによるテスト・カバレッジHTML/lcovレポート+missing_docs等によるドキュメンテーションコメント強制とcargo docによるAPIリファレンス生成+cargo-denyによる依存検査）をホスト環境に直接構築するスキル。「rustの環境/プロジェクトを作って」「cargoプロジェクトを作って」「clippyを入れて」「rustのカバレッジを測りたい」「rustdocでAPIドキュメントを生成したい」「Rustの依存の脆弱性/ライセンスを検査したい」など、Rustプロジェクトの新規作成・再作成や、既存プロジェクトへのlint/カバレッジ/ドキュメンテーション/依存検査環境の追加を頼まれたら、明示的に「rust-cargo-project」と言われなくても必ず使うこと。配置先が既にVS Code向けの`.vscode/`ディレクトリを持つ場合は、rust-analyzer（clippy連携）向けのsettings.json・拡張機能のおすすめ設定に加え、Coverage Gutters拡張によるカバレッジのエディタ上可視化設定も追加する。Docker/devcontainerには依存せずホストのユーザーローカル環境（sudo不要）に直接導入する。devcontainer自体の構築を頼まれた場合はdevcontainer-ubuntu-jaスキルを使う。
+description: Rustの練習・開発プロジェクト一式（rustup/cargo前提+Cargo.tomlの[lints]によるclippy/rustfmt設定+cargo testとcargo-llvm-covによるテスト・カバレッジHTML/lcovレポート+missing_docs等によるドキュメンテーションコメント強制とcargo docによるAPIリファレンス生成+cargo-denyによる依存検査）をホスト環境に直接構築するスキル。「rustの環境/プロジェクトを作って」「cargoプロジェクトを作って」「clippyを入れて」「rustのカバレッジを測りたい」「rustdocでAPIドキュメントを生成したい」「Rustの依存の脆弱性/ライセンスを検査したい」など、Rustプロジェクトの新規作成・再作成や、既存プロジェクトへのlint/カバレッジ/ドキュメンテーション/依存検査環境の追加を頼まれたら、明示的に「rust-cargo-project」と言われなくても必ず使うこと。配置先が既にVS Code向けの`.vscode/`ディレクトリを持つ場合は、rust-analyzer（clippy連携）向けのsettings.json・拡張機能のおすすめ設定に加え、Coverage Gutters拡張によるカバレッジのエディタ上可視化設定も追加する。Docker/devcontainerには依存せずホストのユーザーローカル環境（sudo不要）に直接導入する。devcontainer自体の構築はこのスキルの対象外。
 ---
 
 # rust-cargo-project
 
 **rustupによるツールチェーンのユーザーローカル導入**、**`Cargo.toml` の `[lints]` に集約したclippy/rustdocの静的解析**、**cargo-llvm-covによるカバレッジ計測**、**`cargo doc` によるAPIリファレンス生成**、**cargo-denyによる依存の検査**を組み込んだプロジェクト一式を、Docker/devcontainerに依存せずホスト環境に直接配置するスキル。
 
-このスキルはdevcontainer系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。devcontainer/コンテナ環境そのものの構築を頼まれたときは別スキル（例: devcontainer-ubuntu-ja）を使うこと。
+このスキルはdevcontainer系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。devcontainer/コンテナ環境そのものの構築を頼まれたときは別スキルの対象であり、このスキルでは扱わない。
 
 このスキルが用意するのは、リンター・フォーマッター・テスト・カバレッジ計測・ドキュメンテーションコメント環境・依存検査が最初から動く**土台（スキャフォールディング）**であり、`src/greeting.rs` の中身はテンプレートのサンプル実装（`greet` / `try_greet`）のままである。ユーザーが「CLIツールを作りたい」「HTTPサーバーを書きたい」のように具体的な用途を挙げている場合は、手順4でテンプレートを配置した後、その用途に合わせて中身を実装し直すこと（土台を作って終わりにしない）。
 
@@ -17,7 +17,7 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 
 ### ツールチェーンの導入方針
 
-- **rustup・cargo-llvm-cov・cargo-denyはユーザーローカルに導入する**。sudoやシステム全体へのインストールには依存しない（`apt install rustc cargo` 等は使わない）。これは、このリポジトリのホストがsudoにパスワードを要求する構成であり、かつ他の言語向けスキルと同じ「システムに触れずユーザー権限だけで開発環境を完結させる」方針に揃えるため。rustupの公式インストーラは既定で `~/.cargo` / `~/.rustup` にインストールするので、この方針にそのまま合致する
+- **rustup・cargo-llvm-cov・cargo-denyはユーザーローカルに導入する**。sudoやシステム全体へのインストールには依存しない（`apt install rustc cargo` 等は使わない）。これは、このリポジトリのホストがsudoにパスワードを要求する構成であり、「システムに触れずユーザー権限だけで開発環境を完結させる」というこのリポジトリ全体の固定方針に揃えるため。rustupの公式インストーラは既定で `~/.cargo` / `~/.rustup` にインストールするので、この方針にそのまま合致する
 - **`rustfmt` と `clippy` は追加導入しない**。rustupの既定プロファイル（`default`）に最初から含まれるコンポーネントであり、`cargo fmt` / `cargo clippy` がそのまま使える
 - **カバレッジ計測には `cargo-llvm-cov` を使う**（`cargo-tarpaulin` ではない）。LLVMのソースベース計測を使うため行・分岐カバレッジが正確で、ターミナル要約・HTML・lcovの3形式を1つのツールで出力できる。`rustup component add llvm-tools-preview` が別途必要になる点に注意する（これを入れずに実行するとエラーになる）
 
@@ -154,7 +154,7 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 
 ## このスキルの対象外
 
-- Docker/devcontainer環境の構築自体はこのスキルの対象外。コンテナ環境が欲しいと言われたら別スキル（例: devcontainer-ubuntu-ja）を使う（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
+- Docker/devcontainer環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
 - `.vscode/` ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはRust固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/` を新規作成したうえでRust向け設定を配置してよい。
 - cargoのワークスペース（複数クレートを1つの `Cargo.toml` で束ねる構成）はこのスキルの対象外。このリポジトリは `projects/<name>/` ごとに自己完結させる方針なので、単一パッケージ（lib + bin）構成に固定している。
 - クロスコンパイル、`no_std` 環境、WebAssembly向けビルド、非同期ランタイム（tokio等）の導入はこのスキルの対象外。必要なら土台を作ったうえで別途対応する。

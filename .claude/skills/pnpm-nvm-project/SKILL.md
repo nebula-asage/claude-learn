@@ -1,13 +1,13 @@
 ---
 name: pnpm-nvm-project
-description: Node.js(TypeScript)の練習・開発プロジェクト一式（nvm+pnpm前提+TypeScript/ESLint/Prettier/Vitest+JSDoc/TypeDocによるAPIドキュメント生成+Husky/lint-stagedのGit hooks）をホスト環境に直接構築するスキル。「pnpm/Node.jsの環境・プロジェクトを作って」「TypeScriptのlint/format/testを入れて」「JSDoc/TypeDocでAPIドキュメントを生成したい」「コミット時に自動でlint/formatかけたい」など、pnpmベースのNode.js/TypeScriptプロジェクトの新規作成や、既存プロジェクトへのlint/test/ドキュメンテーション/Git hooks追加を頼まれたら必ず使うこと。配置先が既にVS Code向けの`.vscode/`ディレクトリを持つ場合は、ESLint(flat config)/Prettier/Vitestに対応したTypeScript向けのsettings.json・拡張機能のおすすめ設定に加え、Coverage Gutters拡張によるカバレッジのエディタ上可視化（被覆/未被覆行のガター色付け）設定も追加する。Docker/devcontainerには依存せず、pnpm本体はcorepackではなくnpm経由で導入しサプライチェーン攻撃対策も組み込む。devcontainer自体の構築はdevcontainer-ubuntu-jaスキルを使う。
+description: Node.js(TypeScript)の練習・開発プロジェクト一式（nvm+pnpm前提+TypeScript/ESLint/Prettier/Vitest+JSDoc/TypeDocによるAPIドキュメント生成+Husky/lint-stagedのGit hooks）をホスト環境に直接構築するスキル。「pnpm/Node.jsの環境・プロジェクトを作って」「TypeScriptのlint/format/testを入れて」「JSDoc/TypeDocでAPIドキュメントを生成したい」「コミット時に自動でlint/formatかけたい」など、pnpmベースのNode.js/TypeScriptプロジェクトの新規作成や、既存プロジェクトへのlint/test/ドキュメンテーション/Git hooks追加を頼まれたら必ず使うこと。配置先が既にVS Code向けの`.vscode/`ディレクトリを持つ場合は、ESLint(flat config)/Prettier/Vitestに対応したTypeScript向けのsettings.json・拡張機能のおすすめ設定に加え、Coverage Gutters拡張によるカバレッジのエディタ上可視化（被覆/未被覆行のガター色付け）設定も追加する。Docker/devcontainerには依存せず、pnpm本体はcorepackではなくnpm経由で導入しサプライチェーン攻撃対策も組み込む。devcontainer自体の構築はこのスキルの対象外。
 ---
 
 # pnpm-nvm-project
 
 **nvm + pnpm前提**のNode.js環境構築条件を組み込んだプロジェクト一式を、Docker/devcontainerに依存せずホスト環境に直接配置するスキル。`.devcontainer/`（このリポジトリのdevcontainer環境）で一度構築・検証済みの条件（nvmでのNode.js導入・pnpmのバージョン固定・サプライチェーン攻撃対策）に加え、`projects/gitlab-mcp-server/`で実際に運用・検証済みのTypeScript開発環境（TypeScript + tscビルド、ESLint(flat config, typescript-eslint) + Prettier、Vitest、eslint-plugin-jsdoc + TypeDocによるJSDoc必須化とAPIドキュメント生成、Husky + lint-stagedによるpre-commit時の自動lint/format）を、コンテナに依存しない形でテンプレート化したもの。
 
-このスキルはdevcontainer系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。devcontainer/コンテナ環境そのものの構築を頼まれたときは別スキル（例: devcontainer-ubuntu-ja）を使うこと。
+このスキルはdevcontainer系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。devcontainer/コンテナ環境そのものの構築を頼まれたときは別スキルの対象であり、このスキルでは扱わない。
 
 ## このスキルが前提とする条件（変更しない）
 
@@ -111,7 +111,7 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（nvm
 
 ## このスキルの対象外
 
-- Docker/devcontainer環境の構築自体はこのスキルの対象外。コンテナ環境が欲しいと言われたら別スキル（例: devcontainer-ubuntu-ja）を使う（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
+- Docker/devcontainer環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
 - `.vscode/`ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはTypeScript固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/`を新規作成したうえでTypeScript向け設定を配置してよい。
 - corepackを使わない方針、pnpmを10系に固定する方針、`.npmrc`の3設定、TypeScript/ESLint/Prettier/Vitest+カバレッジ計測(`@vitest/coverage-v8`)+JSDoc必須化(`eslint-plugin-jsdoc`)/TypeDocによるAPIドキュメント生成+Git hooks(Husky/lint-staged)の開発環境一式はこのリポジトリで検証済みの固定条件として扱い、単なる「pnpm環境作って」的な依頼でも省略しない。
 - ビルドバンドラ（Vite等）は含まない。`projects/gitlab-mcp-server/`はNode.js向けMCPサーバであり、ブラウザ向けバンドルを必要としないため`tsc`ビルドのみで完結している。ブラウザ向けアプリ等でバンドラが必要な場合は、テンプレートに`vite`等を追加導入すること。

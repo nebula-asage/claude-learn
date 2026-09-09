@@ -1,19 +1,19 @@
 ---
 name: go-project
-description: Go言語の練習・開発プロジェクト一式（go.mod+main.go+internalパッケージ+golangci-lintによるlint+go testでのテスト/カバレッジHTMLレポート+revive/gomarkdocによるドキュメンテーションコメント強制/APIドキュメント生成）をホスト環境に直接構築するスキル。「goの環境/プロジェクトを作って」「golangci-lintを入れて」「goのカバレッジ測定/レポートがほしい」「ドキュメンテーションコメントを強制したい」「APIドキュメントを生成したい」など、Goプロジェクトの新規作成・再作成や、既存プロジェクトへのlint/カバレッジ/ドキュメンテーション環境の追加を頼まれたら、明示的に「go-project」と言われなくても必ず使うこと。Docker/devcontainerには依存せずホストのユーザーローカル環境（sudo不要）に直接導入する。devcontainer自体の構築を頼まれた場合はdevcontainer-ubuntu-jaスキルを使う。
+description: Go言語の練習・開発プロジェクト一式（go.mod+main.go+internalパッケージ+golangci-lintによるlint+go testでのテスト/カバレッジHTMLレポート+revive/gomarkdocによるドキュメンテーションコメント強制/APIドキュメント生成）をホスト環境に直接構築するスキル。「goの環境/プロジェクトを作って」「golangci-lintを入れて」「goのカバレッジ測定/レポートがほしい」「ドキュメンテーションコメントを強制したい」「APIドキュメントを生成したい」など、Goプロジェクトの新規作成・再作成や、既存プロジェクトへのlint/カバレッジ/ドキュメンテーション環境の追加を頼まれたら、明示的に「go-project」と言われなくても必ず使うこと。Docker/devcontainerには依存せずホストのユーザーローカル環境（sudo不要）に直接導入する。devcontainer自体の構築はこのスキルの対象外。
 ---
 
 # go-project
 
 **Go本体のユーザーローカル導入**、**golangci-lintによる静的解析**、**gomarkdocによるドキュメンテーションコメントのAPIリファレンス生成**を組み込んだプロジェクト一式を、Docker/devcontainerに依存せずホスト環境に直接配置するスキル。`projects/go-practice/` で一度構築・検証済みの条件を、コンテナに依存しない形でテンプレート化したもの。
 
-このスキルは [[devcontainer-ubuntu-ja]] などのdevcontainer系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。devcontainer/コンテナ環境そのものの構築を頼まれたときはそちらのスキルを使うこと。
+このスキルはdevcontainer系スキルとは独立している。前提にもしないし、組み合わせて使う必要もない。devcontainer/コンテナ環境そのものの構築を頼まれたときは別スキルの対象であり、このスキルでは扱わない。
 
 このスキルが用意するのは、リンター・フォーマッター・テスト・カバレッジ計測・ドキュメンテーションコメント環境が最初から動く**土台（スキャフォールディング）**であり、`main.go`/`internal/greeting/` の中身はテンプレートのサンプル実装（`Greet` 関数）のままである。ユーザーが「HTTPサーバーを書きたい」「CLIツールを作りたい」のように具体的な用途を挙げている場合は、手順4でテンプレートを配置した後、その用途に合わせて中身を実装し直すこと（土台を作って終わりにしない）。
 
 ## このスキルが前提とする条件（変更しない）
 
-- **Go本体・golangci-lint・gomarkdocはユーザーローカルに導入する**。sudoやシステム全体へのインストールには依存しない（`apt install golang` 等は使わない）。これは、このリポジトリのホストがsudoにパスワードを要求する構成であり、かつ [[python-uv-project]] や [[pnpm-nvm-project]] と同じ「システムに触れずユーザー権限だけで開発環境を完結させる」方針に揃えるため
+- **Go本体・golangci-lint・gomarkdocはユーザーローカルに導入する**。sudoやシステム全体へのインストールには依存しない（`apt install golang` 等は使わない）。これは、このリポジトリのホストがsudoにパスワードを要求する構成であり、「システムに触れずユーザー権限だけで開発環境を完結させる」というこのリポジトリ全体の固定方針に揃えるため
 - **golangci-lintは公式インストールスクリプト（`install.sh`）を使わない**。導入手順の節で詳しく説明するが、`install.sh` はGitHub Releasesの資産選択ロジックに既知のバグがあり、tarball本体ではなく `.sbom.json` を誤ってダウンロードしてsha256検証に失敗することを確認済み。GitHub Releasesから直接tarballとchecksumsファイルを取得し、自分でsha256sumを照合してから展開する
 - **golangci-lintの設定はv2形式**（`version: "2"` をトップに書く新スキーマ）を使う。v1の `linters.enable` フラット形式ではない
 - **テスト・カバレッジ計測も標準で組み込む**。`go test` はGo標準ツールチェーンに同梱されているため追加インストールは不要。`Makefile` に `fmt`/`lint`/`test`/`cover`/`cover-html`/`doc`/`doc-report`/`run`/`clean` の各ターゲットを用意し、`go tool cover -html` でHTMLレポート（`coverage.html`）を生成できるようにする
@@ -108,5 +108,5 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
 
 ## このスキルの対象外
 
-- Docker/devcontainer環境の構築自体はこのスキルの対象外。コンテナ環境が欲しいと言われたら [[devcontainer-ubuntu-ja]] スキルを使う（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
+- Docker/devcontainer環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
 - Go本体・golangci-lint・gomarkdocのユーザーローカル導入方針、`install.sh` を使わない導入手順、golangci-lint v2設定形式、`go test` + `go tool cover` によるテスト・カバレッジ計測環境、`internal/` パッケージ分離とreviveによるドキュメンテーションコメント強制、gomarkdocによるAPIリファレンス生成は、このリポジトリで検証済みの固定条件として扱い、単なる「Go環境を作って」的な依頼でも省略しない。
