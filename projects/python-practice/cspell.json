@@ -26,7 +26,8 @@
     "Cargo.lock", // cargoのロックファイル
     "go.sum", // goモジュールのチェックサムファイル
     "gradle.lockfile", // Gradleの依存ロックファイル
-    "*.log" // 実行時ログ
+    "*.log", // 実行時ログ
+    "apidocs/**" // pdocが生成するAPIドキュメント出力先（README.md記載、.gitignore済み）
   ],
   // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
   // これにより日本語部分は素通りし、コード中の識別子や英語のコメント部分だけを検査できる
@@ -44,6 +45,12 @@
     "pycache", // ignorePathsのパス: Pythonのバイトコードキャッシュディレクトリ名（__pycache__）
     "pytest", // ignorePathsのコメント: Pythonのテストツール名
     "rustdoc", // ignorePathsのコメント: RustのAPIドキュメント生成ツール名
-    "venv" // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
+    "venv", // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
+    "apidocs", // README.md: pdocのAPIドキュメント出力先ディレクトリ名
+    "pydoclint", // pyproject.toml/README.md: docstringの引数名検証を行うruffルールプラグイン名
+    "pydocstyle", // pyproject.toml/README.md: docstringスタイルを検証するruffルール名
+    "pyproject", // README.md: `pyproject.toml`を指す語
+    "pythonpath", // pyproject.toml: pytestの設定キー名
+    "testpaths" // pyproject.toml: pytestの設定キー名
   ]
 }

@@ -44,6 +44,10 @@
     "pycache", // ignorePathsのパス: Pythonのバイトコードキャッシュディレクトリ名（__pycache__）
     "pytest", // ignorePathsのコメント: Pythonのテストツール名
     "rustdoc", // ignorePathsのコメント: RustのAPIドキュメント生成ツール名
-    "venv" // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
+    "venv", // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
+    "coverprofile", // Makefile: `go test -coverprofile`のフラグ名
+    "gofmt", // Go標準のフォーマッタコマンド名
+    "golangci", // golangci-lint（静的解析ツール）の名称の一部
+    "princjef" // README.md: gomarkdocの作者のGitHubユーザー名
   ]
 }

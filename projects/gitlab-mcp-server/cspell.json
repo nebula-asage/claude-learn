@@ -18,12 +18,30 @@
     "node_modules/**", // 依存パッケージ本体。プロジェクトのソースではないので検査不要
     "dist/**", // tscのビルド生成物
     "coverage/**", // vitestのカバレッジレポート生成物
-    "docs/**", // typedocが生成するAPIドキュメント（docs/api）の生成物
+    "docs/api/**", // typedocが生成するAPIドキュメントの生成物
     "pnpm-lock.yaml", // pnpmが生成するロックファイル。パッケージ名やハッシュ値だらけで検査対象にならない
     ".husky/_/**", // huskyが生成する内部スクリプト（コミット対象外）
     "test-env/gitlab-data/**", // test-env起動時にGitLab CEが生成するデータボリューム
     "test-env/gitlab-runner-config/**", // test-env起動時にGitLab Runnerが生成する設定
-    "*.log" // 実行時ログ
+    "*.log", // 実行時ログ
+    // 以下はこのプロジェクトでは今のところ使わないが、他言語プロジェクトと足並みを揃えるため
+    // vscode-settingsスキルの共通cspell.jsonテンプレートに合わせてある項目
+    "build/**", // ビルド生成物（Gradle等）
+    "target/**", // ビルド生成物（Cargo/Rust）
+    "htmlcov/**", // カバレッジHTMLレポート生成物（pytest-cov）
+    ".venv/**", // Python仮想環境（uv）
+    "__pycache__/**", // Pythonのバイトコードキャッシュ
+    ".pytest_cache/**", // pytestのキャッシュ
+    ".mypy_cache/**", // mypyのキャッシュ
+    ".ruff_cache/**", // ruffのキャッシュ
+    ".gradle/**", // Gradleのキャッシュ・生成物
+    "package-lock.json", // npmのロックファイル
+    "yarn.lock", // yarnのロックファイル
+    "uv.lock", // uvのロックファイル
+    "poetry.lock", // poetryのロックファイル
+    "Cargo.lock", // cargoのロックファイル
+    "go.sum", // goモジュールのチェックサムファイル
+    "gradle.lockfile" // Gradleの依存ロックファイル
   ],
   // このリポジトリのコメント・ドキュメントは日本語が主体で、cspellは英語辞書しか持たないため、
   // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
@@ -42,12 +60,17 @@
     "glpat", // GitLabパーソナルアクセストークンのプレフィックス（例: glpat-xxxx）
     "healthcheck", // Docker Composeのhealthcheck設定で使う語
     "healthz", // ヘルスチェック用エンドポイント（/healthz）
+    "htmlcov", // ignorePathsのパス・コメント: pytest-covが生成するカバレッジHTMLディレクトリ名（他言語向け共通項目）
     "mcptestonly", // test-env/README.md記載のテスト専用トークン文字列の一部
     "modelcontextprotocol", // npmスコープ `@modelcontextprotocol/sdk` に由来
+    "mypy", // ignorePathsのパス・コメント: Pythonの型チェッカー名（他言語向け共通項目）
     "onsessioninitialized", // MCP SDKのStreamable HTTPトランスポートが持つコールバックオプション名
+    "pycache", // ignorePathsのパス: Pythonのバイトコードキャッシュディレクトリ名（他言語向け共通項目）
+    "pytest", // ignorePathsのコメント: Pythonのテストツール名（他言語向け共通項目）
     "streamable", // MCPの「Streamable HTTP」トランスポート名
     "toplevel", // git worktree解説文脈で使う複合語（ハイフンなし表記）
     "unstub", // vitestのvi.unstubGlobalsに由来するテストコード中の語
+    "venv", // ignorePathsのパス: Python仮想環境ディレクトリ名（他言語向け共通項目）
     "worktree", // git worktreeを指す用語
     "wslconfig" // WSL2の設定ファイル `.wslconfig` を指す語
   ]
