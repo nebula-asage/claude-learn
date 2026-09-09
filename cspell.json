@@ -1,0 +1,55 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  // このモノレポはコメント・ドキュメントが日本語主体。英語辞書をベースにしつつ、
+  // 日本語部分はignoreRegExpListで検査対象から外し、コード識別子や英語コメントだけを検査する
+  "language": "en",
+  "ignorePaths": [
+    "node_modules/**", // Node.js依存パッケージ本体
+    "dist/**", // ビルド生成物（tsc等）
+    "build/**", // ビルド生成物（Gradle等）
+    "target/**", // ビルド生成物（Cargo/Rust）
+    "coverage/**", // カバレッジレポート生成物（vitest/pytest-cov等）
+    "htmlcov/**", // カバレッジHTMLレポート生成物（pytest-cov）
+    "docs/api/**", // APIドキュメント生成物（TypeDoc/pdoc/gomarkdoc/rustdoc/javadoc等）
+    ".venv/**", // Python仮想環境（uv）
+    "__pycache__/**", // Pythonのバイトコードキャッシュ
+    ".pytest_cache/**", // pytestのキャッシュ
+    ".mypy_cache/**", // mypyのキャッシュ
+    ".ruff_cache/**", // ruffのキャッシュ
+    ".gradle/**", // Gradleのキャッシュ・生成物
+    "pnpm-lock.yaml", // pnpmのロックファイル
+    "package-lock.json", // npmのロックファイル
+    "yarn.lock", // yarnのロックファイル
+    "uv.lock", // uvのロックファイル
+    "poetry.lock", // poetryのロックファイル
+    "Cargo.lock", // cargoのロックファイル
+    "go.sum", // goモジュールのチェックサムファイル
+    "gradle.lockfile", // Gradleの依存ロックファイル
+    "*.log" // 実行時ログ
+  ],
+  // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
+  // これにより日本語部分は素通りし、コード中の識別子や英語のコメント部分だけを検査できる
+  "ignoreRegExpList": ["/[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f]+/gu"],
+  // 以下はこのcspell.json自身の`ignorePaths`コメント（ツール名・ディレクトリ名の断片）に
+  // 由来する未知語で、テンプレートをそのまま配置するとどのプロジェクトでも必ず検出されるため
+  // あらかじめ登録してある。プロジェクト固有の用語・識別子・略語はこれらの下に追加していく。
+  // 配置先で実際に `npx cspell --no-progress .` を実行して検出された未知語のうち、
+  // 誤字ではなく正当な語だけを1件ずつ追記する（由来がわかるようインラインコメントを添える）
+  "words": [
+    "gomarkdoc", // ignorePathsのコメント: GoのAPIドキュメント生成ツール名
+    "htmlcov", // ignorePathsのパス・コメント: pytest-covが生成するカバレッジHTMLディレクトリ名
+    "mypy", // ignorePathsのパス・コメント: Pythonの型チェッカー名（.mypy_cache）
+    "pdoc", // ignorePathsのコメント: PythonのAPIドキュメント生成ツール名
+    "pycache", // ignorePathsのパス: Pythonのバイトコードキャッシュディレクトリ名（__pycache__）
+    "pytest", // ignorePathsのコメント: Pythonのテストツール名
+    "rustdoc", // ignorePathsのコメント: RustのAPIドキュメント生成ツール名
+    "venv", // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
+    "dpkg", // CLAUDE.md: Debian系パッケージ管理コマンド名
+    "frontmatter", // CLAUDE.md: Markdownファイル冒頭のメタデータ記法を指す語
+    "GOPATH", // CLAUDE.md: Go言語の環境変数名
+    "pyproject", // CLAUDE.md: `pyproject.toml`を指す語
+    "rustup", // CLAUDE.md: Rustのツールチェーン管理ツール名
+    "worktree" // CLAUDE.md: git worktreeを指す用語
+  ]
+}
