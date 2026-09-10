@@ -18,6 +18,8 @@
     // HTML/CSS/JSファイルをローカルサーバーで即時プレビューする
     "ritwickdey.liveserver",
     // Dockerfile / docker-compose.yml の編集支援
-    "ms-azuretools.vscode-docker"
+    "ms-azuretools.vscode-docker",
+    // Claude CodeをVS Code上で使うための公式拡張機能
+    "Anthropic.claude-code"
   ]
 }
