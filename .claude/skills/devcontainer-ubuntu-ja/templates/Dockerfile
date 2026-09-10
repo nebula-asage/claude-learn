@@ -26,6 +26,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     vim \
     less \
     jq \
+    python3 \
+    python3-venv \
+    python3-pip \
     && locale-gen ja_JP.UTF-8 \
     && update-locale LANG=ja_JP.UTF-8 \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
@@ -66,7 +69,8 @@ USER $USERNAME
 
 # Node.js / npm はLinuxで標準的なnvm(Node Version Manager)で導入する
 # 言語ランタイムは本来このスキルの対象外だが、Playwrightでのブラウザ自動操作・スクリーンショット取得を
-# 標準機能として持たせるための例外としてNode.jsのみ導入する（他言語ランタイムは対象外のまま）。
+# 標準機能として持たせるための例外としてNode.jsを導入する（Python3はapt-getで別途標準搭載済み。
+# Goなど他言語ランタイムは対象外のまま）。
 # nvmのインストーラーが ~/.bashrc に自動でnvm.sh/bash補完の読み込みを追記するため、
 # インタラクティブなbashシェルではnode/npmが自動でPATHに載る
 ARG NVM_VERSION=v0.40.6

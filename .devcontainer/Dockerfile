@@ -26,6 +26,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     vim \
     less \
     jq \
+    python3 \
+    python3-venv \
+    python3-pip \
     && locale-gen ja_JP.UTF-8 \
     && update-locale LANG=ja_JP.UTF-8 \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
