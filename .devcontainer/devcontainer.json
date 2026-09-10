@@ -16,15 +16,25 @@
         "terminal.integrated.defaultProfile.linux": "bash"
       },
       "extensions": [
+        // VS CodeのUIを日本語化する
         "ms-ceintl.vscode-language-pack-ja",
+        // SSH/WSL/コンテナ等のリモート開発をまとめて有効化する拡張機能パック
         "ms-vscode-remote.vscode-remote-extensionpack",
+        // Gitの変更履歴・blame表示などを強化する
         "eamodio.gitlens",
+        // コード・コメント・ドキュメントを問わずスペルミスを検出する
         "streetsidesoftware.code-spell-checker",
+        // Markdownの目次自動生成・ショートカット・プレビュー等の編集支援
         "yzhang.markdown-all-in-one",
+        // Markdownの構文・スタイルをlintする
         "davidanson.vscode-markdownlint",
+        // 数式（KaTeX）・Mermaid図・PlantUML等に対応した高機能Markdownプレビュー（MPE）
         "shd101wyy.markdown-preview-enhanced",
+        // HTML/CSS/JSファイルをローカルサーバーで即時プレビューする
         "ritwickdey.liveserver",
+        // Dockerfile / docker-compose.yml の編集支援
         "ms-azuretools.vscode-docker",
+        // Claude CodeをVS Code上で使うための公式拡張機能
         "Anthropic.claude-code"
       ]
     }
