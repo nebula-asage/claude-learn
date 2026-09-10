@@ -26,6 +26,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     vim \
     less \
     jq \
+    python3 \
+    python3-venv \
+    python3-pip \
     && locale-gen ja_JP.UTF-8 \
     && update-locale LANG=ja_JP.UTF-8 \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
@@ -54,7 +57,9 @@ RUN if getent group $USER_GID >/dev/null; then \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
 # uv本体を導入する（公式配布イメージからバイナリをコピーするAstral推奨の方法）
-# Pythonランタイム自体はaptで入れず、uvに管理させる（`uv python install`）
+# このプロジェクトの主目的であるPythonバージョン管理はuvに任せる（`uv python install`で3.12を導入）。
+# OS標準のpython3（apt-get、上記のパッケージリスト参照）はdevcontainer-ubuntu-jaスキルの標準搭載として
+# 別途共存させており、uv管理のPythonとは独立したシステムPythonという位置づけ
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # uvはbash補完サブコマンドを持つため、生成物を配置して有効化する（root権限で実施）
@@ -70,8 +75,9 @@ RUN uv python install 3.12
 
 # Node.js / npm はLinuxで標準的なnvm(Node Version Manager)で導入する
 # 言語ランタイムは本来devcontainer-ubuntu-jaスキルの対象外だが、Playwrightでのブラウザ自動操作・
-# スクリーンショット取得を標準機能として持たせるための例外としてNode.jsのみ導入する
-# （Pythonランタイムはこのプロジェクトの主目的なのでuv管理のまま、Node.jsはPlaywright専用の付随物という位置づけ）
+# スクリーンショット取得を標準機能として持たせるための例外としてNode.jsを導入する
+# （Python3はNode.jsと同様の例外としてdevcontainer-ubuntu-jaが標準搭載。このプロジェクトの主目的である
+# Pythonバージョン管理はuv管理のまま、Node.jsはPlaywright専用の付随物という位置づけ）
 # nvmのインストーラーが ~/.bashrc に自動でnvm.sh/bash補完の読み込みを追記するため、
 # インタラクティブなbashシェルではnode/npmが自動でPATHに載る
 ARG NVM_VERSION=v0.40.6

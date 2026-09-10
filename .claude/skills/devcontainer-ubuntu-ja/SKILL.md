@@ -1,6 +1,6 @@
 ---
 name: devcontainer-ubuntu-ja
-description: Ubuntu 24.04ベース・ロケール日本語(ja_JP.UTF-8)・タイムゾーンAsia/Tokyoのdevcontainer環境を配置するときに使う。Node.jsとPlaywright(Chromium、OS依存ライブラリ込み)を標準搭載し、ブラウザ自動操作やHTML成果物のスクリーンショット確認がコンテナ内で追加導入なしに行える。「devcontainer作って」「開発コンテナ環境作って」「このプロジェクト用にコンテナ環境を用意して」「devcontainerにPlaywrightも入れて」など、このリポジトリでUbuntu24.04/日本語ロケール/東京タイムゾーンのdevcontainerを新規作成・再作成したい場合にトリガーする。汎用的な他OS/他ロケール向けdevcontainerの相談には使わない。
+description: Ubuntu 24.04ベース・ロケール日本語(ja_JP.UTF-8)・タイムゾーンAsia/Tokyoのdevcontainer環境を配置するときに使う。Node.jsとPlaywright(Chromium、OS依存ライブラリ込み)、Python3(apt-get)を標準搭載し、ブラウザ自動操作やHTML成果物のスクリーンショット確認、Pythonスクリプトの実行がコンテナ内で追加導入なしに行える。「devcontainer作って」「開発コンテナ環境作って」「このプロジェクト用にコンテナ環境を用意して」「devcontainerにPlaywrightも入れて」など、このリポジトリでUbuntu24.04/日本語ロケール/東京タイムゾーンのdevcontainerを新規作成・再作成したい場合にトリガーする。汎用的な他OS/他ロケール向けdevcontainerの相談には使わない。
 ---
 
 # devcontainer-ubuntu-ja
@@ -42,6 +42,7 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
      docker run --rm <一時タグ> bash -c '. "$NVM_DIR/nvm.sh" && NODE_PATH=$(npm root -g) node -e "require(\"playwright\").chromium.launch().then(async b=>{await b.close();console.log(\"OK\")})"'
      ```
      Dockerのseccomp/AppArmor設定次第ではChromiumのサンドボックスが使えず`Failed to move to new namespace`系のエラーで失敗する環境がある（Docker 29系・WSL2ホストでの検証では素の設定のまま成功した）。失敗した場合は `chromium.launch({args:['--no-sandbox']})` でも試し、成功するなら「devcontainer内でPlaywrightを使う際は環境によって`chromium.launch({ args: ['--no-sandbox'] })` が必要になることがある」という注意点をユーザーへの報告に添える。
+   - `docker run --rm <一時タグ> bash -c 'python3 --version && python3 -m venv /tmp/venvtest && /tmp/venvtest/bin/pip --version'` でPython3・venv・pipが導入されていることを確認する。
    - 確認用に作った一時イメージは `docker rmi <一時タグ>` で削除する。
 
 6. **（追加要求があった場合）追加プログラムのbash補完を有効化する**
@@ -58,10 +59,11 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
 - ロケール: `ja_JP.UTF-8`（`LANG`/`LANGUAGE`/`LC_ALL` すべて設定）
 - タイムゾーン: `Asia/Tokyo`
 - 非rootユーザー `vscode`（UID/GID 1000、パスワードなしsudo）。ベースイメージに同じUID/GIDが既にある場合はリネームして再利用する（`useradd`の重複エラー回避）
-- 導入パッケージ: `locales` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less` `jq`（すべて必須。ビルドツールチェーン（`build-essential`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
+- 導入パッケージ: `locales` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less` `jq` `python3` `python3-venv` `python3-pip`（すべて必須。ビルドツールチェーン（`build-essential`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
 - `apt-get install` はBuildKitのキャッシュマウント（`RUN --mount=type=cache,target=/var/cache/apt` 等）でパッケージキャッシュを永続化する前提。`Dockerfile` 先頭の `# syntax=docker/dockerfile:1` は外さない。追記するRUN命令でパッケージを追加インストールする場合も、同様にキャッシュマウントを使う
 - **Node.js（`NODE_MAJOR` ARGで指定、既定24系）とPlaywright（Chromium、`playwright install --with-deps` によるOS依存ライブラリ込み）を標準搭載する。** これは「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、ブラウザ自動操作・HTML成果物のスクリーンショット確認をコンテナ内で追加導入なしに行えるようにするためのもの。ブラウザ本体は `PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright` に固定し、非rootユーザー`vscode`からも読めるようパーミッションを揃えてある
   - devcontainer内でヘッドレスブラウザとして日本語を含むページを正確に描画確認したい場合、CJKフォント（`fonts-noto-cjk`、これも標準搭載）が必要（未導入だと文字が豆腐化する）
   - Dockerのseccomp/AppArmor設定次第では`chromium.launch()`がサンドボックス絡みのエラーで失敗し`chromium.launch({ args: ['--no-sandbox'] })`が必要になる環境がある（Docker 29系・WSL2ホストでの検証では素の設定のまま成功しており、常に必要というわけではない）。Dockerfile側では解決できない実行時の制約なので、動作確認時に必ず切り分けてユーザーに伝える（手順5参照）
+- **Python3（`apt-get`導入、Ubuntu 24.04標準の3.12系）を標準搭載する。** これもNode.jsと同様に「言語ランタイムは対象外」という原則に対する明示的な例外で、コンテナ内で追加導入なしにPythonスクリプトを実行できるようにするためのもの。`python3` 本体に加え、`venv`モジュールと`pip`が別パッケージに分割されているため `python3-venv` `python3-pip` も導入する。バージョン固定やプロジェクト固有の依存管理（`uv`など）が必要な場合は、配置後の`Dockerfile`にユーザー自身が追記する
 
-Node.js以外の言語ランタイム（Python/Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
+Node.js・Python以外の言語ランタイム（Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
