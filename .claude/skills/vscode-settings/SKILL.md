@@ -23,7 +23,7 @@ description: リポジトリやprojects/<name>/配下にVS Code用の`.vscode/se
 
 4. **拡張機能のおすすめ設定を配置する**
    - **devcontainer環境でない場合**: `.claude/skills/vscode-settings/templates/extensions.json` → `<配置先>/.vscode/extensions.json`
-   - **devcontainer環境の場合**: `.vscode/extensions.json`は作らず、`templates/extensions.json`の`recommendations`配列の中身（コメントは転記しなくてよい。拡張機能IDのみでよい）を`<配置先>/.devcontainer/devcontainer.json`の`customizations.vscode.extensions`配列としてマージする。`devcontainer.json`は手元のEdit/Writeツールで直接編集し、`jq`などJSON専用パーサーへは通さない（後述の理由でコメント入りJSONCをそのまま読み込めないため）。
+   - **devcontainer環境の場合**: `.vscode/extensions.json`は作らず、`templates/extensions.json`の`recommendations`配列の中身を`<配置先>/.devcontainer/devcontainer.json`の`customizations.vscode.extensions`配列としてマージする。`devcontainer.json`は手元のEdit/Writeツールで直接編集し、`jq`などJSON専用パーサーへは通さない（後述の理由でコメント入りJSONCをそのまま読み込めないため）。
      - 理由: devcontainer環境では`devcontainer.json`の`customizations.vscode.extensions`に書いた拡張機能はコンテナ起動時に自動インストールされるが、`.vscode/extensions.json`の`recommendations`はあくまで「おすすめ表示」止まりで自動インストールされない。devcontainer環境ではより確実に効く`devcontainer.json`側を使う。
      - 既存の`customizations.vscode.settings`（devcontainer構築時のテンプレートに既に入っている設定など）はそのまま残し、同じ`customizations.vscode`オブジェクトに`extensions`キーを追加する形でマージする。
      - 既に`customizations.vscode.extensions`が存在する場合は、重複を除いて追記する（上書きしない）。
