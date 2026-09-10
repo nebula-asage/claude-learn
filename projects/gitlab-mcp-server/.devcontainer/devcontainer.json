@@ -25,6 +25,7 @@
         "shd101wyy.markdown-preview-enhanced",
         "ritwickdey.liveserver",
         "ms-azuretools.vscode-docker",
+        "Anthropic.claude-code",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
         "vitest.explorer",
