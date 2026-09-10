@@ -20,9 +20,9 @@
   // VS Code組み込みのAI機能（インライン提案・チャット等）を無効化する
   "chat.disableAIFeatures": true,
   // cspell.jsonの$schemaが参照するJSONスキーマのダウンロード可否を毎回確認されないよう、配布元ドメインを信頼済みにする
-  "json.schemaDownload.trustedDomains": [
-    "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json"
-  ],
+  "json.schemaDownload.trustedDomains": {
+    "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json": true
+  },
   // JSON/JSONC（コメント付きJSON）はVS Code組み込みフォーマッタで完結するため、保存時に自動整形する
   "[json]": {
     "editor.formatOnSave": true
