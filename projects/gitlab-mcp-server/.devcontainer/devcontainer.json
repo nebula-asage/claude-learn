@@ -16,19 +16,33 @@
         "terminal.integrated.defaultProfile.linux": "bash"
       },
       "extensions": [
+        // VS CodeのUIを日本語化する
         "ms-ceintl.vscode-language-pack-ja",
+        // SSH/WSL/コンテナ等のリモート開発をまとめて有効化する拡張機能パック
         "ms-vscode-remote.vscode-remote-extensionpack",
+        // Gitの変更履歴・blame表示などを強化する
         "eamodio.gitlens",
+        // コード・コメント・ドキュメントを問わずスペルミスを検出する
         "streetsidesoftware.code-spell-checker",
+        // Markdownの目次自動生成・ショートカット・プレビュー等の編集支援
         "yzhang.markdown-all-in-one",
+        // Markdownの構文・スタイルをlintする
         "davidanson.vscode-markdownlint",
+        // 数式（KaTeX）・Mermaid図・PlantUML等に対応した高機能Markdownプレビュー（MPE）
         "shd101wyy.markdown-preview-enhanced",
+        // HTML/CSS/JSファイルをローカルサーバーで即時プレビューする
         "ritwickdey.liveserver",
+        // Dockerfile / docker-compose.yml の編集支援
         "ms-azuretools.vscode-docker",
+        // Claude CodeをVS Code上で使うための公式拡張機能
         "Anthropic.claude-code",
+        // ESLint本体。eslint.config.js（flat config）を自動検出してエディタ上にlint結果を表示する
         "dbaeumer.vscode-eslint",
+        // Prettierフォーマッタ拡張。保存時フォーマット（settings.jsonの[typescript].editor.defaultFormatter）に使用する
         "esbenp.prettier-vscode",
+        // Vitestのテストをエディタのテストエクスプローラーから実行・デバッグできるようにする
         "vitest.explorer",
+        // @vitest/coverage-v8が出力するカバレッジレポート（coverage/clover.xml等）を読み込み、エディタの行番号横に被覆/未被覆を色付け表示する
         "ryanluker.vscode-coverage-gutters"
       ]
     }

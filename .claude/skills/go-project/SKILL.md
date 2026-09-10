@@ -116,7 +116,7 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
    - **`settings.json`を配置する**: `.claude/skills/go-project/templates/vscode/settings.json`の内容を`<配置先>/.vscode/settings.json`にマージする。ファイルが既に存在する場合は、Edit系ツールで直接編集し、既存のキー（言語非依存の共通設定など）を残したまま`go.*`/`coverage-gutters.*`系のキーと`[go]`ブロックを追加する（同じキーが既にあれば上書きせず、内容を確認したうえでユーザーに判断を仰ぐ）。ファイルが無ければ新規作成する。
      - `coverage-gutters.*`の設定はCoverage Gutters拡張（後述）向けで、`task cover-lcov`を実行すると生成される`coverage.lcov`（`coverage.out`をgcov2lcovでlcov形式に変換したもの）を読み込み、エディタの行番号横に被覆行（緑）・未被覆行（赤）を色付け表示する。既存の`cover`/`cover-html`運用に加えて使う追加のレポート形式であり、どちらかを置き換えるものではない。`coverage.lcov`はテスト実行のたびに再生成される成果物なのでコミット対象に含めない（テンプレートの`.gitignore`で除外済み）。
    - **拡張機能のおすすめ設定を配置する**:
-     - `devcontainer.json`が存在する場合: `.vscode/extensions.json`は使わず、`.claude/skills/go-project/templates/vscode/extensions.json`の`recommendations`配列の中身（拡張機能IDのみ。コメントは転記しなくてよい）を`<配置先>/.devcontainer/devcontainer.json`の`customizations.vscode.extensions`配列にEdit系ツールで直接マージする（重複を除いて追記。既存の`customizations.vscode.settings`等は残す）。
+     - `devcontainer.json`が存在する場合: `.vscode/extensions.json`は使わず、`.claude/skills/go-project/templates/vscode/extensions.json`の`recommendations`配列の中身を`<配置先>/.devcontainer/devcontainer.json`の`customizations.vscode.extensions`配列にEdit系ツールで直接マージする（重複を除いて追記。既存の`customizations.vscode.settings`等は残す）。
      - `devcontainer.json`が存在しない場合: `.claude/skills/go-project/templates/vscode/extensions.json`の内容を`<配置先>/.vscode/extensions.json`にマージする（既存の`recommendations`があれば重複を除いて追記し、既存の非Go系の推奨拡張機能はそのまま残す）。
 
 6. **動作確認する**
