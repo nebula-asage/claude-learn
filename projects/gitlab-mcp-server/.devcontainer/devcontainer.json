@@ -36,6 +36,8 @@
         "ms-azuretools.vscode-docker",
         // Claude CodeをVS Code上で使うための公式拡張機能
         "Anthropic.claude-code",
+        // justfileのシンタックスハイライト
+        "nefrob.vscode-just-syntax",
         // ESLint本体。eslint.config.js（flat config）を自動検出してエディタ上にlint結果を表示する
         "dbaeumer.vscode-eslint",
         // Prettierフォーマッタ拡張。保存時フォーマット（settings.jsonの[typescript].editor.defaultFormatter）に使用する
