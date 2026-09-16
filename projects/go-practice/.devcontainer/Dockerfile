@@ -77,7 +77,7 @@ RUN if getent group $USER_GID >/dev/null; then \
 # - 単体バイナリ導入等で `<コマンド> completion bash` のようなサブコマンドを持つ場合は、
 #   例: RUN <コマンド> completion bash > /etc/bash_completion.d/<コマンド>
 #   のように生成物を /etc/bash_completion.d/ に配置する（このRUNは USER 切り替えより前、root権限で行う）
-#   USER切り替え後（vscode権限）で導入するツールの場合は、下のnpm補完のように
+#   USER切り替え後（vscode権限）で導入するツールの場合は、下のpnpm補完のように
 #   /home/$USERNAME/.local/share/bash-completion/completions/ に配置する（root権限ディレクトリに書けないため）
 
 # Go本体・golangci-lintの導入
@@ -101,34 +101,31 @@ ENV PATH="/home/$USERNAME/go/bin:${PATH}"
 RUN go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest \
     && go install github.com/jandelgado/gcov2lcov@latest
 
-# Node.js / npm はLinuxで標準的なnvm(Node Version Manager)で導入する
+# pnpm（公式スタンドアロンインストーラで導入する。npm/nvm/corepackいずれにも依存しない。
+# $HOME配下にsudo不要で導入され、実行バイナリはnpmレジストリの署名とチェックサムで検証される）
 # Goランタイムはこのプロジェクトの主目的なので上記の通り導入済み、Node.jsはPlaywrightでのブラウザ自動操作・
 # スクリーンショット取得を標準機能として持たせるための付随物という位置づけ。
-# nvmのインストーラーが ~/.bashrc に自動でnvm.sh/bash補完の読み込みを追記するため、
-# インタラクティブなbashシェルではnode/npmが自動でPATHに載る
-ARG NVM_VERSION=v0.40.6
-ARG NODE_MAJOR=24
-ENV NVM_DIR=/home/$USERNAME/.nvm
-RUN curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash \
-    && . "$NVM_DIR/nvm.sh" \
-    && nvm install $NODE_MAJOR \
-    && nvm alias default $NODE_MAJOR \
-    && npm install -g npm@latest \
+ARG PNPM_VERSION=12
+ENV PNPM_HOME=/home/$USERNAME/.local/share/pnpm
+ENV PATH="$PNPM_HOME/bin:$PATH"
+RUN curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=${PNPM_VERSION} SHELL=/bin/bash sh - \
     && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
-    && npm completion > /home/$USERNAME/.local/share/bash-completion/completions/npm
+    && pnpm completion bash > /home/$USERNAME/.local/share/bash-completion/completions/pnpm
+
+# Node.js（distro提供のnodejsパッケージやnvmには依存せず、pnpm自身のruntime機能で導入・管理する）
+RUN pnpm runtime set node lts -g
 
 # Playwright(Chromium)の導入
 # ブラウザ本体を /opt/ms-playwright に固定する（既定のままだと$HOME配下に入り、
 # 他ユーザーや将来のUID変更で読めなくなる可能性があるため。ENVでコンテナ全体に伝播させる）
-# OS依存ライブラリの導入(`install --with-deps`)はapt操作を伴うためsudoで実行する。
-# sudoは既定でPATHをリセットするため、nvmで通したPATHを`env`で明示的に引き継ぐ必要がある
-# （ホスト側の同種のPlaywright導入作業で判明した既知の落とし穴）
+# OS依存ライブラリの導入(`install --with-deps`)はvscodeユーザーのNOPASSWD sudo経由で行われる
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    . "$NVM_DIR/nvm.sh" \
-    && npm install -g playwright \
-    && sudo env "PATH=$PATH" PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH npx playwright install --with-deps chromium \
+    sudo mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" \
+    && sudo chown $USERNAME:$USERNAME "$PLAYWRIGHT_BROWSERS_PATH" \
+    && pnpm add -g playwright \
+    && pnpm dlx playwright install --with-deps chromium \
     && sudo apt-get install -y --no-install-recommends fonts-noto-cjk \
     && sudo chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
 
