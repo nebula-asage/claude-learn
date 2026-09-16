@@ -1,0 +1,75 @@
+# 引数なしで実行された場合、レシピ一覧を表示する
+default:
+    @just --list
+
+# 依存関係をインストールする
+install:
+    pnpm install
+
+# tscでdist/にビルドする
+build:
+    pnpm run build
+
+# dist/index.jsを実行する（先にbuildが必要）
+start:
+    pnpm start
+
+# ビルドをwatchモードで追従させる
+dev:
+    pnpm run dev
+
+# 型チェックのみ実行する（src/testの両方が対象。ビルド成果物は出力しない）
+typecheck:
+    pnpm run typecheck
+
+# ESLintで静的解析する
+lint:
+    pnpm run lint
+
+# ESLintの自動修正を適用する
+lint-fix:
+    pnpm run lint:fix
+
+# Prettierでフォーマットを適用する
+fmt:
+    pnpm run format
+
+# フォーマット崩れが無いか確認する（適用はしない）
+fmt-check:
+    pnpm run format:check
+
+# cspellでスペルチェックする
+spellcheck:
+    pnpm run spellcheck
+
+# vitestでテストを実行する
+test:
+    pnpm test
+
+# vitestを監視モードで実行する
+test-watch:
+    pnpm run test:watch
+
+# ビルド後、E2Eテストを実行する
+test-e2e:
+    pnpm run test:e2e
+
+# カバレッジを計測し、coverage/にHTML・clover.xml・coverage-final.jsonを生成する
+cover:
+    pnpm run test:coverage
+
+# TypeDocでdocs/api/にAPIドキュメントを生成する
+doc:
+    pnpm run docs
+
+# HTMLを出さず、JSDoc記述漏れだけを検証する
+doc-check:
+    pnpm run docs:check
+
+# Git hooksを有効化する（pnpm installではignoreScriptsによりprepareが自動実行されないため初回のみ手動実行）
+prepare:
+    pnpm run prepare
+
+# ビルド・カバレッジ・ドキュメント生成物を削除する
+clean:
+    rm -rf dist coverage docs

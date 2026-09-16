@@ -4,11 +4,13 @@ Pythonの練習用プロジェクト。パッケージ管理・実行は [uv](ht
 
 ## 実行方法
 
-devcontainer（Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo`）を開くと、`uv` が使える状態になる（Pythonランタイムはdistroのapt版ではなく `uv python install` で導入したものを使う）。
+devcontainer（Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo`）を開くと、`uv` が使える状態になる（Pythonランタイムはdistroのapt版ではなく `uv python install` で導入したものを使う）。タスクランナーとして [just](https://just.systems/) を使う。
 
 ```bash
-uv run main.py
+just run
 ```
+
+内部では `uv run main.py` を実行している。`just` を引数なしで実行するとレシピ一覧が確認できる。
 
 ## 依存パッケージの追加
 
@@ -23,8 +25,9 @@ uv add <パッケージ名>
 開発用依存として `ruff` を導入済み。lint・フォーマット（`ruff format`）どちらもruffに一本化している。
 
 ```bash
-uv run ruff format .
-uv run ruff check .
+just fmt         # uv run ruff format .
+just fmt-check   # uv run ruff format --check .（適用はしない）
+just lint        # uv run ruff check .
 ```
 
 `ruff` の設定は `pyproject.toml` の `[tool.ruff.lint]` にまとめている（`flake8` と違って別ファイルが不要）。
@@ -34,14 +37,9 @@ uv run ruff check .
 開発用依存として `pytest`（テストランナー）・`pytest-cov`（カバレッジ計測）を導入済み。テストは `tests/` 配下に `test_*.py` として置く。
 
 ```bash
-# テストのみ実行
-uv run pytest
-
-# カバレッジ付きで実行（terminalに未カバー行を表示）
-uv run pytest --cov --cov-report=term-missing
-
-# カバレッジのHTMLレポートを生成（htmlcov/index.html）
-uv run pytest --cov --cov-report=html
+just test         # テストのみ実行
+just cover         # カバレッジ付きで実行（terminalに未カバー行を表示）
+just cover-html    # カバレッジのHTMLレポートを生成（htmlcov/index.html）
 ```
 
 カバレッジの対象・除外は `pyproject.toml` の `[tool.coverage.run]` で設定している（`.venv/`・`tests/` は対象外）。`htmlcov/`・`.coverage`・`.pytest_cache/` はいずれもテスト実行のたびに再生成される成果物なので `.gitignore` 済み。
@@ -53,7 +51,7 @@ uv run pytest --cov --cov-report=html
 さらに、docstringの `Args:` に書いた引数名が実際の関数シグネチャと一致しているかは `ruff` の `DOC`（pydoclint由来）ルールにより検証される。引数名の誤記や過不足があると `undocumented-param`（引数の記述漏れ）や `docstring-extraneous-parameter`（シグネチャに無い引数の記述）のエラーで検出される（型注釈の一致までは要求しない）。
 
 ```bash
-uv run ruff check .
+just lint
 ```
 
 docstringは [Google スタイル](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)（`Args:`/`Returns:` セクション）で書く。英語の文章作法を前提にした `D400`（ピリオド終端）・`D401`（命令形）・`D415` は日本語のdocstringには馴染まないため `pyproject.toml` の `[tool.ruff.lint]` で無視している。`tests/` 配下のテスト関数はpytestの慣習としてdocstring不要のため、`per-file-ignores` で `D`・`DOC` どちらも除外している。
@@ -61,7 +59,7 @@ docstringは [Google スタイル](https://google.github.io/styleguide/pyguide.h
 APIドキュメントはdocstringから `pdoc` でHTML生成する。
 
 ```bash
-uv run pdoc main.py -d google -o apidocs
+just doc
 ```
 
 `apidocs/index.html` を開くと、docstringから生成されたAPIリファレンス（Google スタイルの `Args:`/`Returns:` セクション込み）が確認できる。テストのたびに再生成される成果物なので `apidocs/` は `.gitignore` 済み。
