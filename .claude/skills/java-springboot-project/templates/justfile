@@ -1,0 +1,47 @@
+# このjustfileは他言語スキルとの呼び方統一のための薄いラッパーであり、
+# タスクの定義自体は持たない（すべて ./gradlew <タスク> を呼ぶだけ）。
+# ビルドの実行順序・依存関係はbuild.gradle.kts側が唯一の真実源のまま変わらない。
+
+# 引数なしで実行された場合、レシピ一覧を表示する
+default:
+    @just --list
+
+# 依存関係をgradle.lockfileに固定する（初回、または依存追加・更新後に実行）
+lock:
+    ./gradlew dependencies --write-locks
+
+# Spotless + google-java-formatでフォーマットを適用する
+fmt:
+    ./gradlew spotlessApply
+
+# フォーマット崩れが無いか確認する（適用はしない）
+fmt-check:
+    ./gradlew spotlessCheck
+
+# Checkstyle（Javadocの有無）とSpotBugs（バグ検出）で静的解析する
+lint:
+    ./gradlew checkstyleMain checkstyleTest spotbugsMain spotbugsTest
+
+# JUnitでテストを実行する
+test:
+    ./gradlew test
+
+# カバレッジレポートを生成し、行カバレッジ80%の下限を検証する
+cover:
+    ./gradlew jacocoTestReport jacocoTestCoverageVerification
+
+# javadocのdoclintでドキュメンテーションコメントの中身を検証し、APIリファレンスを生成する
+doc:
+    ./gradlew javadoc
+
+# 整形チェック・静的解析・テスト・カバレッジ下限・Javadocを一括実行する
+check:
+    ./gradlew check
+
+# アプリケーションを起動する
+run:
+    ./gradlew bootRun
+
+# ビルド成果物を削除する
+clean:
+    ./gradlew clean

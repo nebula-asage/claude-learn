@@ -1,6 +1,6 @@
 ---
 name: java-springboot-project
-description: Java + Spring Boot の練習・開発プロジェクト一式（JDK 21 LTS + Spring Boot 4.1 + Gradle Kotlin DSL。整形/lint/テスト/カバレッジ/ドキュメント生成/依存固定の環境込み）をホスト環境に直接構築するスキル。「javaの環境/プロジェクトを作って」「Spring Bootのプロジェクトを作って」「SpringBootでREST APIを作りたい」「Gradleのプロジェクトを作って」「JaCoCoでカバレッジを測りたい」「Checkstyle/SpotBugs/Spotlessを入れて」など、Java/Spring Boot/Gradle プロジェクトの新規作成・再作成や、既存プロジェクトへの整形/lint/テスト/カバレッジ/ドキュメンテーション環境の追加を頼まれたら、明示的に「java-springboot-project」と言われなくても必ず使うこと。配置先が既に VS Code 向けの `.vscode/` ディレクトリを持つ場合は、Extension Pack for Java / Spring Boot Extension Pack 向けの settings.json・拡張機能のおすすめ設定に加え、Coverage Gutters 拡張によるカバレッジのエディタ上可視化設定も追加する。Docker/devcontainer には依存せずホストのユーザーローカル環境（sudo 不要）に直接導入する。devcontainer 自体の構築はこのスキルの対象外。
+description: Java + Spring Boot の練習・開発プロジェクト一式（JDK 21 LTS + Spring Boot 4.1 + Gradle Kotlin DSL。整形/lint/テスト/カバレッジ/ドキュメント生成/依存固定の環境込み。justによる薄いタスクランナーラッパー込み）をホスト環境に直接構築するスキル。「javaの環境/プロジェクトを作って」「Spring Bootのプロジェクトを作って」「SpringBootでREST APIを作りたい」「Gradleのプロジェクトを作って」「JaCoCoでカバレッジを測りたい」「Checkstyle/SpotBugs/Spotlessを入れて」など、Java/Spring Boot/Gradle プロジェクトの新規作成・再作成や、既存プロジェクトへの整形/lint/テスト/カバレッジ/ドキュメンテーション環境の追加を頼まれたら、明示的に「java-springboot-project」と言われなくても必ず使うこと。配置先が既に VS Code 向けの `.vscode/` ディレクトリを持つ場合は、Extension Pack for Java / Spring Boot Extension Pack 向けの settings.json・拡張機能のおすすめ設定に加え、Coverage Gutters 拡張によるカバレッジのエディタ上可視化設定も追加する。Docker/devcontainer には依存せずホストのユーザーローカル環境（sudo 不要）に直接導入する。devcontainer 自体の構築はこのスキルの対象外。
 ---
 
 # java-springboot-project
@@ -118,10 +118,15 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
 ### テスト・カバレッジ・ドキュメント
 
-- **`./gradlew check` を単一の入口にする**。`check` に `jacocoTestReport` /
-  `jacocoTestCoverageVerification` / `javadoc` を追加してあり、整形チェック・Checkstyle・SpotBugs・
-  テスト・カバレッジ下限・Javadoc がこれ 1 つで全部回る。Makefile は置かない（Gradle のタスクが
-  そのまま入口になるため、二重に入口を作らない）。
+- **`./gradlew check` に整形チェック・Checkstyle・SpotBugs・テスト・カバレッジ下限・Javadoc を集約する**。
+  `check` に `jacocoTestReport` / `jacocoTestCoverageVerification` / `javadoc` を追加してあり、
+  これ 1 つで全部回る。
+- **タスクランナーには他言語スキルと同様に just を使うが、レシピは全て `./gradlew <タスク>` を呼ぶだけの
+  薄いラッパーに留める**（Gradle のタスク定義自体を `justfile` 側に持たせず、ロジックの二重管理はしない）。
+  狙いは go-project・rust-cargo-project・python-uv-project・pnpm-project など他言語スキルと
+  `just test` / `just lint` のような呼び方を揃えることであり、ビルドの実行順序や各タスクの中身は
+  `build.gradle.kts` 側が唯一の真実源のまま変わらない。justは単体バイナリでGitHub Releasesのtarball
+  （`SHA256SUMS`検証込み）からユーザーローカルに導入できるためこのリポジトリのsudo不要方針に合致する。
 - **カバレッジの下限は行 80%**。`jacocoTestCoverageVerification` で強制し、下回ると `check` が落ちる。
   これは下限であって目標ではない（目標にすると 80% を超えた瞬間にテストを書かなくなる）。
 - **カバレッジ計測から起動クラスを除外する**。`main()` はテストから実行されないため、含めると
@@ -165,17 +170,20 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
 ## 手順
 
-1. **JDK がホストに導入済みか確認する**
-   - `command -v java javac` と `java -version` で確認する。21 系が入っていればステップ3に進んでよい。
+1. **JDK・just がホストに導入済みか確認する**
+   - `command -v java javac` と `java -version` で確認する。21 系が入っていればJDKの導入は不要。
    - `~/sdk/` 配下に既に JDK を展開してある場合もあるので、`ls ~/sdk` も見る
      （PATH に通っていないだけのことがある）。
+   - `command -v just` と `just --version` でjust（タスクランナー）を確認する。
    - **Gradle の有無は確認しなくてよい**。テンプレートの wrapper が本体を自動取得する。
+   - 全て導入済みならステップ3に進んでよい。
 
 2. **未導入の場合、ユーザーローカルに導入する**
    - **これはホスト環境に実際にソフトウェアを導入する操作である。** ユーザーが今回の依頼で
-     明示的にこの方法を指定していない場合は、実行前に「JDK が入っていないのでユーザーローカルに
+     明示的にこの方法を指定していない場合は、実行前に「JDK/just が入っていないのでユーザーローカルに
      導入してよいか（sudo は使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
 
+   **JDK:**
    ```bash
    # 最新の Temurin 21 の URL とチェックサムを取得する
    curl -sS "https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=x64&image_type=jdk&os=linux&vendor=eclipse"
@@ -196,6 +204,31 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
      `export JAVA_HOME="$HOME/sdk/jdk-<version>"` と `export PATH="$JAVA_HOME/bin:$PATH"` を
      その都度指定する。恒久的に PATH を通したい場合は、ユーザーに確認したうえで行う。
    - 展開が終わったら `/tmp/jdk.tar.gz` を消す。
+
+   **just（タスクランナー）:**
+   - justはRust製の単体バイナリで、GitHub Releasesにtarballと集約チェックサムファイル（`SHA256SUMS`）が公開されているため、それを取得して照合してから展開する。
+     ```bash
+     VERSION=<確認したバージョン、例: 1.58.0>
+     curl -LsSf -o /tmp/just.tar.gz \
+       "https://github.com/casey/just/releases/download/${VERSION}/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
+     curl -LsSf -o /tmp/just-SHA256SUMS \
+       "https://github.com/casey/just/releases/download/${VERSION}/SHA256SUMS"
+     ```
+   - `sha256sum -c` は相対パスで実行するかフルパスを一致させる必要があるので、`/tmp` に `cd` してから実行する。
+     ```bash
+     grep "just-${VERSION}-x86_64-unknown-linux-musl.tar.gz$" /tmp/just-SHA256SUMS > /tmp/just-checksum-line.txt
+     mkdir -p /tmp/just-extract
+     cp /tmp/just.tar.gz "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
+     cp /tmp/just-checksum-line.txt /tmp/just-extract/checksum.txt
+     cd /tmp/just-extract && sha256sum -c checksum.txt
+     ```
+   - 検証が通ったら展開し、`~/.local/bin/just` に配置する。
+     ```bash
+     tar -C /tmp/just-extract -xzf "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz" just
+     mkdir -p ~/.local/bin
+     mv /tmp/just-extract/just ~/.local/bin/just
+     ```
+   - 一時ファイル（`/tmp/just*`）は導入後に削除する。`~/.local/bin` がまだ `PATH` に無ければ `~/.bashrc` に追記する。
 
 3. **配置先とプロジェクト名を確認する**
    - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に
@@ -233,6 +266,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
    | `templates/config/checkstyle/suppressions.xml` | `<配置先>/config/checkstyle/suppressions.xml`（置換不要） |
    | `templates/config/spotbugs/exclude.xml` | `<配置先>/config/spotbugs/exclude.xml`（置換不要） |
    | `templates/.gitignore` | `<配置先>/.gitignore`（置換不要。ルートの `.gitignore` に Java/Gradle の項目は無いので、ルート側は変更しない） |
+   | `templates/justfile` | `<配置先>/justfile`（置換不要） |
    | `templates/README.md` | `<配置先>/README.md` |
    | `templates/application.yaml` | `<配置先>/src/main/resources/application.yaml` |
    | `templates/java/main/__APP_CLASS__.java` | `<配置先>/src/main/java/__BASE_PACKAGE_PATH__/<起動クラス名>.java` |
@@ -250,13 +284,14 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
    `<配置先>` に移動し、以下を順に確認する。`JAVA_HOME` と `PATH` は都度指定する
    （`~/.bashrc` は非対話シェルだと冒頭で早期 return するため、`source ~/.bashrc` は効かない）。
 
-   - **`./gradlew dependencies --write-locks` を最初に実行する。** `gradle.lockfile` が生成される。
+   - **`just lock`（`./gradlew dependencies --write-locks`）を最初に実行する。** `gradle.lockfile` が生成される。
      これはコミット対象。初回は Gradle 本体（約 130MB）のダウンロードが走るので数分かかることがある。
-   - `./gradlew check` が成功することを確認する。テンプレートの状態でテストは合計 11 件
+   - 引数なしで `just` を実行し、レシピ一覧（`just --list`相当）が表示されることを確認する。
+   - `just check`（`./gradlew check`）が成功することを確認する。テンプレートの状態でテストは合計 11 件
      （`GreetingServiceTest` 7件 = 通常3件 + パラメータ化1件が4パターンに展開、
      `GreetingControllerTest` 3件、`__APP_CLASS__Tests` 1件）が全て通り、
      行カバレッジ 100%（16/16）になる。
-   - `check` の後に、レポートが 6 種類すべて生成されていることを確認する。
+   - `just check` の後に、レポートが 6 種類すべて生成されていることを確認する。
      `build/reports/jacoco/test/html/index.html`、
      `build/reports/jacoco/test/jacocoTestReport.xml`、
      `build/reports/tests/test/index.html`、
@@ -270,7 +305,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
    - **アプリを実際に起動して応答を確認する。** ビルドが通ることと動くことは別。
 
      ```bash
-     ./gradlew bootRun &            # または ./gradlew bootJar && java -jar build/libs/*.jar
+     just run &                     # ./gradlew bootRun。または ./gradlew bootJar && java -jar build/libs/*.jar
      curl 'http://localhost:8080/api/greetings'            # {"message":"Hello, world!"}
      curl 'http://localhost:8080/api/greetings?name=Java'  # {"message":"Hello, Java!"}
      curl 'http://localhost:8080/actuator/health'          # {"status":"UP", ...}
@@ -278,7 +313,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
      ```
 
      確認できたら必ずプロセスを止める。
-   - 最後に `./gradlew clean` で `build/` を消し、コミット対象に成果物が残っていないことを
+   - 最後に `just clean`（`./gradlew clean`）で `build/` を消し、コミット対象に成果物が残っていないことを
      `git status` で確かめる。
 
    **lint が本当に効いているかを反証で確かめる**（設定を書いただけで実は無効、という状態を防ぐため。

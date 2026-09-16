@@ -90,10 +90,12 @@ GitLabの `User Settings > Access Tokens` から発行する。必要なスコ�
 
 ## ローカル開発
 
+タスクランナーとして [just](https://just.systems/) を使う（`package.json` の `scripts` を呼ぶ薄いラッパー。`just` を引数なしで実行するとレシピ一覧が確認できる）。
+
 ```bash
-pnpm install
-pnpm run build
-GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start
+just install
+just build
+GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx just start
 ```
 
 型チェックのみ行う場合は `pnpm run typecheck`。リグレッションテストは `pnpm test`（vitest）で実行する。

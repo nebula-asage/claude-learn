@@ -10,6 +10,8 @@ Javadoc 生成が最初から通る状態になっている。
 - **JDK 21 が入っていること**（`java -version` が 21 系を返す）。
 - **Gradle 本体のインストールは不要**。同梱の Gradle wrapper (`./gradlew`) が、初回実行時に
   Gradle 9.7.1 を `~/.gradle/wrapper/dists/` へ自動でダウンロードして使う。
+- **[just](https://just.systems/) が入っていること**（`just --version` で確認。未導入ならGitHub
+  ReleasesのtarballとSHA256SUMSで導入する）。下記のコマンドは `./gradlew <タスク>` の薄いラッパー。
 
 JDK が無い場合は、sudo を使わずユーザーのホーム配下に入れられる。
 
@@ -31,7 +33,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 依存のバージョンを固定するロックファイルを作る。
 
 ```bash
-./gradlew dependencies --write-locks
+just lock
 ```
 
 生成された `gradle.lockfile` はコミットする。以降、依存を追加・更新したときは同じコマンドを
@@ -40,23 +42,23 @@ export PATH="$JAVA_HOME/bin:$PATH"
 
 ## コマンド
 
+`just` を引数なしで実行するとレシピ一覧が確認できる。いずれも `./gradlew <タスク>` の薄いラッパー。
+
 | コマンド | 内容 |
 | --- | --- |
-| `./gradlew check` | 下記の整形チェック・静的解析・テスト・カバレッジ下限・Javadoc をまとめて実行する |
-| `./gradlew bootRun` | アプリを起動する（<http://localhost:8080>） |
+| `just check`（`./gradlew check`） | 下記の整形チェック・静的解析・テスト・カバレッジ下限・Javadoc をまとめて実行する |
+| `just run`（`./gradlew bootRun`） | アプリを起動する（<http://localhost:8080>） |
 | `./gradlew bootJar` | 実行可能 jar を `build/libs/` に作る |
-| `./gradlew spotlessApply` | コードを google-java-format で自動整形する |
-| `./gradlew spotlessCheck` | 整形されていないファイルがないか確認する（直さない） |
-| `./gradlew checkstyleMain checkstyleTest` | Javadoc の有無などを検査する |
-| `./gradlew spotbugsMain spotbugsTest` | バイトコードを解析してバグの疑いを検出する |
-| `./gradlew test` | テストを実行する |
-| `./gradlew jacocoTestReport` | カバレッジレポートを出す（HTML / XML） |
-| `./gradlew jacocoTestCoverageVerification` | カバレッジが下限（行 80%）を満たすか検証する |
-| `./gradlew javadoc` | API ドキュメントを生成する |
-| `./gradlew dependencies --write-locks` | 依存のロックファイルを更新する |
-| `./gradlew clean` | 生成物を消す |
+| `just fmt`（`./gradlew spotlessApply`） | コードを google-java-format で自動整形する |
+| `just fmt-check`（`./gradlew spotlessCheck`） | 整形されていないファイルがないか確認する（直さない） |
+| `just lint`（`./gradlew checkstyleMain checkstyleTest spotbugsMain spotbugsTest`） | Javadoc の有無とバイトコード解析によるバグの疑いを検査する |
+| `just test`（`./gradlew test`） | テストを実行する |
+| `just cover`（`./gradlew jacocoTestReport jacocoTestCoverageVerification`） | カバレッジレポート（HTML / XML）を出し、下限（行 80%）を検証する |
+| `just doc`（`./gradlew javadoc`） | API ドキュメントを生成する |
+| `just lock`（`./gradlew dependencies --write-locks`） | 依存のロックファイルを更新する |
+| `just clean`（`./gradlew clean`） | 生成物を消す |
 
-**整形が落ちたら `./gradlew spotlessApply` を実行する**。`check` は自動では直さない。
+**整形が落ちたら `just fmt` を実行する**。`check` は自動では直さない。
 
 ### 生成物の場所
 
@@ -75,7 +77,7 @@ export PATH="$JAVA_HOME/bin:$PATH"
 ## 動作確認
 
 ```bash
-./gradlew bootRun
+just run
 
 curl 'http://localhost:8080/api/greetings'            # {"message":"Hello, world!"}
 curl 'http://localhost:8080/api/greetings?name=Java'  # {"message":"Hello, Java!"}
@@ -95,6 +97,7 @@ __PROJECT_NAME__/
 ├── gradlew / gradlew.bat         # Gradle wrapper（Gradle 本体は不要）
 ├── gradle/wrapper/               # wrapper の実体と、取得する Gradle のバージョン指定
 ├── gradle.lockfile               # 依存バージョンの固定（--write-locks で生成）
+├── justfile                      # ./gradlew の薄いラッパー（他言語スキルとの呼び方統一用）
 ├── config/
 │   ├── checkstyle/               # Checkstyle のルールと除外設定
 │   └── spotbugs/                 # SpotBugs の除外設定
