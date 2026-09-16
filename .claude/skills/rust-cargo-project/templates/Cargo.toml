@@ -26,15 +26,21 @@ unsafe_code = "forbid"
 # 後続の個別ルール指定に上書きされる余地を残す（priority 省略だと衝突エラーになる）。
 all = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
-# private なアイテムにもドキュメンテーションコメントを必須にする。
-# `fn main` と `#[cfg(test)]` 配下は clippy 側が最初から除外するため、
-# テストコードにコメントを書かせるための除外設定は不要。
-missing_docs_in_private_items = "warn"
 # Result / panic する関数には `# Errors` / `# Panics` セクションを必須にする。
 # どちらも pedantic グループに含まれるので指定は重複するが、明示しておけば
 # 将来 pedantic を外したときにドキュメントの強制が黙って失われることがない。
 missing_errors_doc = "warn"
 missing_panics_doc = "warn"
+# パニックを起こしうる書き方を検出する restriction lint 群。
+# all / pedantic には含まれないため個別に有効化する。
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+unreachable = "warn"
+todo = "warn"
+unimplemented = "warn"
+indexing_slicing = "warn"
+arithmetic_side_effects = "warn"
 
 [lints.rustdoc]
 # `[Foo]` のようなリンク記法が解決できないまま放置されるのを防ぐ。
