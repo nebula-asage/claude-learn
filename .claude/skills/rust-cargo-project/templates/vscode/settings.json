@@ -23,7 +23,7 @@
     "editor.formatOnSave": true
   },
 
-  // Coverage Gutters 拡張の設定。`make cover-lcov` が生成する lcov.info を読み、
+  // Coverage Gutters 拡張の設定。`just cover-lcov` が生成する lcov.info を読み、
   // エディタの行番号横に被覆行（緑）・未被覆行（赤）を表示する。
   "coverage-gutters.coverageFileNames": ["lcov.info"],
   "coverage-gutters.coverageBaseDir": ".",

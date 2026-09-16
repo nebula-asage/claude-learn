@@ -14,7 +14,7 @@ Rust の練習・開発用プロジェクト。lint（clippy）・フォーマ�
 ├── Cargo.lock           # 依存バージョンの固定（コミット対象）
 ├── rustfmt.toml         # フォーマッタ設定
 ├── deny.toml            # cargo-deny の設定（脆弱性・ライセンス・取得元）
-├── Makefile             # 各種コマンドの入口
+├── justfile             # 各種コマンドの入口
 ├── src/
 │   ├── lib.rs           # ライブラリクレートの入口
 │   ├── greeting.rs      # ロジック本体（サンプル実装）
@@ -36,42 +36,43 @@ API リファレンス生成が、公開 API を持つライブラリクレー�
 | llvm-tools-preview | カバレッジ計測 | `rustup component add llvm-tools-preview` |
 | cargo-llvm-cov | カバレッジ計測 | `cargo install cargo-llvm-cov --locked` |
 | cargo-deny | 依存の検査 | `cargo install cargo-deny --locked` |
+| [just](https://just.systems/) | タスクランナー | GitHub ReleasesのtarballとSHA256SUMSで導入（`just --version` で確認） |
 
-いずれも `~/.cargo/` 配下へのユーザーローカル導入で、`sudo` は不要。
+rustup系のツールはいずれも `~/.cargo/` 配下、justは `~/.local/bin/` 配下へのユーザーローカル導入で、`sudo` は不要。
 
 ## コマンド
 
-clone 直後は `Cargo.lock` が無いため、まず一度だけ `make lock` を実行すること
-（`Makefile` の各コマンドは `--locked` 付きで cargo を呼ぶので、`Cargo.lock` が
+clone 直後は `Cargo.lock` が無いため、まず一度だけ `just lock` を実行すること
+（`justfile` の各コマンドは `--locked` 付きで cargo を呼ぶので、`Cargo.lock` が
 無いと `cannot create the lock file ... because --locked was passed` で失敗する）。
 
 | コマンド | 内容 |
 | --- | --- |
-| `make lock` | `Cargo.lock` を生成する（clone 直後に一度だけ） |
-| `make run` | 実行する（`make run` は引数なし。引数を渡すなら `cargo run --locked -- <名前>`） |
-| `make build` | ビルドする |
-| `make fmt` | rustfmt で整形する |
-| `make fmt-check` | 整形済みかどうかだけを検査する（書き換えない） |
-| `make lint` | clippy を警告もエラー扱い（`-D warnings`）で実行する |
-| `make test` | ユニットテスト・統合テストを実行する |
-| `make doctest` | ドキュメンテーションコメント内の例（doctest）だけを実行する |
-| `make cover` | カバレッジをターミナルに表示する（未カバー行番号つき） |
-| `make cover-html` | HTML レポートを `target/llvm-cov/html/index.html` に生成する |
-| `make cover-lcov` | `lcov.info` を生成する（VS Code の Coverage Gutters 用） |
-| `make cover-all` | HTML と `lcov.info` を1回の計測から両方生成する |
-| `make doc` | API リファレンスを `target/doc/` に生成する |
-| `make doc-open` | API リファレンスを生成してブラウザで開く |
-| `make deny` | cargo-deny で脆弱性・ライセンス・依存の取得元を検査する |
-| `make check` | `fmt-check` → `lint` → `test` → `doctest` → `deny` をまとめて実行する |
-| `make clean` | ビルド成果物と `lcov.info` を削除する |
+| `just lock` | `Cargo.lock` を生成する（clone 直後に一度だけ） |
+| `just run` | 実行する（`just run` は引数なし。引数を渡すなら `cargo run --locked -- <名前>`） |
+| `just build` | ビルドする |
+| `just fmt` | rustfmt で整形する |
+| `just fmt-check` | 整形済みかどうかだけを検査する（書き換えない） |
+| `just lint` | clippy を警告もエラー扱い（`-D warnings`）で実行する |
+| `just test` | ユニットテスト・統合テストを実行する |
+| `just doctest` | ドキュメンテーションコメント内の例（doctest）だけを実行する |
+| `just cover` | カバレッジをターミナルに表示する（未カバー行番号つき） |
+| `just cover-html` | HTML レポートを `target/llvm-cov/html/index.html` に生成する |
+| `just cover-lcov` | `lcov.info` を生成する（VS Code の Coverage Gutters 用） |
+| `just cover-all` | HTML と `lcov.info` を1回の計測から両方生成する |
+| `just doc` | API リファレンスを `target/doc/` に生成する |
+| `just doc-open` | API リファレンスを生成してブラウザで開く |
+| `just deny` | cargo-deny で脆弱性・ライセンス・依存の取得元を検査する |
+| `just check` | `fmt-check` → `lint` → `test` → `doctest` → `deny` をまとめて実行する |
+| `just clean` | ビルド成果物と `lcov.info` を削除する |
 
-`cargo llvm-cov` は起動のたびに `target/llvm-cov/` を作り直すため、`make cover-html`
-の後に `make cover-lcov` を実行すると HTML レポートが消える（逆も同様）。両方が要る
-ときは `make cover-all` を使うこと。
+`cargo llvm-cov` は起動のたびに `target/llvm-cov/` を作り直すため、`just cover-html`
+の後に `just cover-lcov` を実行すると HTML レポートが消える（逆も同様）。両方が要る
+ときは `just cover-all` を使うこと。
 
 ## ドキュメンテーションコメントについて
 
-`Cargo.toml` の `[lints]` で、コメントの書き漏らしが `make lint` で落ちるようにしてある。
+`Cargo.toml` の `[lints]` で、コメントの書き漏らしが `just lint` で落ちるようにしてある。
 
 - `missing_docs` — 公開アイテム（`pub`）にコメントを必須にする。**`src/main.rs` に対しても
   クレートレベルのコメント（`//!`）を必須にする**点に注意
@@ -80,12 +81,12 @@ clone 直後は `Cargo.lock` が無いため、まず一度だけ `make lock` �
 - `rustdoc::broken_intra_doc_links` — `[`Foo`]` 形式のリンク切れを検出する（`deny`）
 
 コメント内に ` ``` ` で囲んだコード例を書くと doctest として実際に実行され、
-例が古くなってコンパイルが通らなくなった時点で `make doctest` が落ちる。
+例が古くなってコンパイルが通らなくなった時点で `just doctest` が落ちる。
 
 ## パニックを起こしうる書き方について
 
 `[lints.clippy]` で、`all` / `pedantic` には含まれない restriction 系のlintを
-個別に有効化し、パニックを起こしうる書き方を `make lint` で検出できるようにしてある。
+個別に有効化し、パニックを起こしうる書き方を `just lint` で検出できるようにしてある。
 
 - `unwrap_used` / `expect_used` — `.unwrap()` / `.expect()` の呼び出し
 - `panic` / `unreachable` / `todo` / `unimplemented` — 明示的にパニックするマクロ呼び出し
@@ -107,11 +108,11 @@ cargo には無い。cargo は依存クレートの `build.rs` をビルド時�
 
 そのうえで、cargo で実効性のある対策として以下を入れている。
 
-- `Cargo.lock` をコミットし、全コマンドに `--locked` を付ける（`Makefile` で設定済み）。
+- `Cargo.lock` をコミットし、全コマンドに `--locked` を付ける（`justfile` で設定済み）。
   依存が暗黙に更新されるのを防ぎ、更新が必要な状態ならコマンドが止まる
 - `deny.toml` の `[sources]` で取得元を crates.io に限定し、未知のレジストリや
   git リポジトリからの依存を禁止する
 - `deny.toml` の `[advisories]` で RustSec 脆弱性データベースと照合する
 - `deny.toml` の `[bans] wildcards = "deny"` でワイルドカードのバージョン指定を禁止する
 
-依存を追加したら `make deny` を実行すること。
+依存を追加したら `just deny` を実行すること。
