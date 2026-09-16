@@ -12,21 +12,21 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 - Go 1.26 以上（`go version` で確認）
 - [golangci-lint](https://golangci-lint.run/) v2系（`golangci-lint version` で確認）
 - [gomarkdoc](https://github.com/princjef/gomarkdoc)（`gomarkdoc --version` で確認。`go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest` で導入）
-- [Task](https://taskfile.dev/)（`task --version` で確認。`go install github.com/go-task/task/v3/cmd/task@latest` で導入）
+- [just](https://just.systems/)（`just --version` で確認。GitHub ReleasesのtarballとSHA256SUMSで導入。devcontainerには標準搭載済み）
 
 ## 実行方法
 
 ```sh
-task run          # 実行
-task fmt          # gofmtでフォーマット
-task lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知）
-task test         # go testで単体テスト
-task cover        # カバレッジ計測し、ターミナルに未カバー関数を表示
-task cover-html   # カバレッジ計測し、coverage.html にHTMLレポートを生成
-task doc          # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力
-task doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
-task clean        # カバレッジ・ドキュメント生成物を削除
+just run          # 実行
+just fmt          # gofmtでフォーマット
+just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知）
+just test         # go testで単体テスト
+just cover        # カバレッジ計測し、ターミナルに未カバー関数を表示
+just cover-html   # カバレッジ計測し、coverage.html にHTMLレポートを生成
+just doc          # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力
+just doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
+just clean        # カバレッジ・ドキュメント生成物を削除
 ```
 
-`task cover-html` 実行後、`coverage.html` をブラウザで開くと行単位のカバレッジが確認できる。
-`task doc-report` 実行後、`internal/greeting/API.md` などにパッケージごとのAPIリファレンスが生成される。
+`just cover-html` 実行後、`coverage.html` をブラウザで開くと行単位のカバレッジが確認できる。
+`just doc-report` 実行後、`internal/greeting/API.md` などにパッケージごとのAPIリファレンスが生成される。
