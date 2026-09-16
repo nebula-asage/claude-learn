@@ -39,7 +39,8 @@
     "poetry.lock", // poetryのロックファイル
     "Cargo.lock", // cargoのロックファイル
     "go.sum", // goモジュールのチェックサムファイル
-    "gradle.lockfile" // Gradleの依存ロックファイル
+    "gradle.lockfile", // Gradleの依存ロックファイル
+    ".devcontainer/**" // devcontainer構成ファイル（Dockerfile内のパッケージ名等で未知語が多いため除外）
   ],
   // このリポジトリのコメント・ドキュメントは日本語が主体で、cspellは英語辞書しか持たないため、
   // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
