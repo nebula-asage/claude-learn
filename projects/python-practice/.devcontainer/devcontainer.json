@@ -36,6 +36,8 @@
         "ms-azuretools.vscode-docker",
         // Claude CodeをVS Code上で使うための公式拡張機能
         "Anthropic.claude-code",
+        // justfileのシンタックスハイライト
+        "nefrob.vscode-just-syntax",
         // Python本体の言語サポート（インタプリタ選択・デバッグ・テストUI等）
         "ms-python.python",
         // ruff拡張。pyproject.tomlの[tool.ruff.lint]設定を読み込んでエディタ上にlint結果を表示し、

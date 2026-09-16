@@ -1,4 +1,11 @@
 # syntax=docker/dockerfile:1
+
+# just（タスクランナー）の導入用。COPY --from=<外部イメージ参照>内でARGを変数展開するには、
+# 最初のFROMより前（グローバルスコープ）で宣言したARGしか使えない（BuildKitの制約）ため、
+# ここで宣言してjust-binステージのFROMに渡し、本体では名前付きステージからCOPYする
+ARG JUST_VERSION=1.58.0
+FROM ghcr.io/casey/just:${JUST_VERSION} AS just-bin
+
 FROM rockylinux/rockylinux:9
 
 # ロケール（日本語）とタイムゾーン（Asia/Tokyo）の設定
@@ -26,8 +33,18 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
     vim \
     less \
     jq \
+    tar \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone
+
+# just（タスクランナー）の導入
+# 公式Dockerイメージ(ghcr.io/casey/just)からバイナリをコピーする公式手順を使う
+# （https://github.com/casey/just#docker）。curlでのインストールスクリプト実行と違い
+# レジストリ経由でイメージダイジェストが検証されるため、別途チェックサム検証は不要。
+# 静的リンクされたバイナリのため、Ubuntu向けと同じ手順のままRHEL系（Rocky Linux）でも動く。
+# バージョンを指定するARGはファイル冒頭のグローバルスコープで宣言済み（just-binステージ参照）
+COPY --from=just-bin /just /usr/local/bin/
+RUN just --completions bash > /etc/bash_completion.d/just
 
 # ARGはここで初めて使うRUNの直前で宣言する。dnf installより前で宣言すると、
 # USER_UID等のビルドargを変えるたびにdnf installレイヤーのキャッシュまで無効化されてしまうため。
@@ -105,3 +122,18 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
     && npm install -g playwright \
     && npx playwright install chromium \
     && sudo chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
+
+# just-lsp（justfile用LSPサーバー）の導入
+# just本体と違い公式Dockerイメージが無いため、GitHubリリースからバイナリを直接ダウンロードして配置する。
+# 公開されているSHA256SUMSで改竄がないことを検証してから展開する（$HOME配下にsudo不要で導入）
+ENV PATH="/home/$USERNAME/.local/bin:$PATH"
+ARG JUST_LSP_VERSION=0.8.0
+RUN cd /tmp \
+    && ARCHIVE="just-lsp-${JUST_LSP_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+    && curl -fsSLO "https://github.com/terror/just-lsp/releases/download/${JUST_LSP_VERSION}/${ARCHIVE}" \
+    && curl -fsSLO "https://github.com/terror/just-lsp/releases/download/${JUST_LSP_VERSION}/SHA256SUMS" \
+    && sha256sum --ignore-missing -c SHA256SUMS \
+    && tar xzf "$ARCHIVE" \
+    && mkdir -p /home/$USERNAME/.local/bin \
+    && mv just-lsp /home/$USERNAME/.local/bin/ \
+    && rm -f "$ARCHIVE" SHA256SUMS
