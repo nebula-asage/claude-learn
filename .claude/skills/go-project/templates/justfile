@@ -1,3 +1,7 @@
+# 引数なしで実行された場合、レシピ一覧を表示する
+default:
+    @just --list
+
 # gofmtでフォーマットを適用する
 fmt:
     gofmt -l -w .
