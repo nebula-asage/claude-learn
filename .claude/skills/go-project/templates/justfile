@@ -1,0 +1,43 @@
+# gofmtでフォーマットを適用する
+fmt:
+    gofmt -l -w .
+
+# golangci-lintで静的解析する
+lint:
+    golangci-lint run ./...
+
+# go testで単体テストを実行する
+test:
+    go test ./... -v
+
+# カバレッジを計測し、関数ごとの被覆率をターミナルに表示する
+cover:
+    go test ./... -coverprofile=coverage.out
+    go tool cover -func=coverage.out
+
+# カバレッジを計測し、coverage.html にHTMLレポートを生成する
+cover-html: cover
+    go tool cover -html=coverage.out -o coverage.html
+
+# カバレッジを計測し、coverage.lcov（Coverage Gutters拡張向け）を生成する
+cover-lcov: cover
+    gcov2lcov -infile=coverage.out -outfile=coverage.lcov
+
+# ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力する
+doc:
+    gomarkdoc ./...
+
+# 各パッケージディレクトリにAPI.mdとしてAPIドキュメントを生成する
+doc-report:
+    # gomarkdoc自身の出力テンプレート構文はjustの変数展開と衝突するため、
+    # 波括弧を文字列リテラルとして組み立てることでリテラルの中括弧をgomarkdocに渡している
+    gomarkdoc --output '{{"{{"}}.Dir{{"}}"}}/API.md' ./...
+
+# go runでアプリケーションを実行する
+run:
+    go run .
+
+# カバレッジ・ドキュメント生成物を削除する
+clean:
+    rm -f coverage.out coverage.html coverage.lcov
+    find . -name API.md -delete

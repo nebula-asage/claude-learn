@@ -94,15 +94,12 @@ RUN golangci-lint completion bash > /etc/bash_completion.d/golangci-lint
 
 USER $USERNAME
 
-# gomarkdoc・gcov2lcov・Task（タスクランナー）はgo installで導入する
+# gomarkdoc・gcov2lcovはgo installで導入する
 # （Goモジュールの標準機能であるGOSUMDBによるチェックサム検証が効くため、追加の手動検証は不要。
-# go-projectスキルのホスト向け導入手順と同じ方法）
+# go-projectスキルのホスト向け導入手順と同じ方法。タスクランナーのjustは前述の通り公式Dockerイメージから導入済み）
 ENV PATH="/home/$USERNAME/go/bin:${PATH}"
 RUN go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest \
-    && go install github.com/jandelgado/gcov2lcov@latest \
-    && go install github.com/go-task/task/v3/cmd/task@latest \
-    && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
-    && task --completion bash > /home/$USERNAME/.local/share/bash-completion/completions/task
+    && go install github.com/jandelgado/gcov2lcov@latest
 
 # Node.js / npm はLinuxで標準的なnvm(Node Version Manager)で導入する
 # Goランタイムはこのプロジェクトの主目的なので上記の通り導入済み、Node.jsはPlaywrightでのブラウザ自動操作・

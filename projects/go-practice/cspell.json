@@ -45,7 +45,9 @@
     "pytest", // ignorePathsのコメント: Pythonのテストツール名
     "rustdoc", // ignorePathsのコメント: RustのAPIドキュメント生成ツール名
     "venv", // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
-    "coverprofile", // Taskfile.yml: `go test -coverprofile`のフラグ名
+    "coverprofile", // justfile: `go test -coverprofile`のフラグ名
+    "gcov", // justfile: gcov2lcov（ツール名の一部）
+    "infile", // justfile: `gcov2lcov -infile`のフラグ名
     "gofmt", // Go標準のフォーマッタコマンド名
     "golangci", // golangci-lint（静的解析ツール）の名称の一部
     "princjef" // README.md: gomarkdocの作者のGitHubユーザー名
