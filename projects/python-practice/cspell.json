@@ -27,7 +27,8 @@
     "go.sum", // goモジュールのチェックサムファイル
     "gradle.lockfile", // Gradleの依存ロックファイル
     "*.log", // 実行時ログ
-    "apidocs/**" // pdocが生成するAPIドキュメント出力先（README.md記載、.gitignore済み）
+    "apidocs/**", // pdocが生成するAPIドキュメント出力先（README.md記載、.gitignore済み）
+    ".devcontainer/**" // devcontainer構成ファイル（Dockerfile内のパッケージ名等で未知語が多いため除外）
   ],
   // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
   // これにより日本語部分は素通りし、コード中の識別子や英語のコメント部分だけを検査できる
