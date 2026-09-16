@@ -35,13 +35,13 @@ impl From<String> for UserError {
 }
 
 impl<T: UserRepository> UserService<T> {
-    /// 新しいUserServiceインスタンスを作成します。
+    /// 新しい`UserService`インスタンスを作成します。
     ///
     /// # 引数
     /// * `repository` - ユーザーデータの永続化を担当するリポジトリ
     ///
     /// # 戻り値
-    /// * `Self` - 新しいUserServiceインスタンス
+    /// * `Self` - 新しい`UserService`インスタンス
     pub fn new(repository: T) -> Self {
         Self { repository }
     }
@@ -90,16 +90,15 @@ impl<T: UserRepository> UserService<T> {
         phone: String,
         age: u32,
     ) -> Result<User, UserError> {
-        self.validate_email(&email)?;
-        self.validate_username(&username)?;
-        self.validate_phone(&phone)?;
-        self.validate_age(age)?;
+        Self::validate_email(&email)?;
+        Self::validate_username(&username)?;
+        Self::validate_phone(&phone)?;
+        Self::validate_age(age)?;
 
         // Check if user already exists
         if let Ok(Some(_)) = self.repository.find_by_email(&email) {
             return Err(UserError::UserAlreadyExists(format!(
-                "User with email {} already exists",
-                email
+                "User with email {email} already exists"
             )));
         }
 
@@ -159,15 +158,14 @@ impl<T: UserRepository> UserService<T> {
         phone: String,
         age: u32,
     ) -> Result<User, UserError> {
-        self.validate_username(&username)?;
-        self.validate_phone(&phone)?;
-        self.validate_age(age)?;
+        Self::validate_username(&username)?;
+        Self::validate_phone(&phone)?;
+        Self::validate_age(age)?;
 
         // Check if user exists
         if self.repository.find_by_email(&email)?.is_none() {
             return Err(UserError::UserNotFound(format!(
-                "User with email {} not found",
-                email
+                "User with email {email} not found"
             )));
         }
 
@@ -211,7 +209,7 @@ impl<T: UserRepository> UserService<T> {
     pub fn get_user(&self, email: &str) -> Result<User, UserError> {
         self.repository
             .find_by_email(email)?
-            .ok_or_else(|| UserError::UserNotFound(format!("User with email {} not found", email)))
+            .ok_or_else(|| UserError::UserNotFound(format!("User with email {email} not found")))
     }
 
     /// 全てのユーザー情報を取得します。
@@ -265,8 +263,7 @@ impl<T: UserRepository> UserService<T> {
             .map_err(UserError::RepositoryError)?
         {
             return Err(UserError::UserNotFound(format!(
-                "User with email {} not found",
-                email
+                "User with email {email} not found"
             )));
         }
         Ok(())
@@ -282,12 +279,14 @@ impl<T: UserRepository> UserService<T> {
     ///
     /// # エラー
     /// * `UserError::InvalidEmail` - メールアドレスの形式が不正な場合
-    fn validate_email(&self, email: &str) -> Result<(), UserError> {
+    fn validate_email(email: &str) -> Result<(), UserError> {
+        // パターンはコンパイル時に固定されたリテラルであり、コンパイル可能であることが
+        // 保証されているためunwrapが安全（実行時入力に依存しない）
+        #[allow(clippy::unwrap_used)]
         let email_regex = Regex::new(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").unwrap();
         if !email_regex.is_match(email) {
             return Err(UserError::InvalidEmail(format!(
-                "Invalid email format: {}",
-                email
+                "Invalid email format: {email}"
             )));
         }
         Ok(())
@@ -303,7 +302,7 @@ impl<T: UserRepository> UserService<T> {
     ///
     /// # エラー
     /// * `UserError::InvalidUsername` - ユーザー名が3文字未満の場合
-    fn validate_username(&self, username: &str) -> Result<(), UserError> {
+    fn validate_username(username: &str) -> Result<(), UserError> {
         if username.trim().is_empty() || username.len() < 3 {
             return Err(UserError::InvalidUsername(
                 "Username must be at least 3 characters long".to_string(),
@@ -322,7 +321,10 @@ impl<T: UserRepository> UserService<T> {
     ///
     /// # エラー
     /// * `UserError::InvalidPhone` - 電話番号が10桁未満の場合
-    fn validate_phone(&self, phone: &str) -> Result<(), UserError> {
+    fn validate_phone(phone: &str) -> Result<(), UserError> {
+        // パターンはコンパイル時に固定されたリテラルであり、コンパイル可能であることが
+        // 保証されているためunwrapが安全（実行時入力に依存しない）
+        #[allow(clippy::unwrap_used)]
         let phone_regex = Regex::new(r"^\d{10,}$").unwrap();
         if !phone_regex.is_match(phone) {
             return Err(UserError::InvalidPhone(
@@ -342,7 +344,7 @@ impl<T: UserRepository> UserService<T> {
     ///
     /// # エラー
     /// * `UserError::InvalidAge` - 年齢が150歳を超える場合
-    fn validate_age(&self, age: u32) -> Result<(), UserError> {
+    fn validate_age(age: u32) -> Result<(), UserError> {
         if age > 150 {
             return Err(UserError::InvalidAge(
                 "Age must be between 0 and 150".to_string(),
@@ -353,6 +355,8 @@ impl<T: UserRepository> UserService<T> {
 }
 
 #[cfg(test)]
+// テストコードでは失敗=パニックが正しい挙動のため、慣例的にunwrapを許可する
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::repositories::user_repository::MockUserRepository;

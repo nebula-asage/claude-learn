@@ -41,6 +41,8 @@ pub struct User {
 }
 
 #[cfg(test)]
+// テストコードでは失敗=パニックが正しい挙動のため、慣例的にunwrapを許可する
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

@@ -87,13 +87,14 @@ impl Default for UserRepositoryImpl {
 }
 
 impl UserRepositoryImpl {
-    /// 新しいUserRepositoryインスタンスを作成します。
+    /// 新しい`UserRepository`インスタンスを作成します。
     ///
     /// 環境変数`USER_DATA_FILE`が設定されている場合はその値を、
     /// 設定されていない場合は"userdata.json"をファイルパスとして使用します。
     ///
     /// # 戻り値
-    /// * `Self` - 新しいUserRepositoryインスタンス
+    /// * `Self` - 新しい`UserRepository`インスタンス
+    #[must_use]
     pub fn new() -> Self {
         let file_path = env::var("USER_DATA_FILE").unwrap_or_else(|_| "userdata.json".to_string());
         Self { file_path }
@@ -112,14 +113,14 @@ impl UserRepositoryImpl {
             return Ok(HashMap::new());
         }
 
-        let content = fs::read_to_string(&self.file_path)
-            .map_err(|e| format!("Failed to read file: {}", e))?;
+        let content =
+            fs::read_to_string(&self.file_path).map_err(|e| format!("Failed to read file: {e}"))?;
 
         if content.is_empty() {
             return Ok(HashMap::new());
         }
 
-        serde_json::from_str(&content).map_err(|e| format!("Failed to parse JSON: {}", e))
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse JSON: {e}"))
     }
 
     /// ユーザーデータをJSONファイルに書き込みます。
@@ -135,9 +136,9 @@ impl UserRepositoryImpl {
     /// * ファイルの書き込みに失敗した場合
     fn write_users(&self, users: &HashMap<String, User>) -> Result<(), String> {
         let content = serde_json::to_string_pretty(users)
-            .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+            .map_err(|e| format!("Failed to serialize JSON: {e}"))?;
 
-        fs::write(&self.file_path, content).map_err(|e| format!("Failed to write file: {}", e))
+        fs::write(&self.file_path, content).map_err(|e| format!("Failed to write file: {e}"))
     }
 }
 
@@ -167,6 +168,8 @@ impl UserRepository for UserRepositoryImpl {
 }
 
 #[cfg(test)]
+// テストコードでは失敗=パニックが正しい挙動のため、慣例的にunwrapを許可する
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use tempfile::NamedTempFile;
@@ -181,6 +184,8 @@ mod tests {
     }
 
     #[test]
+    // edition 2024でenv::set_varがunsafe fn化されたための必須unsafe（テスト専用）
+    #[allow(unsafe_code)]
     fn test_save_and_find_user() {
         let temp_file = NamedTempFile::new().unwrap();
         unsafe {
@@ -200,6 +205,8 @@ mod tests {
     }
 
     #[test]
+    // edition 2024でenv::set_varがunsafe fn化されたための必須unsafe（テスト専用）
+    #[allow(unsafe_code)]
     fn test_find_all_users() {
         let temp_file = NamedTempFile::new().unwrap();
         unsafe {
@@ -214,11 +221,13 @@ mod tests {
         repo.save(&user1).unwrap();
         repo.save(&user2).unwrap();
 
-        let users = repo.find_all().unwrap();
-        assert_eq!(users.len(), 2);
+        let all_users = repo.find_all().unwrap();
+        assert_eq!(all_users.len(), 2);
     }
 
     #[test]
+    // edition 2024でenv::set_varがunsafe fn化されたための必須unsafe（テスト専用）
+    #[allow(unsafe_code)]
     fn test_delete_user() {
         let temp_file = NamedTempFile::new().unwrap();
         unsafe {

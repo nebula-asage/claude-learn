@@ -24,18 +24,18 @@ fn print_usage() {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
+    let [_, subcommand, rest @ ..] = args.as_slice() else {
         print_usage();
         return;
-    }
+    };
 
     let command = UserCommand::new();
-    let result = match args[1].as_str() {
-        "create" => command.create(&args[2..]),
-        "update" => command.update(&args[2..]),
+    let result = match subcommand.as_str() {
+        "create" => command.create(rest),
+        "update" => command.update(rest),
         "list" => command.list(),
-        "get" => command.get(&args[2..]),
-        "delete" => command.delete(&args[2..]),
+        "get" => command.get(rest),
+        "delete" => command.delete(rest),
         _ => {
             print_usage();
             Ok(())
@@ -43,6 +43,6 @@ fn main() {
     };
 
     if let Err(e) = result {
-        eprintln!("Error: {}", e);
+        eprintln!("Error: {e}");
     }
 }

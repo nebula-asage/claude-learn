@@ -15,13 +15,14 @@ impl Default for UserCommand {
 }
 
 impl UserCommand {
-    /// 新しいUserCommandインスタンスを作成します。
+    /// 新しい`UserCommand`インスタンスを作成します。
     ///
     /// # 戻り値
-    /// * `Self` - 新しいUserCommandインスタンス
+    /// * `Self` - 新しい`UserCommand`インスタンス
     ///
     /// # Errors
     /// このメソッドはエラーを返しません。
+    #[must_use]
     pub fn new() -> Self {
         let repository = UserRepositoryImpl::new();
         let service = UserService::new(repository);
@@ -47,27 +48,21 @@ impl UserCommand {
     /// * メールアドレス、ユーザー名、電話番号、年齢のバリデーションに失敗した場合
     /// * ユーザーの保存に失敗した場合
     pub fn create(&self, args: &[String]) -> Result<(), String> {
-        if args.len() != 4 {
+        let [email, username, phone, age] = args else {
             return Err("Usage: create <email> <username> <phone> <age>".to_string());
-        }
+        };
+        let age = age.parse::<u32>().map_err(|_| "Invalid age format")?;
 
-        let email = &args[0];
-        let username = &args[1];
-        let phone = &args[2];
-        let age = args[3].parse::<u32>().map_err(|_| "Invalid age format")?;
-
-        match self.service.create_user(
-            email.to_string(),
-            username.to_string(),
-            phone.to_string(),
-            age,
-        ) {
+        match self
+            .service
+            .create_user(email.clone(), username.clone(), phone.clone(), age)
+        {
             Ok(user) => {
                 println!("User created successfully:");
-                self.print_user(&user);
+                Self::print_user(&user);
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to create user: {:?}", e)),
+            Err(e) => Err(format!("Failed to create user: {e:?}")),
         }
     }
 
@@ -91,27 +86,21 @@ impl UserCommand {
     /// * メールアドレス、ユーザー名、電話番号、年齢のバリデーションに失敗した場合
     /// * ユーザーの保存に失敗した場合
     pub fn update(&self, args: &[String]) -> Result<(), String> {
-        if args.len() != 4 {
+        let [email, username, phone, age] = args else {
             return Err("Usage: update <email> <username> <phone> <age>".to_string());
-        }
+        };
+        let age = age.parse::<u32>().map_err(|_| "Invalid age format")?;
 
-        let email = &args[0];
-        let username = &args[1];
-        let phone = &args[2];
-        let age = args[3].parse::<u32>().map_err(|_| "Invalid age format")?;
-
-        match self.service.update_user(
-            email.to_string(),
-            username.to_string(),
-            phone.to_string(),
-            age,
-        ) {
+        match self
+            .service
+            .update_user(email.clone(), username.clone(), phone.clone(), age)
+        {
             Ok(user) => {
                 println!("User updated successfully:");
-                self.print_user(&user);
+                Self::print_user(&user);
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to update user: {:?}", e)),
+            Err(e) => Err(format!("Failed to update user: {e:?}")),
         }
     }
 
@@ -134,7 +123,7 @@ impl UserCommand {
                 }
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to list users: {:?}", e)),
+            Err(e) => Err(format!("Failed to list users: {e:?}")),
         }
     }
 
@@ -153,17 +142,15 @@ impl UserCommand {
     /// * 指定されたメールアドレスのユーザーが存在しない場合
     /// * ユーザー情報の取得に失敗した場合（"Failed to get user: ..."）
     pub fn get(&self, args: &[String]) -> Result<(), String> {
-        if args.len() != 1 {
+        let [email] = args else {
             return Err("Usage: get <email>".to_string());
-        }
-
-        let email = &args[0];
+        };
         match self.service.get_user(email) {
             Ok(user) => {
-                self.print_user(&user);
+                Self::print_user(&user);
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to get user: {:?}", e)),
+            Err(e) => Err(format!("Failed to get user: {e:?}")),
         }
     }
 
@@ -182,17 +169,15 @@ impl UserCommand {
     /// * 指定されたメールアドレスのユーザーが存在しない場合
     /// * ユーザーの削除に失敗した場合（"Failed to delete user: ..."）
     pub fn delete(&self, args: &[String]) -> Result<(), String> {
-        if args.len() != 1 {
+        let [email] = args else {
             return Err("Usage: delete <email>".to_string());
-        }
-
-        let email = &args[0];
+        };
         match self.service.delete_user(email) {
             Ok(()) => {
                 println!("User deleted successfully");
                 Ok(())
             }
-            Err(e) => Err(format!("Failed to delete user: {:?}", e)),
+            Err(e) => Err(format!("Failed to delete user: {e:?}")),
         }
     }
 
@@ -212,7 +197,7 @@ impl UserCommand {
     /// Phone: 1234567890
     /// Age: 25
     /// ```
-    fn print_user(&self, user: &User) {
+    fn print_user(user: &User) {
         println!("Email: {}", user.email);
         println!("Username: {}", user.username);
         println!("Phone: {}", user.phone);
@@ -221,11 +206,15 @@ impl UserCommand {
 }
 
 #[cfg(test)]
+// テストコードでは失敗=パニックが正しい挙動のため、慣例的にunwrapを許可する
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use std::env;
     use tempfile::NamedTempFile;
 
+    // edition 2024でenv::set_varがunsafe fn化されたための必須unsafe（テスト専用）
+    #[allow(unsafe_code)]
     fn setup() -> UserCommand {
         let temp_file = NamedTempFile::new().unwrap();
         unsafe {
