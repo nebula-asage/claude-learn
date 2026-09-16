@@ -71,6 +71,15 @@ RUN if getent group $USER_GID >/dev/null; then \
     && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
+# 追加でプログラムを導入する場合、bash補完に対応していれば有効化すること。
+# - aptパッケージ: bash-completion導入済みなら、インストール時に自動配置される補完スクリプトが
+#   そのまま有効になる（追加設定は不要）
+# - 単体バイナリ導入等で `<コマンド> completion bash` のようなサブコマンドを持つ場合は、
+#   例: RUN <コマンド> completion bash > /etc/bash_completion.d/<コマンド>
+#   のように生成物を /etc/bash_completion.d/ に配置する（このRUNは USER 切り替えより前、root権限で行う）
+#   USER切り替え後（vscode権限）で導入するツールの場合は、下のnpm補完のように
+#   /home/$USERNAME/.local/share/bash-completion/completions/ に配置する（root権限ディレクトリに書けないため）
+
 # uv本体を導入する（公式配布イメージからバイナリをコピーするAstral推奨の方法）
 # このプロジェクトの主目的であるPythonバージョン管理はuvに任せる（`uv python install`で3.12を導入）。
 # OS標準のpython3（apt-get、上記のパッケージリスト参照）はdevcontainer-ubuntu-jaスキルの標準搭載として
@@ -111,6 +120,7 @@ RUN curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/insta
 # 他ユーザーや将来のUID変更で読めなくなる可能性があるため。ENVでコンテナ全体に伝播させる）
 # OS依存ライブラリの導入(`install --with-deps`)はapt操作を伴うためsudoで実行する。
 # sudoは既定でPATHをリセットするため、nvmで通したPATHを`env`で明示的に引き継ぐ必要がある
+# （ホスト側の同種のPlaywright導入作業で判明した既知の落とし穴）
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
