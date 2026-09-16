@@ -102,7 +102,7 @@ GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start
 
 ### Git hooks（Husky + lint-staged）
 
-`.npmrc` で `ignore-scripts=true`（サプライチェーン攻撃対策）にしているため、`pnpm install` 時に `prepare` スクリプトは自動実行されない。`pnpm install` の後、**初回のみ手動で以下を実行**してGitのpre-commitフックを有効化すること。
+`pnpm-workspace.yaml` で `ignoreScripts: true`（サプライチェーン攻撃対策）にしているため、`pnpm install` 時に `prepare` スクリプトは自動実行されない。`pnpm install` の後、**初回のみ手動で以下を実行**してGitのpre-commitフックを有効化すること。
 
 ```bash
 pnpm run prepare

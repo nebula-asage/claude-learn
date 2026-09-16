@@ -31,7 +31,7 @@ pnpm run docs:check   # HTMLを出さずにドキュメント記述漏れだけ�
 GITLAB_BASE_URL=https://gitlab.example.com GITLAB_TOKEN=glpat-xxxx pnpm start   # dist/index.js を起動
 ```
 
-`.npmrc` の `ignore-scripts=true` により `pnpm install` では `prepare` スクリプト（Husky設定）が自動実行されない。`pnpm install` 後、初回のみ `pnpm run prepare` を手動実行してGitフックを有効化すること（詳細は下記「Git hooks」）。
+`pnpm-workspace.yaml` の `ignoreScripts: true` により `pnpm install` では `prepare` スクリプト（Husky設定）が自動実行されない。`pnpm install` 後、初回のみ `pnpm run prepare` を手動実行してGitフックを有効化すること（詳細は下記「Git hooks」）。
 
 ### Git hooks（Husky + lint-staged）
 

@@ -1,0 +1,5 @@
+# サプライチェーン攻撃対策
+# ignoreScripts: postinstallなどのライフサイクルスクリプトを実行しない
+# minimumReleaseAge: 公開から7日間（10080分）は新しいバージョンのインストールをスキップする
+ignoreScripts: true
+minimumReleaseAge: 10080

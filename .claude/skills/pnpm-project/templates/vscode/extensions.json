@@ -1,5 +1,5 @@
 {
-  // pnpm-nvm-projectスキルの構成（ESLint flat config + Prettier format + Vitest）に対応する拡張機能のみを推奨する
+  // pnpm-projectスキルの構成（ESLint flat config + Prettier format + Vitest）に対応する拡張機能のみを推奨する
   "recommendations": [
     // ESLint本体。eslint.config.js（flat config）を自動検出してエディタ上にlint結果を表示する
     "dbaeumer.vscode-eslint",
