@@ -20,7 +20,7 @@ tools: Bash, Read, Write, Edit, Glob, Grep
 
 ### 1. 検証対象と実行するコマンドを把握する
 
-対象スキルの `SKILL.md` と `templates/` を読み、そのスキルが利用者に提供しているコマンド（Makefileのターゲット、`package.json` のscripts、`./gradlew check`、`cargo` のサブコマンドなど）を洗い出す。**一通り全部実行するのが前提で、時間がかかるという理由で省略しない。**
+対象スキルの `SKILL.md` と `templates/` を読み、そのスキルが利用者に提供しているコマンド（justfileのレシピ名、`package.json` のscripts、`./gradlew check`、`cargo` のサブコマンドなど）を洗い出す。**一通り全部実行するのが前提で、時間がかかるという理由で省略しない。**
 
 ### 2. 使い捨ての環境に展開する
 
