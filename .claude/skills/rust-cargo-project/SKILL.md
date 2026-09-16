@@ -56,14 +56,11 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 - **`cargo-deny`（`deny.toml`）を標準で入れる**。`[advisories]` でRustSec脆弱性DBと照合し、`[licenses]` で許可ライセンスを列挙し、`[bans] wildcards = "deny"` でワイルドカードのバージョン指定を禁止し、`[sources]` で取得元をcrates.ioに限定する（未知のレジストリ・gitリポジトリからの依存を禁止）
 - **`deny.toml` には `[licenses.private] ignore = true` が必須**。テンプレートの `Cargo.toml` は `publish = false` かつ `license` フィールドを持たないため、これを設定しないとプロジェクト自身が `error[unlicensed]: ... is unlicensed` として検出され `cargo deny check` が落ちる。あわせて `unused-allowed-license = "allow"` を設定し、許可リストのうち依存ツリーに出てこなかったライセンスについての警告で出力が埋もれないようにする
 
-### このリポジトリ共通のサプライチェーン方針との差分（必ずユーザーに報告する）
+### このリポジトリ共通のサプライチェーン方針との差分（`CLAUDE.md` の一般則参照。必ずユーザーに報告する）
 
-このリポジトリは全プロジェクト共通で「リリース直後のバージョンを使わない（猶予7日）」「インストール時の任意コード実行を抑制する」の2点を各パッケージマネージャの機能で実現する方針だが、**cargoにはどちらの機能も存在しない**。
+**cargoには「公開後N日未満を除外する」（npm/pnpmの`minimum-release-age`やuvの`exclude-newer`相当）も「インストール時の任意コード実行の抑制」（npmの`ignore-scripts`相当）も存在しない。** cargoは依存クレートの`build.rs`をビルド時に必ず実行する。
 
-- **「公開後N日未満を除外する」機能は cargo に無い**。npm/pnpmの `minimum-release-age` や uvの `exclude-newer` に相当する設定は存在しない。`cargo deny check advisories` は既にRustSecに報告済みの脆弱性を弾くものなので、「まだ誰も気づいていない攻撃を待ち時間でやり過ごす」という `exclude-newer` の目的の代替にはならない
-- **「インストール時の任意コード実行の抑制」も cargo に無い**。npmの `ignore-scripts` に相当する設定は存在せず、cargoは依存クレートの `build.rs` をビルド時に必ず実行する
-
-このスキルを使ってプロジェクトを作ったときは、**この2点が満たせないことを黙って伏せずユーザーに報告する**（リポジトリの `CLAUDE.md` が「同等の設定があるか調べて適用し、無ければその旨を報告する」と定めているため）。代わりに入れている `Cargo.lock` + `--locked`、`[sources]` による取得元の限定、`[advisories]` による脆弱性照合が何を守り何を守らないのかも、あわせて伝えること。この差分はテンプレートの `README.md` にも書いてある。
+代わりに入れている `Cargo.lock` + `--locked`、`[sources]` による取得元の限定、`[advisories]` による脆弱性照合（`cargo deny check advisories`はRustSecに既に報告済みの脆弱性を弾くもので、「まだ誰も気づいていない攻撃を待ち時間でやり過ごす」という`exclude-newer`の目的の代替にはならない）が何を守り何を守らないのかも、あわせて伝えること。この差分はテンプレートの `README.md` にも書いてある。
 
 ## 手順
 
