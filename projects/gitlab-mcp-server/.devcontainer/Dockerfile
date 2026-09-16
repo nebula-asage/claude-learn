@@ -71,6 +71,15 @@ RUN if getent group $USER_GID >/dev/null; then \
     && echo "$USERNAME ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME
 
+# 追加でプログラムを導入する場合、bash補完に対応していれば有効化すること。
+# - aptパッケージ: bash-completion導入済みなら、インストール時に自動配置される補完スクリプトが
+#   そのまま有効になる（追加設定は不要）
+# - 単体バイナリ導入等で `<コマンド> completion bash` のようなサブコマンドを持つ場合は、
+#   例: RUN <コマンド> completion bash > /etc/bash_completion.d/<コマンド>
+#   のように生成物を /etc/bash_completion.d/ に配置する（このRUNは USER 切り替えより前、root権限で行う）
+#   USER切り替え後（vscode権限）で導入するツールの場合は、下のnpm補完のように
+#   /home/$USERNAME/.local/share/bash-completion/completions/ に配置する（root権限ディレクトリに書けないため）
+
 # Node.js（プロジェクトの実行環境 node:24-bookworm-slim に合わせてメジャーバージョンを揃える）
 # NodeSourceのセットアップスクリプトが内部で apt-get update を行うため、上のapt-get installと
 # 同じキャッシュマウントを与えてダウンロードを再利用する。
