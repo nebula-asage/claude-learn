@@ -1,4 +1,4 @@
-# cargo-deny の設定。`make deny`（= `cargo deny check`）で全チェックが走る。
+# cargo-deny の設定。`just deny`（= `cargo deny check`）で全チェックが走る。
 #
 # 背景: npm の `min-release-age` や uv の `exclude-newer` に相当する
 # 「公開から N 日未満のバージョンを使わない」機能は cargo に存在しない。
