@@ -4,13 +4,13 @@
 
 # ---- builder: TypeScript をビルドする ----
 FROM node:24-bookworm-slim AS builder
-ARG PNPM_VERSION=10.34.5
+ARG PNPM_VERSION=12.4.2
 WORKDIR /app
 
 # corepackではなくnpm経由でpnpmを導入する（リポジトリ全体の固定方針）
 RUN npm install -g pnpm@${PNPM_VERSION}
 
-COPY .npmrc package.json pnpm-lock.yaml ./
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY tsconfig.json ./
@@ -19,13 +19,13 @@ RUN pnpm run build
 
 # ---- runtime: 本番実行用の最小構成 ----
 FROM node:24-bookworm-slim AS runtime
-ARG PNPM_VERSION=10.34.5
+ARG PNPM_VERSION=12.4.2
 ENV NODE_ENV=production
 WORKDIR /app
 
 RUN npm install -g pnpm@${PNPM_VERSION}
 
-COPY .npmrc package.json pnpm-lock.yaml ./
+COPY .npmrc pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod && pnpm store prune
 
 COPY --from=builder /app/dist ./dist

@@ -35,17 +35,17 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
    - `docker run --rm <一時タグ> bash -c 'date; locale; sudo whoami'` を実行し、日本語日時表示・`LANG=ja_JP.UTF-8`・`Asia/Tokyo`・sudo権限が機能していることを確認する。
    - `docker run --rm <一時タグ> bash -ic '_completion_loader git 2>/dev/null; complete -p git'` などでbash補完が有効になっていることも確認する（bash-completionは動的ロード方式のため、`type _git` は実際に補完を試みるまで関数が定義されず誤ってNG判定になる。`_completion_loader` で明示的にロードしてから `complete -p` で登録有無を見るのが確実）。
    - `workspaceMount` / `workspaceFolder` と同じ設定で `docker run --rm -v <source>:<target> -w <workspaceFolder> <一時タグ> git status` を実行し、`fatal: not a git repository` にならないことを確認する（特にプロジェクト配下に置く場合は必須）。
-   - `node`/`npm`はnvmが`~/.bashrc`の**末尾**にPATH設定を追記する方式のため、非対話の`bash -c`では届かない（Ubuntu標準の`.bashrc`は先頭で「非対話シェルなら即return」するガードがあるが、これとは別に単純に追記位置の問題でPATHが通らない）。検証時は `bash -c '. "$NVM_DIR/nvm.sh" && ...'` のように明示的にnvmをsourceするか、`bash -ic '...'`（対話モード）を使う。
-   - `docker run --rm <一時タグ> bash -c '. "$NVM_DIR/nvm.sh" && node -v && npx --no-install playwright --version'` でNode.js/Playwrightが導入されていることを確認する。
-   - Chromiumが実際に起動できるかも確認する。Playwrightはnpmグローバルインストールのため、`NODE_PATH=$(npm root -g)` を明示しないと`require('playwright')`が`MODULE_NOT_FOUND`になる点に注意する。
+   - `pnpm`/`node`はpnpmの公式インストーラーが`~/.bashrc`の**末尾**にPATH設定を追記する方式のため、非対話の`bash -c`では届かない（Ubuntu標準の`.bashrc`は先頭で「非対話シェルなら即return」するガードがあるが、これとは別に単純に追記位置の問題でPATHが通らない）。検証時は `bash -c 'export PATH="$PNPM_HOME/bin:$PATH" && ...'` のように明示的にPATHへ`$PNPM_HOME/bin`を足すか、`bash -ic '...'`（対話モード）を使う。
+   - `docker run --rm <一時タグ> bash -c 'export PATH="$PNPM_HOME/bin:$PATH"; pnpm -v && node -v && pnpm exec playwright --version'` でpnpm/Node.js/Playwrightが導入されていることを確認する。
+   - Chromiumが実際に起動できるかも確認する。`playwright screenshot`などのCLIコマンド経由（`pnpm exec playwright ...`）で確認すること。pnpm 12はグローバルインストールをハッシュ付きサブディレクトリに分散して保存するため、`NODE_PATH=$(pnpm root -g)`を使ったNode.jsスクリプトからの直接`require('playwright')`は`MODULE_NOT_FOUND`になる（実機検証で判明。`pnpm root -g`が返すパス自体に実体が無い）。`pnpm exec`/CLIコマンド経由なら問題なく解決される。
      ```
-     docker run --rm <一時タグ> bash -c '. "$NVM_DIR/nvm.sh" && NODE_PATH=$(npm root -g) node -e "require(\"playwright\").chromium.launch().then(async b=>{await b.close();console.log(\"OK\")})"'
+     docker run --rm <一時タグ> bash -c 'export PATH="$PNPM_HOME/bin:$PATH"; echo "<h1>ok</h1>" > /tmp/t.html && pnpm exec playwright screenshot /tmp/t.html /tmp/shot.png && ls -la /tmp/shot.png'
      ```
      Dockerのseccomp/AppArmor設定次第ではChromiumのサンドボックスが使えず`Failed to move to new namespace`系のエラーで失敗する環境がある（Docker 29系・WSL2ホストでの検証では素の設定のまま成功した）。失敗した場合は `chromium.launch({args:['--no-sandbox']})` でも試し、成功するなら「devcontainer内でPlaywrightを使う際は環境によって`chromium.launch({ args: ['--no-sandbox'] })` が必要になることがある」という注意点をユーザーへの報告に添える。
    - `docker run --rm <一時タグ> bash -c 'python3 --version && python3 -m venv /tmp/venvtest && /tmp/venvtest/bin/pip --version'` でPython3・venv・pipが導入されていることを確認する。
    - `docker run --rm <一時タグ> bash -c 'just --version'` でjustが導入されていることを確認する。
    - `docker run --rm <一時タグ> bash -ic 'complete -p just'` でjustのbash補完（`/etc/bash_completion.d/just`）が有効になっていることを確認する。**他のツールと違い`_completion_loader just`を明示的に呼び出してはいけない**（実機検証で判明。`/etc/bash_completion.d/just`は遅延読込用のローダーではなく、対話シェル起動時に毎回そのまま読み込まれる静的な補完スクリプトのため、`_completion_loader`経由で呼ぶと`_minimal`にフォールバックしてしまい誤ってNG判定になる。素の対話シェルなら自動で`_clap_complete_just`が登録される）
-   - `docker run --rm <一時タグ> bash -c '. "$NVM_DIR/nvm.sh" 2>/dev/null; export PATH="/home/vscode/.local/bin:$PATH"; just-lsp --version'` でjust-lspが導入されPATHに乗っていることを確認する（`ENV PATH`にビルド時点で`/home/$USERNAME/.local/bin`が追加済みのため、対話シェルでなくても直接実行できるはずだが、念のため`bash -ic`でも確認する）。
+   - `docker run --rm <一時タグ> bash -c 'export PATH="/home/vscode/.local/bin:$PATH"; just-lsp --version'` でjust-lspが導入されPATHに乗っていることを確認する（`ENV PATH`にビルド時点で`/home/$USERNAME/.local/bin`が追加済みのため、対話シェルでなくても直接実行できるはずだが、念のため`bash -ic`でも確認する）。
    - 確認用に作った一時イメージは `docker rmi <一時タグ>` で削除する。
 
 6. **（追加要求があった場合）追加プログラムのbash補完を有効化する**
@@ -53,7 +53,7 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
    - aptパッケージの場合: `bash-completion` が導入済みであれば、パッケージが `/usr/share/bash-completion/completions/` 等に配置する補完スクリプトはインストールするだけで自動的に有効になる（追加作業は基本的に不要）。
    - 単体バイナリ導入やnpm/pip/go installなどapt以外の方法で導入する場合: そのプログラムが `<コマンド> completion bash` のようなサブコマンド／`--completion bash` オプションを持つか確認し、持っていれば生成物を配置する。配置先はインストール権限に合わせて使い分ける。
      - `Dockerfile` の `USER $USERNAME` より前（root権限）で導入するツールの場合: `RUN <コマンド> completion bash > /etc/bash_completion.d/<コマンド>`
-     - `USER $USERNAME` 切り替え後（vscodeユーザー権限）で導入するツールの場合: root権限のディレクトリに書き込めないため、`RUN mkdir -p /home/$USERNAME/.local/share/bash-completion/completions && <コマンド> completion bash > /home/$USERNAME/.local/share/bash-completion/completions/<コマンド>`（bash-completionパッケージがXDG準拠でこのディレクトリも自動的に読む）。Node.js/Playwrightのnpm補完はこの形で実装済み
+     - `USER $USERNAME` 切り替え後（vscodeユーザー権限）で導入するツールの場合: root権限のディレクトリに書き込めないため、`RUN mkdir -p /home/$USERNAME/.local/share/bash-completion/completions && <コマンド> completion bash > /home/$USERNAME/.local/share/bash-completion/completions/<コマンド>`（bash-completionパッケージがXDG準拠でこのディレクトリも自動的に読む）。pnpmの補完はこの形で実装済み
    - 対応方法が不明なツールは、公式ドキュメントを確認するか、ユーザーに確認してから追記する。
 
 ## 固定構成の内容（変更しない前提）
@@ -64,7 +64,7 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
 - 非rootユーザー `vscode`（UID/GID 1000、パスワードなしsudo）。ベースイメージに同じUID/GIDが既にある場合はリネームして再利用する（`useradd`の重複エラー回避）
 - 導入パッケージ: `locales` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less` `jq` `python3` `python3-venv` `python3-pip`（すべて必須。ビルドツールチェーン（`build-essential`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
 - `apt-get install` はBuildKitのキャッシュマウント（`RUN --mount=type=cache,target=/var/cache/apt` 等）でパッケージキャッシュを永続化する前提。`Dockerfile` 先頭の `# syntax=docker/dockerfile:1` は外さない。追記するRUN命令でパッケージを追加インストールする場合も、同様にキャッシュマウントを使う
-- **Node.js（`NODE_MAJOR` ARGで指定、既定24系）とPlaywright（Chromium、`playwright install --with-deps` によるOS依存ライブラリ込み）を標準搭載する。** これは「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、ブラウザ自動操作・HTML成果物のスクリーンショット確認をコンテナ内で追加導入なしに行えるようにするためのもの。ブラウザ本体は `PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright` に固定し、非rootユーザー`vscode`からも読めるようパーミッションを揃えてある
+- **pnpm（`PNPM_VERSION` ARGで指定、既定12系。公式スタンドアロンインストーラで導入し、npm/nvm/corepackいずれにも依存しない）とNode.js（pnpm自身の`runtime`機能で導入・管理、既定LTS）、Playwright（Chromium、`playwright install --with-deps` によるOS依存ライブラリ込み）を標準搭載する。** Node.js/Playwrightの搭載自体は「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、ブラウザ自動操作・HTML成果物のスクリーンショット確認をコンテナ内で追加導入なしに行えるようにするためのもの。ブラウザ本体は `PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright` に固定し、非rootユーザー`vscode`からも読めるようパーミッションを揃えてある
   - devcontainer内でヘッドレスブラウザとして日本語を含むページを正確に描画確認したい場合、CJKフォント（`fonts-noto-cjk`、これも標準搭載）が必要（未導入だと文字が豆腐化する）
   - Dockerのseccomp/AppArmor設定次第では`chromium.launch()`がサンドボックス絡みのエラーで失敗し`chromium.launch({ args: ['--no-sandbox'] })`が必要になる環境がある（Docker 29系・WSL2ホストでの検証では素の設定のまま成功しており、常に必要というわけではない）。Dockerfile側では解決できない実行時の制約なので、動作確認時に必ず切り分けてユーザーに伝える（手順5参照）
 - **Python3（`apt-get`導入、Ubuntu 24.04標準の3.12系）を標準搭載する。** これもNode.jsと同様に「言語ランタイムは対象外」という原則に対する明示的な例外で、コンテナ内で追加導入なしにPythonスクリプトを実行できるようにするためのもの。`python3` 本体に加え、`venv`モジュールと`pip`が別パッケージに分割されているため `python3-venv` `python3-pip` も導入する。バージョン固定やプロジェクト固有の依存管理（`uv`など）が必要な場合は、配置後の`Dockerfile`にユーザー自身が追記する

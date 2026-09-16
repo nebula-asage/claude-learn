@@ -1,28 +1,21 @@
 # __PROJECT_NAME__
 
-Node.jsの練習用プロジェクト。ランタイムは [nvm](https://github.com/nvm-sh/nvm)、パッケージ管理は [pnpm](https://pnpm.io/) を前提とする。言語はTypeScriptで、ESLint（flat config, typescript-eslint）・Prettier・Vitestを組み込み済み。
+Node.jsの練習用プロジェクト。パッケージ管理は [pnpm](https://pnpm.io/) を前提とし、pnpm本体もNode.jsランタイムもnpm/nvm/corepackを使わずpnpm公式スタンドアロン導入に一本化する。言語はTypeScriptで、ESLint（flat config, typescript-eslint）・Prettier・Vitestを組み込み済み。
 
 ## セットアップ
 
-`nvm` が未導入の場合は公式インストーラーで導入する。
+pnpmが未導入（またはnpm経由の旧導入）の場合は、公式スタンドアロンインストーラで12系に固定して導入する（理由は `.claude/skills/pnpm-project/SKILL.md` を参照）。
 
 ```bash
-NVM_LATEST=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest \
-  | grep -m1 '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_LATEST}/install.sh" | bash
+curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=12 sh -
 ```
 
-Node.jsランタイムはdistroのパッケージではなく `nvm` に導入・管理させる。
+インストール後、新しいシェルを開くかプロファイルを再読込む（`source ~/.bashrc` 等）。
+
+Node.jsランタイムはdistroのパッケージやnvmではなく、pnpm自身の`runtime`機能に導入・管理させる。
 
 ```bash
-nvm install --lts
-nvm alias default 'lts/*'
-```
-
-pnpmはcorepackを使わず、npm経由で10系に固定して導入する（理由は `.claude/skills/pnpm-nvm-project/SKILL.md` を参照）。
-
-```bash
-npm install -g pnpm@^10
+pnpm runtime set node lts -g
 ```
 
 ## 実行方法
@@ -56,7 +49,7 @@ ESLint（`eslint.config.js`）は `typescript-eslint` の `recommendedTypeChecke
 
 ## Git hooks（Husky + lint-staged）
 
-`.npmrc` で `ignore-scripts=true`（サプライチェーン攻撃対策）にしているため、`pnpm install` 時に `prepare` スクリプトは自動実行されない。`pnpm install` の後、**初回のみ手動で以下を実行**してGitのpre-commitフックを有効化すること。
+`pnpm-workspace.yaml` で `ignoreScripts: true`（サプライチェーン攻撃対策）にしているため、`pnpm install` 時に `prepare` スクリプトは自動実行されない。`pnpm install` の後、**初回のみ手動で以下を実行**してGitのpre-commitフックを有効化すること。
 
 ```bash
 pnpm run prepare
@@ -85,7 +78,7 @@ pnpm add <パッケージ名>
 
 ## サプライチェーン攻撃対策
 
-`.npmrc` に以下を設定している。
+`pnpm-workspace.yaml` に以下を設定している（pnpm 11以降、`.npmrc` はauth/registry設定専用でこれらの設定は読まれない）。
 
-- `ignore-scripts=true`: postinstallなどのライフサイクルスクリプトを実行しない
-- `min-release-age=7` / `minimum-release-age=10080`: 公開から7日間は新しいバージョンのインストールをスキップする（npmとpnpmでキー名・単位が異なるため両方指定している）
+- `ignoreScripts: true`: postinstallなどのライフサイクルスクリプトを実行しない
+- `minimumReleaseAge: 10080`: 公開から7日間（10080分）は新しいバージョンのインストールをスキップする

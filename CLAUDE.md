@@ -45,7 +45,7 @@ Claudeの練習用モノレポ。特定の技術スタックに縛られず、`p
 
 - 公式インストーラがユーザーローカルに入るならそれを使う（例: `curl -LsSf https://astral.sh/uv/install.sh | sh`、rustup）
 - 単体バイナリ・tarball配布なら `~/.local/bin`、`~/sdk/<tool>` などに展開する。チェックサムが公開されていれば必ず検証する
-- 言語のツールチェーンは各言語の仕組みに任せる（Node.jsは `~/.nvm`、Goは `go install` で `$(go env GOPATH)/bin`、Pythonは `uv python install`）
+- 言語のツールチェーンは各言語の仕組みに任せる（Node.jsはpnpm公式スタンドアロンインストーラ＋`pnpm runtime set node`、Goは `go install` で `$(go env GOPATH)/bin`、Pythonは `uv python install`）
 - どうしてもシステムパッケージが要る場合、`apt-get download` でダウンロードして `dpkg -x` でホーム配下に展開し、`LD_LIBRARY_PATH` などで参照する方法が使える（sudo不要）
 - 上記のいずれでも解決できない場合は、勝手に諦めず**ユーザー自身のターミナルで実行してもらう**よう依頼する。パスワードを受け取ってコマンドラインに渡す方法は取らない（安全機構によりブロックされるうえ、ログに残る）
 - `~/.bashrc` へのPATH追記など、ホスト環境に残る変更を伴う場合は事前にユーザーへ確認する
@@ -87,8 +87,8 @@ Claudeの練習用モノレポ。特定の技術スタックに縛られず、`p
 - 各プロジェクトディレクトリに簡単な README を置き、目的と実行方法を書く
 - ビルド・テスト・実行コマンドはプロジェクトごとに異なるため、各プロジェクトの README を参照する
 - **サプライチェーン攻撃対策を必ず設定する**。このリポジトリでは全プロジェクト共通の固定方針として、以下の2点を各パッケージマネージャの機能で実現している。新しい言語・パッケージマネージャを使うプロジェクトを追加するときも、同等の設定があるか調べて適用し、無ければその旨を報告する
-  - **リリース直後のバージョンを使わない**（公開後一定期間の猶予を置く）。npm/pnpmは `.npmrc` の `min-release-age` / `minimum-release-age`、uvは `pyproject.toml` の `[tool.uv] exclude-newer`。猶予は7日で統一している
-  - **インストール時の任意コード実行を抑制する**。npm/pnpmは `.npmrc` の `ignore-scripts=true`（postinstall等を実行しない）
+  - **リリース直後のバージョンを使わない**（公開後一定期間の猶予を置く）。pnpmは `pnpm-workspace.yaml`（プロジェクト単位）または `~/.config/pnpm/config.yaml`（ユーザー単位のグローバル設定）の `minimumReleaseAge`（分単位）、uvは `pyproject.toml` の `[tool.uv] exclude-newer`。猶予は7日で統一している（pnpm 11以降 `.npmrc` はauth/registry設定専用になり非auth設定は無視されるため、この設定は`.npmrc`には書かない）
+  - **インストール時の任意コード実行を抑制する**。pnpmは同じ設定ファイルの `ignoreScripts: true`（postinstall等を実行しない）
 - 上記により `pnpm install` では `prepare` スクリプトも実行されない。Git hooks の有効化など `prepare` に依存する処理は、README に「初回のみ手動実行」と明記する
 - **上記2点に相当する機能がパッケージマネージャに存在しない場合（例: cargo、Gradle）は、その旨を必ずユーザーに報告し、スキルの手順にも明記する。** 報告する際は「無い」で終わらせず、代わりに何を導入していて、それが何を守り何を守らないかも併せて伝える（例: 脆弱性DBとの照合はできるが「まだ誰も気づいていない攻撃を待ち時間でやり過ごす」目的の代替にはならない、など）。各スキルのSKILL.mdでは、この一般論を繰り返さず「自分の言語で何が無く、代わりに何を入れているか」だけを書く
 

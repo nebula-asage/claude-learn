@@ -73,28 +73,25 @@ RUN if getent group $USER_GID >/dev/null; then \
 # - 単体バイナリ導入等で `<コマンド> completion bash` のようなサブコマンドを持つ場合は、
 #   例: RUN <コマンド> completion bash > /etc/bash_completion.d/<コマンド>
 #   のように生成物を /etc/bash_completion.d/ に配置する（このRUNは USER 切り替えより前、root権限で行う）
-#   USER切り替え後（vscode権限）で導入するツールの場合は、下のnpm補完のように
+#   USER切り替え後（vscode権限）で導入するツールの場合は、下のpnpm補完のように
 #   /home/$USERNAME/.local/share/bash-completion/completions/ に配置する（root権限ディレクトリに書けないため）
 
 USER $USERNAME
 
-# Node.js / npm はLinuxで標準的なnvm(Node Version Manager)で導入する
+# pnpm（公式スタンドアロンインストーラで導入する。npm/nvm/corepackいずれにも依存しない。
+# $HOME配下にsudo不要で導入され、実行バイナリはnpmレジストリの署名とチェックサムで検証される）
+ARG PNPM_VERSION=12
+ENV PNPM_HOME=/home/$USERNAME/.local/share/pnpm
+ENV PATH="$PNPM_HOME/bin:$PATH"
+RUN curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=${PNPM_VERSION} SHELL=/bin/bash sh - \
+    && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
+    && pnpm completion bash > /home/$USERNAME/.local/share/bash-completion/completions/pnpm
+
+# Node.js（distro提供のnodejsモジュール(dnfモジュールの既定バージョンはNode 16と古くPlaywright
+# (要Node20+)が動かない)やnvmには依存せず、pnpm自身のruntime機能で導入・管理する）
 # 言語ランタイムは本来このスキルの対象外だが、Playwrightでのブラウザ自動操作・スクリーンショット取得を
 # 標準機能として持たせるための例外としてNode.jsのみ導入する（他言語ランタイムは対象外のまま）。
-# distro提供のnodejsパッケージ(dnfモジュールの既定バージョン)はNode 16と古くPlaywright(要Node20+)が
-# 動かないため、nvmで最新版を入れる。
-# nvmのインストーラーが ~/.bashrc に自動でnvm.sh/bash補完の読み込みを追記するため、
-# インタラクティブなbashシェルではnode/npmが自動でPATHに載る
-ARG NVM_VERSION=v0.40.6
-ARG NODE_MAJOR=24
-ENV NVM_DIR=/home/$USERNAME/.nvm
-RUN curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash \
-    && . "$NVM_DIR/nvm.sh" \
-    && nvm install $NODE_MAJOR \
-    && nvm alias default $NODE_MAJOR \
-    && npm install -g npm@latest \
-    && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
-    && npm completion > /home/$USERNAME/.local/share/bash-completion/completions/npm
+RUN pnpm runtime set node lts -g
 
 # Playwright(Chromium)の導入
 # PlaywrightのOS依存パッケージ自動導入(`playwright install --with-deps`)はDebian/Ubuntu系専用の
@@ -118,9 +115,8 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
     liberation-fonts google-noto-sans-cjk-ttc-fonts \
     && sudo mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" \
     && sudo chown $USERNAME:$USERNAME "$PLAYWRIGHT_BROWSERS_PATH" \
-    && . "$NVM_DIR/nvm.sh" \
-    && npm install -g playwright \
-    && npx playwright install chromium \
+    && pnpm add -g playwright \
+    && pnpm dlx playwright install chromium \
     && sudo chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
 
 # just-lsp（justfile用LSPサーバー）の導入
