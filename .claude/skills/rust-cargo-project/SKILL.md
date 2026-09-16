@@ -32,9 +32,10 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 - **`[lints.clippy]` でグループ（`all` / `pedantic`）を指定するときは `priority = -1` を付ける**。グループと個別ルールを同じテーブルに並べたとき、priorityを省略すると cargo が優先順位を決められずエラーになる
 - **`clippy::pedantic` を有効にする**。練習用リポジトリとして、慣用的でない書き方を早めに指摘してもらう価値が大きいため。ただしpedanticを入れると、`String` を返す `pub fn` に `#[must_use]` を付けろという `must_use_candidate` が出る。テンプレートの `greet` には `#[must_use]` を付けてあるので、サンプルを書き換えるときも同様に対応すること
 - **`missing_docs` は bin クレート（`src/main.rs`）に対しても「クレートレベルのドキュメント（`//!`）が無い」を検出する**。関数レベルのコメントは強制されないが、ファイル冒頭の `//!` は必須になる。テンプレートの `src/main.rs` 冒頭の `//!` を消すと `make lint` が落ちるので、この点はテンプレート内にもコメントで明記してある
-- **`clippy::missing_docs_in_private_items` は `fn main` と `#[cfg(test)]` 配下を自動的に除外する**。検証で、privateな通常の関数は検出される一方、テストモジュール内のヘルパー関数と `fn main` は検出されないことを確認済み。そのため、Pythonスキルの `per-file-ignores` に相当する「テストコードを除外する設定」は書く必要がない
+- **`clippy::missing_docs_in_private_items` は入れない**。privateなアイテムにまでコメントを強制すると練習用途では過剰なため、`missing_docs`（`pub` のみ対象）と `missing_errors_doc` / `missing_panics_doc` の組み合わせに留める
 - **`clippy::missing_errors_doc` / `missing_panics_doc` を明示的に列挙する**。これらは `pedantic` グループにも含まれており指定は重複するが、明示しておけば将来 `pedantic` を外したときにドキュメント強制が黙って失われることがない
 - **`rustdoc::broken_intra_doc_links` は `deny`**（warnではない）。`` [`Foo`] `` 形式のリンク切れは放置されると気づかれないまま溜まるため。なおこれは `cargo clippy` ではなく `cargo doc` の実行時に検出される
+- **パニックを起こしうる書き方を検出する restriction lint（`unwrap_used` / `expect_used` / `panic` / `unreachable` / `todo` / `unimplemented` / `indexing_slicing` / `arithmetic_side_effects`）を個別に有効化する**。これらは `all` / `pedantic` のどちらのグループにも含まれない
 
 ### フォーマッタの設定
 
@@ -147,10 +148,11 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
    - 最後に `make clean` で `target/` と `lcov.info` を削除し、コミット対象に成果物が残っていないことを `git status` で確かめる。
 
    **lintが本当に効いているかを反証で確かめる**（設定を書いただけで実は無効、という状態を防ぐため。以下はいずれも検証済みで、確認後は必ず元に戻すこと）:
-   - `src/greeting.rs` の `///` コメントを削ると、`missing documentation for a struct` / `missing documentation for a function`（`pub` と private の両方）と `docs for function returning \`Result\` missing \`# Errors\` section` が `make lint` で検出される。
+   - `src/greeting.rs` の `///` コメントを削ると、`missing documentation for a struct` / `missing documentation for a function`（いずれも `pub` なアイテム）と `docs for function returning \`Result\` missing \`# Errors\` section` が `make lint` で検出される。private な `format_greeting` にはドキュメンテーションコメントを強制していないので、そちらのコメントを削っても `make lint` は落ちない。
    - `src/main.rs` 冒頭の `//!` を削ると `missing documentation for the crate` が検出される。
    - `src/greeting.rs` の `` [`try_greet`] `` を存在しない名前に書き換えると、`make doc` が `unresolved link to ...` で落ちる（`make lint` では検出されない。rustdocのlintなので `cargo doc` 側で出る）。
    - `Cargo.toml` の依存を `foo = "*"` のようなワイルドカード指定にすると `make deny` が `error[wildcard]` で落ちる。`cargo add <crate> --git <URL>` でgit依存を足すと `error[source-not-allowed]` で落ちる。
+   - `src/greeting.rs` の `try_greet(name).unwrap_or_else(...)` を `try_greet(name).unwrap()` に書き換えると `used \`unwrap()\` on a \`Result\` value` が `make lint` で検出される。
 
 ## このスキルの対象外
 

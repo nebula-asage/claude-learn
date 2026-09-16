@@ -56,9 +56,6 @@ pub fn try_greet(name: &str) -> Result<String, EmptyNameError> {
 }
 
 /// 挨拶文の書式を 1 箇所にまとめるための内部ヘルパー。
-///
-/// private なアイテムだが、`clippy::missing_docs_in_private_items` を有効に
-/// しているのでこのコメントが無いと `make lint` が落ちる。
 fn format_greeting(name: &str) -> String {
     format!("Hello, {name}!")
 }
@@ -66,9 +63,6 @@ fn format_greeting(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{EmptyNameError, greet, try_greet};
-
-    // `#[cfg(test)]` 配下は clippy の missing_docs_in_private_items の対象外なので、
-    // テスト関数にドキュメンテーションコメントを書く必要はない。
 
     #[test]
     fn greet_uses_the_given_name() {

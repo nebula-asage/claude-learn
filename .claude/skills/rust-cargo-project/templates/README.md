@@ -75,14 +75,24 @@ clone 直後は `Cargo.lock` が無いため、まず一度だけ `make lock` �
 
 - `missing_docs` — 公開アイテム（`pub`）にコメントを必須にする。**`src/main.rs` に対しても
   クレートレベルのコメント（`//!`）を必須にする**点に注意
-- `clippy::missing_docs_in_private_items` — private なアイテムにも必須にする。
-  `fn main` と `#[cfg(test)]` 配下は clippy 側が除外するので、テストには不要
 - `clippy::missing_errors_doc` / `missing_panics_doc` — `Result` を返す関数には
   `# Errors`、panic しうる関数には `# Panics` セクションを必須にする
 - `rustdoc::broken_intra_doc_links` — `[`Foo`]` 形式のリンク切れを検出する（`deny`）
 
 コメント内に ` ``` ` で囲んだコード例を書くと doctest として実際に実行され、
 例が古くなってコンパイルが通らなくなった時点で `make doctest` が落ちる。
+
+## パニックを起こしうる書き方について
+
+`[lints.clippy]` で、`all` / `pedantic` には含まれない restriction 系のlintを
+個別に有効化し、パニックを起こしうる書き方を `make lint` で検出できるようにしてある。
+
+- `unwrap_used` / `expect_used` — `.unwrap()` / `.expect()` の呼び出し
+- `panic` / `unreachable` / `todo` / `unimplemented` — 明示的にパニックするマクロ呼び出し
+- `indexing_slicing` — `v[i]` のような境界チェック無しのインデックスアクセス
+- `arithmetic_side_effects` — オーバーフロー時にパニックしうる算術演算
+
+回避する場合は `?` によるエラー伝播や `get` / `checked_*` 系のメソッドを使う。
 
 ## サプライチェーン対策について
 
