@@ -139,6 +139,7 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
 
 6. **動作確認する**
    `<配置先>` に移動し、以下を確認する。前述の通り、非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら各コマンドの前に `export GOROOT/GOPATH/PATH` を明示する。確認後、動作確認で生成された `coverage.out` / `coverage.html` / `coverage.lcov` / `API.md`（各パッケージディレクトリ配下）は `just clean` で削除し、コミット対象に残さないこと。
+   - 引数なしで `just` を実行し、レシピ一覧（`just --list`相当）が表示されることを確認する。
    - `just run`（`go run .`）を実行し、正常に動作することを確認する。
    - `just fmt`（`gofmt -l -w .`）を実行し、フォーマットが適用されることを確認する。
    - `just lint`（`golangci-lint run ./...`）が `0 issues.` で終了することを確認する。`main.go`・`internal/greeting/greeting.go` にパッケージコメント／関数コメントが入っているかもここで再確認する。
