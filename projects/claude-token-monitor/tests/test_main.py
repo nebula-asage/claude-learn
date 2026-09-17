@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
 
+import pytest
+
+import main
 from main import (
     TurnUsage,
     _totals,
@@ -90,6 +93,13 @@ def test_encode_project_dir_replaces_path_separators() -> None:
     assert encode_project_dir(Path("/home/user/repo")) == "-home-user-repo"
 
 
+def test_encode_project_dir_replaces_dots_in_worktree_paths() -> None:
+    assert (
+        encode_project_dir(Path("/home/user/repo/.claude/worktrees/feature"))
+        == "-home-user-repo--claude-worktrees-feature"
+    )
+
+
 def test_find_latest_session_file_picks_most_recently_modified(tmp_path: Path) -> None:
     older = tmp_path / "aaa.jsonl"
     newer = tmp_path / "bbb.jsonl"
@@ -125,17 +135,30 @@ def test_resolve_session_file_prefers_explicit_file() -> None:
     assert resolved == Path("/tmp/explicit.jsonl")
 
 
-def test_resolve_session_file_builds_path_from_session_id(tmp_path: Path) -> None:
-    resolved = resolve_session_file(None, "abc123", str(tmp_path))
+def test_resolve_session_file_builds_path_from_session_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    real_project_dir = tmp_path / "actual-project"
+    encoded_dir = tmp_path / encode_project_dir(real_project_dir)
+    encoded_dir.mkdir()
 
-    assert resolved == tmp_path / "abc123.jsonl"
+    resolved = resolve_session_file(None, "abc123", str(real_project_dir))
+
+    assert resolved == encoded_dir / "abc123.jsonl"
 
 
-def test_resolve_session_file_falls_back_to_latest(tmp_path: Path) -> None:
-    only = tmp_path / "only.jsonl"
+def test_resolve_session_file_falls_back_to_latest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    real_project_dir = tmp_path / "actual-project"
+    encoded_dir = tmp_path / encode_project_dir(real_project_dir)
+    encoded_dir.mkdir()
+    only = encoded_dir / "only.jsonl"
     only.write_text("{}", encoding="utf-8")
 
-    resolved = resolve_session_file(None, None, str(tmp_path))
+    resolved = resolve_session_file(None, None, str(real_project_dir))
 
     assert resolved == only
 
