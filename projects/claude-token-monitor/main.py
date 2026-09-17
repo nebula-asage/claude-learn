@@ -79,14 +79,22 @@ class TurnUsage:
         )
 
 
-def parse_turn(line: str) -> TurnUsage | None:
-    """トランスクリプトJSONLの1行を解析し、usageを持つassistantターンを抽出する。
+def _parse_assistant_line(line: str) -> tuple[str, TurnUsage] | None:
+    """トランスクリプトJSONLの1行を解析し、メッセージIDとturnの組を抽出する。
+
+    Claude Codeは1回のAPIレスポンス(thinking/text/tool_useなど複数のcontent
+    ブロックを含みうる)を複数のJSONL行に分けて書き出すことがあり、その全行が
+    同一の `message.usage` スナップショットを重複して持つ。そのため
+    `message.id` を添えて返し、呼び出し側で同一IDの2行目以降を無視できる
+    ようにする(ccusageも同様にmessage単位で重複除去して集計している)。
 
     Args:
         line: JSONL形式の1行。
 
     Returns:
-        usageを持つassistantメッセージであればTurnUsage、それ以外はNone。
+        usageを持つassistantメッセージであれば `(message_id, TurnUsage)`。
+        `message.id` が取れない場合 `message_id` は空文字列になる。
+        条件を満たさない行はNone。
     """
     line = line.strip()
     if not line:
@@ -103,7 +111,7 @@ def parse_turn(line: str) -> TurnUsage | None:
     usage = message.get("usage")
     if not isinstance(usage, dict):
         return None
-    return TurnUsage(
+    turn = TurnUsage(
         timestamp=obj.get("timestamp", ""),
         model=message.get("model", ""),
         input_tokens=usage.get("input_tokens", 0) or 0,
@@ -111,23 +119,62 @@ def parse_turn(line: str) -> TurnUsage | None:
         cache_creation_input_tokens=usage.get("cache_creation_input_tokens", 0) or 0,
         cache_read_input_tokens=usage.get("cache_read_input_tokens", 0) or 0,
     )
+    return message.get("id") or "", turn
 
 
-def read_turns(path: Path) -> list[TurnUsage]:
-    """トランスクリプトJSONLファイル全体を読み込み、ターンの一覧を返す。
+def parse_turn(line: str) -> TurnUsage | None:
+    """トランスクリプトJSONLの1行を解析し、usageを持つassistantターンを抽出する。
+
+    Args:
+        line: JSONL形式の1行。
+
+    Returns:
+        usageを持つassistantメッセージであればTurnUsage、それ以外はNone。
+    """
+    parsed = _parse_assistant_line(line)
+    return parsed[1] if parsed is not None else None
+
+
+def _read_turns_with_ids(path: Path) -> tuple[list[TurnUsage], set[str]]:
+    """トランスクリプトJSONLファイル全体を読み込み、重複除去済みのターン一覧を返す。
 
     Args:
         path: トランスクリプトJSONLファイルのパス。
 
     Returns:
-        ファイル中の全ターンをusageの出現順に並べたリスト。
+        `(重複除去済みのターン一覧, 出現したmessage.idの集合)`。空文字列の
+        message_id(`message.id`が取れなかった行)は重複除去の対象にしない。
     """
     turns: list[TurnUsage] = []
+    seen_ids: set[str] = set()
     with path.open(encoding="utf-8") as f:
         for line in f:
-            turn = parse_turn(line)
-            if turn is not None:
-                turns.append(turn)
+            parsed = _parse_assistant_line(line)
+            if parsed is None:
+                continue
+            message_id, turn = parsed
+            if message_id:
+                if message_id in seen_ids:
+                    continue
+                seen_ids.add(message_id)
+            turns.append(turn)
+    return turns, seen_ids
+
+
+def read_turns(path: Path) -> list[TurnUsage]:
+    """トランスクリプトJSONLファイル全体を読み込み、ターンの一覧を返す。
+
+    同一の `message.id` を持つ行(1回のAPIレスポンスが複数のcontentブロック
+    行に分かれて書き出されたもの)は先頭の1件のみを採用し、以降は重複として
+    無視する。
+
+    Args:
+        path: トランスクリプトJSONLファイルのパス。
+
+    Returns:
+        ファイル中の重複除去済みターンをusageの出現順に並べたリスト。
+    """
+    turns, _ = _read_turns_with_ids(path)
     return turns
 
 
@@ -270,7 +317,7 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
         console.print(f"[red]{path} が見つかりません[/red]")
         raise SystemExit(1)
 
-    turns = read_turns(path)
+    turns, seen_ids = _read_turns_with_ids(path)
     console.print(f"[dim]{path} を監視中(Ctrl+Cで終了)[/dim]")
     with path.open(encoding="utf-8") as f:
         f.seek(0, 2)  # 既存行は read_turns 済みなので、末尾から追記分だけを追う
@@ -287,11 +334,17 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
                     buffer += chunk
                     if not buffer.endswith("\n"):
                         continue  # 書き込み途中の行は次回分と結合して再解析する
-                    turn = parse_turn(buffer)
+                    parsed = _parse_assistant_line(buffer)
                     buffer = ""
-                    if turn is not None:
-                        turns.append(turn)
-                        live.update(build_table(turns, last_n))
+                    if parsed is None:
+                        continue
+                    message_id, turn = parsed
+                    if message_id:
+                        if message_id in seen_ids:
+                            continue  # 同一APIレスポンスの別contentブロック行
+                        seen_ids.add(message_id)
+                    turns.append(turn)
+                    live.update(build_table(turns, last_n))
             except KeyboardInterrupt:
                 pass
 
