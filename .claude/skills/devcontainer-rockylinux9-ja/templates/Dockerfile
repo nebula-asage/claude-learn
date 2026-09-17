@@ -34,6 +34,8 @@ RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
     less \
     jq \
     tar \
+    python3 \
+    python3-pip \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone
 
