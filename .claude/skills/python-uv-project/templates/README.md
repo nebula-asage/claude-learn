@@ -79,6 +79,18 @@ just doc
 
 `apidocs/index.html` を開くと、docstringから生成されたAPIリファレンス（Google スタイルの `Args:`/`Returns:` セクション込み）が確認できる。テストのたびに再生成される成果物なので `apidocs/` は `.gitignore` 済み。
 
+## 依存の脆弱性検査
+
+[pip-audit](https://pypi.org/project/pip-audit/) で依存パッケージをPyPA Advisory Database/OSVの脆弱性DBと照合する。
+
+```bash
+just audit
+```
+
+`pip-audit` はプロジェクトの依存（`uv add --dev`）には加えていない。`pip-audit` 自身が持つ依存（`requests`等）がプロジェクト本体の依存解決に巻き込まれてバージョン競合を起こしうるため、`uvx pip-audit`（隔離された使い捨て環境での実行）に、ロック済み依存を一時的に書き出したファイルを渡す形で検査する。プロジェクトの `.venv` には一切触れない。ネットワークアクセス（PyPI JSON APIへの問い合わせ）が必要。
+
 ## サプライチェーン攻撃対策
 
 `pyproject.toml` の `[tool.uv]` で `exclude-newer = "7 days"` を設定している。公開から7日未満のパッケージバージョンは解決対象から除外され、悪意あるバージョンが検知・撤回される猶予を確保する。
+
+これは「まだ誰も気づいていない攻撃を待ち時間でやり過ごす」対策であり、「既に報告済みの脆弱性と照合する」上記の `pip-audit` とは目的が異なる。片方がもう片方の代替にはならないため両方を入れている。

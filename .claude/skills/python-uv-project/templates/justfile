@@ -42,6 +42,10 @@ cover-lcov:
 doc:
     uv run pdoc main.py -d google -o apidocs
 
+# 依存の脆弱性をpip-audit（uvx経由の隔離実行。プロジェクトの依存には追加しない）でOSVの脆弱性DBと照合する
+audit:
+    tmpfile=$(mktemp) && trap 'rm -f "$tmpfile"' EXIT && uv export --no-hashes --no-dev --quiet -o "$tmpfile" && uvx pip-audit -r "$tmpfile"
+
 # カバレッジ・ドキュメント生成物を削除する
 clean:
     rm -rf htmlcov .coverage coverage.lcov apidocs .pytest_cache .ruff_cache
