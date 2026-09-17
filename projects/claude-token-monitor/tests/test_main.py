@@ -23,12 +23,14 @@ def _assistant_line(
     cache_read_input_tokens: int = 4,
     timestamp: str = "2026-09-17T00:00:00.000Z",
     model: str = "claude-sonnet-5",
+    message_id: str = "",
 ) -> str:
     return json.dumps(
         {
             "type": "assistant",
             "timestamp": timestamp,
             "message": {
+                "id": message_id,
                 "model": model,
                 "usage": {
                     "input_tokens": input_tokens,
@@ -78,6 +80,48 @@ def test_read_turns_skips_non_usage_lines(tmp_path: Path) -> None:
                 _assistant_line(input_tokens=1),
                 json.dumps({"type": "user", "message": {}}),
                 _assistant_line(input_tokens=2),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    turns = read_turns(log)
+
+    assert [t.input_tokens for t in turns] == [1, 2]
+
+
+def test_read_turns_deduplicates_lines_sharing_message_id(tmp_path: Path) -> None:
+    """1回のAPIレスポンスがthinking/text/tool_use等の複数行に分割され、各行が
+    同一usageスナップショットを持つ場合でも二重集計しないことを確認する
+    (ccusageと同様にmessage.id単位で重複除去する)。"""
+    log = tmp_path / "session.jsonl"
+    log.write_text(
+        "\n".join(
+            [
+                _assistant_line(input_tokens=10, message_id="msg_1"),
+                _assistant_line(input_tokens=10, message_id="msg_1"),
+                _assistant_line(input_tokens=10, message_id="msg_1"),
+                _assistant_line(input_tokens=20, message_id="msg_2"),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    turns = read_turns(log)
+
+    assert [t.input_tokens for t in turns] == [10, 20]
+
+
+def test_read_turns_keeps_lines_without_message_id(tmp_path: Path) -> None:
+    """message.idが取れない行同士は重複とみなさず、そのまま両方採用する。"""
+    log = tmp_path / "session.jsonl"
+    log.write_text(
+        "\n".join(
+            [
+                _assistant_line(input_tokens=1, message_id=""),
+                _assistant_line(input_tokens=2, message_id=""),
                 "",
             ]
         ),
