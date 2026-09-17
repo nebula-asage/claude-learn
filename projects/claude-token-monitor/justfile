@@ -1,0 +1,59 @@
+# 引数なしで実行された場合、レシピ一覧を表示する
+default:
+    @just --list
+
+# 依存関係を同期する（pyproject.tomlを変更した後に実行）
+sync:
+    uv sync
+
+# main.pyを実行する
+run:
+    uv run main.py
+
+# 現在のプロジェクトの最新セッションをリアルタイム監視する(オプション付き実行は `uv run main.py watch --help` を参照)
+watch:
+    uv run main.py watch
+
+# 現在のプロジェクトの最新セッションのHTMLレポートを生成する(オプション付き実行は `uv run main.py report --help` を参照)
+report:
+    uv run main.py report
+
+# ruffでフォーマットを適用する
+fmt:
+    uv run ruff format .
+
+# フォーマット崩れが無いか確認する（適用はしない）
+fmt-check:
+    uv run ruff format --check .
+
+# ruffで静的解析する（docstring必須化・DOC引数名検証も含む）
+lint:
+    uv run ruff check .
+
+# pytestで単体テストを実行する
+test:
+    uv run pytest
+
+# カバレッジを計測し、未カバー行をターミナルに表示する
+cover:
+    uv run pytest --cov --cov-report=term-missing
+
+# カバレッジを計測し、htmlcov/ にHTMLレポートを生成する
+cover-html:
+    uv run pytest --cov --cov-report=html
+
+# カバレッジを計測し、coverage.lcov（Coverage Gutters拡張向け）を生成する
+cover-lcov:
+    uv run pytest --cov --cov-report=lcov
+
+# pdocでdocstringからapidocs/にAPIドキュメントを生成する
+doc:
+    uv run pdoc main.py -d google -o apidocs
+
+# 依存の脆弱性をpip-audit（uvx経由の隔離実行。プロジェクトの依存には追加しない）でOSVの脆弱性DBと照合する
+audit:
+    tmpfile=$(mktemp) && trap 'rm -f "$tmpfile"' EXIT && uv export --no-hashes --no-dev --quiet -o "$tmpfile" && uvx pip-audit -r "$tmpfile"
+
+# カバレッジ・ドキュメント生成物を削除する
+clean:
+    rm -rf htmlcov .coverage coverage.lcov apidocs .pytest_cache .ruff_cache
