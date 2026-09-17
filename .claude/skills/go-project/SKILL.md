@@ -151,6 +151,12 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
    - `just doc-report` を実行し、`internal/greeting/API.md`（および `main` パッケージ側）にAPIリファレンスが生成されることを確認する。`gomarkdoc`自身のテンプレート構文（`{{.Dir}}`）とjustのテンプレート展開が衝突するため、`justfile`側でエスケープしている点に注意する（詳細はjustfileのコメント参照。gomarkdocの出力パス指定を直接書くとjustが`{{.Dir}}`をjust式として解析しようとして構文エラーになる）。
    - `just clean` で `coverage.out` / `coverage.html` / `coverage.lcov` / `API.md` を削除する。
 
+   **lintが本当に効いているかを反証で確かめる**（設定を書いただけで実は無効、という状態を防ぐため。以下はいずれも検証済みで、確認後は必ず元に戻すこと）:
+   - `internal/greeting/greeting.go` の `Greet` 関数のコメントを削ると、`exported: exported function Greet should have comment or be unexported (revive)` が `just lint` で検出される。
+   - `internal/greeting/greeting.go` または `main.go` 冒頭の `// Package ... は` を削ると、`package-comments: should have a package comment (revive)` が検出される。
+   - `os.Setenv(...)` のようなエラーを返す呼び出しの戻り値を受け取らずに書くと、`Error return value of ... is not checked (errcheck)` が検出される。
+   - 使わない変数への再代入（例: 後で上書きされるだけの `result := "unused"`）を書くと、`ineffectual assignment to result (ineffassign)` が検出される。
+
 ## このスキルの対象外
 
 - Docker/devcontainer環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
