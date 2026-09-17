@@ -1,6 +1,6 @@
 ---
 name: devcontainer-rockylinux9-ja
-description: Rocky Linux 9ベース・ロケール日本語(ja_JP.UTF-8)・タイムゾーンAsia/Tokyoのdevcontainer環境を配置するときに使う。Node.jsとPlaywright(Chromium、RHEL系向けに手動で洗い出したOS依存ライブラリ込み)、just/just-lspを標準搭載し、ブラウザ自動操作やHTML成果物のスクリーンショット確認、justfileのタスク実行・エディタ連携がコンテナ内で追加導入なしに行える。「Rocky Linuxのdevcontainer作って」「RockyLinux9のコンテナ環境用意して」「このプロジェクト用にRockyLinux9の開発コンテナを作って」「devcontainerにPlaywrightも入れて」など、このリポジトリでRockyLinux9/日本語ロケール/東京タイムゾーンのdevcontainerを新規作成・再作成したい場合にトリガーする。Ubuntu版のdevcontainerが欲しい場合はこのスキルの対象外。汎用的な他OS・他ロケール向けdevcontainerの相談には使わない。
+description: Rocky Linux 9ベース・ロケール日本語(ja_JP.UTF-8)・タイムゾーンAsia/Tokyoのdevcontainer環境を配置するときに使う。Node.jsとPlaywright(Chromium、RHEL系向けに手動で洗い出したOS依存ライブラリ込み)、Python3(dnf)、just/just-lspを標準搭載し、ブラウザ自動操作やHTML成果物のスクリーンショット確認、Pythonスクリプトの実行、justfileのタスク実行・エディタ連携がコンテナ内で追加導入なしに行える。「Rocky Linuxのdevcontainer作って」「RockyLinux9のコンテナ環境用意して」「このプロジェクト用にRockyLinux9の開発コンテナを作って」「devcontainerにPlaywrightも入れて」など、このリポジトリでRockyLinux9/日本語ロケール/東京タイムゾーンのdevcontainerを新規作成・再作成したい場合にトリガーする。Ubuntu版のdevcontainerが欲しい場合はこのスキルの対象外。汎用的な他OS・他ロケール向けdevcontainerの相談には使わない。
 ---
 
 # devcontainer-rockylinux9-ja
@@ -33,6 +33,8 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
 5. **動作確認する**
    - `docker build -t <一時タグ> -f <配置先>/.devcontainer/Dockerfile <配置先>` でビルドできることを確認する。
    - `docker run --rm <一時タグ> bash -c 'date; locale; sudo whoami'` を実行し、日本語日時表示・`LANG=ja_JP.UTF-8`・`Asia/Tokyo`・sudo権限が機能していることを確認する。
+   - `docker run --rm <一時タグ> bash -c 'python3 --version && python3 -m venv /tmp/venvtest && /tmp/venvtest/bin/pip --version'` でPython3・venv・pipが導入されていることを確認する（RHEL系の`python3`パッケージはDebian/Ubuntu系と異なり`venv`モジュールを本体に同梱しているため、`python3-venv`相当の別パッケージ導入は不要）。
+   - 上記のvenv経由の`pip --version`はvenvが内部で持つensurepip由来のpipが応答するため、**`python3-pip`パッケージ自体が導入されているかの確認にはならない**（実機の反証テストで確認済み。`python3-pip`を外してビルドしても上記コマンドは成功してしまう）。`docker run --rm <一時タグ> bash -c 'pip3 --version'` でシステム全体向けのpipが導入されていることも別途確認する。
    - `docker run --rm <一時タグ> bash -ic '_completion_loader git 2>/dev/null; complete -p git'` などでbash補完が有効になっていることも確認する（bash-completionは動的ロード方式のため、`type _git` は実際に補完を試みるまで関数が定義されず誤ってNG判定になる。`_completion_loader` で明示的にロードしてから `complete -p` で登録有無を見るのが確実）。
    - `workspaceMount` / `workspaceFolder` と同じ設定で `docker run --rm -v <source>:<target> -w <workspaceFolder> <一時タグ> git status` を実行し、`fatal: not a git repository` にならないことを確認する（特にプロジェクト配下に置く場合は必須）。
    - pnpmは公式インストーラーが`~/.bashrc`の**末尾**にPATH設定を追記するため、非対話の`bash -c`では`pnpm`/`node`が届かない。検証時は`bash -c 'export PATH="$PNPM_HOME/bin:$PATH" && ...'`のように明示的にPATHへ`$PNPM_HOME/bin`を足すか、`bash -ic '...'`（対話モード）を使う。
@@ -61,7 +63,7 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
 - ロケール: `ja_JP.UTF-8`（`LANG`/`LANGUAGE`/`LC_ALL` すべて設定。`glibc-langpack-ja` を導入すればRHEL系ではlocale-gen不要で使えるようになる）
 - タイムゾーン: `Asia/Tokyo`
 - 非rootユーザー `vscode`（UID/GID 1000、パスワードなしsudo）。ベースイメージに同じUID/GIDが既にある場合はリネームして再利用する（`useradd`の重複エラー回避）
-- 導入パッケージ: `glibc-langpack-ja` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less` `jq` `tar`（すべて必須。`tar`はjust-lspのリリースアーカイブ展開に使う。ビルドツールチェーン（`gcc`/`gcc-c++`/`make`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
+- 導入パッケージ: `glibc-langpack-ja` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less` `jq` `tar` `python3` `python3-pip`（すべて必須。`tar`はjust-lspのリリースアーカイブ展開に使う。ビルドツールチェーン（`gcc`/`gcc-c++`/`make`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
 - `dnf install` はBuildKitのキャッシュマウント（`RUN --mount=type=cache,target=/var/cache/dnf`）でパッケージキャッシュを永続化する前提。`Dockerfile` 先頭の `# syntax=docker/dockerfile:1` は外さない。追記するRUN命令でパッケージを追加インストールする場合も、同様にキャッシュマウントを使う
 - **pnpm（`PNPM_VERSION` ARGで指定、既定12系。公式スタンドアロンインストーラで導入し、npm/nvm/corepackいずれにも依存しない）とNode.js（pnpm自身の`runtime`機能で導入・管理、既定LTS）、Playwright（Chromium）を標準搭載する。** Node.js/Playwrightの搭載自体は「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、ブラウザ自動操作・HTML成果物のスクリーンショット確認をコンテナ内で追加導入なしに行えるようにするためのもの。distro提供の`nodejs`パッケージ（dnfモジュールの既定バージョン）はNode 16と古くPlaywrightの要求(Node20+)を満たさない
   - **PlaywrightのOS依存ライブラリ自動導入(`playwright install --with-deps`)はRocky Linuxで使えない**（Debian/Ubuntu系専用の実装で、apt-get前提のコマンドを呼んで失敗する）。そのため必要なRPMパッケージを`Dockerfile`に手動で列挙している（`nss` `nspr` `nss-util` `atk` `at-spi2-atk` `at-spi2-core` `cups-libs` `libX11` `libXcomposite` `libXdamage` `libXext` `libXfixes` `libXrandr` `libxcb` `libxkbcommon` `mesa-libgbm` `alsa-lib` `pango` `cairo` `dbus-libs`。実機でのldd検証により洗い出した最小構成で、Playwrightのバージョンアップで増える可能性があるため、テンプレート変更時は必ず手順5のChromium起動確認を実施する）
@@ -72,5 +74,6 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
     - **`COPY --from=ghcr.io/casey/just:${JUST_VERSION}`のように外部イメージ参照の中でARGを変数展開する場合、そのARGは最初の`FROM`より前（グローバルスコープ）で宣言したものでなければならない**（BuildKitの制約。ステージ内で`ARG JUST_VERSION=...`と宣言してもCOPY --from側では展開されず`variable expansion is not supported for --from`で即座にビルド失敗する。実機のdocker build検証で判明した）。そのため`Dockerfile`冒頭で`ARG JUST_VERSION=1.58.0`を宣言し、`FROM ghcr.io/casey/just:${JUST_VERSION} AS just-bin`という名前付きステージを立て、本体側では`COPY --from=just-bin /just /usr/local/bin/`のようにステージ名で参照する。このテンプレートを改変する際、ARGをうっかりステージ内に戻すと同じエラーで壊れるので注意する
   - `just-lsp`は公式Dockerイメージが無いため、GitHubリリース（`JUST_LSP_VERSION` ARGで指定、既定0.8.0）からLinux x86_64向けバイナリ（`x86_64-unknown-linux-gnu`）をダウンロードし、公開されている`SHA256SUMS`で検証してから`/home/$USERNAME/.local/bin/`に配置する（展開に`tar`パッケージが必要）
   - どちらもバージョンは`ARG`で固定しており、更新する場合はそれぞれのGitHubリリースページで最新版を確認してARGの既定値を変更する
+- **Python3（`dnf`導入、Rocky Linux 9標準の3.9系）を標準搭載する。** これもNode.jsと同様に「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、コンテナ内で追加導入なしにPythonスクリプトを実行できるようにするためのもの。RHEL系の`python3`パッケージは`venv`モジュールを本体に同梱しているため、Debian/Ubuntu系のような`python3-venv`相当の別パッケージ導入は不要。`pip`は別パッケージのため`python3-pip`を導入する。バージョン固定やプロジェクト固有の依存管理（`uv`など）が必要な場合は、配置後の`Dockerfile`にユーザー自身が追記する
 
-Node.js以外の言語ランタイム（Python/Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
+Node.js・Python以外の言語ランタイム（Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
