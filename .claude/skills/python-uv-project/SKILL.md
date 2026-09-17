@@ -1,6 +1,6 @@
 ---
 name: python-uv-project
-description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/pytest-covによるテスト・カバレッジHTMLレポート+ruff/pdocによるドキュメンテーションコメント強制・APIドキュメント生成+justによるタスクランナー）をホスト環境に直接構築するスキル。「pythonの環境/プロジェクトを作って」「uvでpythonプロジェクトを作って」「カバレッジ測定/レポートがほしい」「docstringのコメント環境がほしい」「docstringの引数名がコードと一致しているか検証したい」「APIドキュメントを生成したい」など、Pythonプロジェクトの新規作成・再作成や、既存プロジェクトへのpytest/カバレッジ/ドキュメンテーション環境の追加を頼まれたら必ず使うこと。配置先が既にVS Code向けの`.vscode/`ディレクトリを持つ場合は、ruff/pytestに対応したPython向けのsettings.json・拡張機能のおすすめ設定に加え、Coverage Gutters拡張によるカバレッジのエディタ上可視化（被覆/未被覆行のガター色付け）設定も追加する。Docker/devcontainerには依存せず、パッケージ管理は常にuv（pip/venvは使わない）でサプライチェーン攻撃対策も組み込む。devcontainer自体の構築はこのスキルの対象外。
+description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/pytest-covによるテスト・カバレッジHTMLレポート+ruff/pdocによるドキュメンテーションコメント強制・APIドキュメント生成+pip-audit（uvx経由）による依存の脆弱性検査+justによるタスクランナー）をホスト環境に直接構築するスキル。「pythonの環境/プロジェクトを作って」「uvでpythonプロジェクトを作って」「カバレッジ測定/レポートがほしい」「docstringのコメント環境がほしい」「docstringの引数名がコードと一致しているか検証したい」「APIドキュメントを生成したい」「Pythonの依存の脆弱性を検査したい」など、Pythonプロジェクトの新規作成・再作成や、既存プロジェクトへのpytest/カバレッジ/ドキュメンテーション/依存検査環境の追加を頼まれたら必ず使うこと。配置先が既にVS Code向けの`.vscode/`ディレクトリを持つ場合は、ruff/pytestに対応したPython向けのsettings.json・拡張機能のおすすめ設定に加え、Coverage Gutters拡張によるカバレッジのエディタ上可視化（被覆/未被覆行のガター色付け）設定も追加する。Docker/devcontainerには依存せず、パッケージ管理は常にuv（pip/venvは使わない）でサプライチェーン攻撃対策も組み込む。devcontainer自体の構築はこのスキルの対象外。
 ---
 
 # python-uv-project
@@ -14,6 +14,7 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
 - **パッケージ管理・実行はuv一本**。`pip install` / `python -m venv` は使わず、依存追加は必ず `uv add`、実行は `uv run` を使う
 - **Pythonランタイム自体もuvに管理させる**（`uv python install`）。distroやシステムに入っている `python3` には依存しない
 - **サプライチェーン攻撃対策として `pyproject.toml` の `[tool.uv]` に `exclude-newer = "7 days"` を設定する**。公開から7日未満のパッケージバージョンは依存解決の対象から除外され、悪意あるバージョンが検知・撤回される猶予を確保できる（7日という値もこのスキルの固定条件。ユーザーから別の期間指定があれば従う）
+- **依存の脆弱性検査には `pip-audit`（`https://pypi.org/project/pip-audit/`）を `uvx` 経由で使う**。`exclude-newer` は「まだ誰も気づいていない攻撃を待ち時間でやり過ごす」対策であるのに対し、`pip-audit` は既知の脆弱性（PyPA Advisory Database/OSV）と照合する対策で、両者は目的が異なり片方がもう片方の代替にはならない。**`uv add --dev pip-audit` でプロジェクトの依存には加えない**。`pip-audit` 自身が `requests`/`packaging` 等の依存を持ち、プロジェクト本体の依存解決に巻き込まれてバージョン競合を起こしうることを実際に確認した（検証で `urllib3` を意図的に古いバージョンへ下げたところ、`pip-audit` 自身が依存する `requests` が動かなくなった）。そのため `uv export --no-hashes --no-dev` で一時ファイルにロック済み依存を書き出し、`uvx pip-audit -r <一時ファイル>` という隔離実行（`pip-audit` 専用の使い捨て環境に依存を再インストールして照合するだけで、プロジェクトの `.venv` には一切触れない）で検査する。ネットワークアクセスが必要（PyPI JSON APIへ問い合わせる）
 - `requirements.txt` は作らない。依存関係は `pyproject.toml` + `uv.lock`（`uv add`/`uv sync`で生成、コミット対象）で管理する
 - **開発用依存として `ruff` を `[dependency-groups] dev` に標準で入れる**。lintは `uv run ruff check .`、フォーマットは `uv run ruff format .` とruff一本に統一する（別途blackを入れない）。`ruff` は `pyproject.toml` を直接読むため `flake8` のような別設定ファイルは不要で、lintの設定は `[tool.ruff.lint]` にまとめる。デフォルトの選択ルール（`E4`/`E7`/`E9`/`F`）には行長や空白まわりのスタイル系ルール（`E2xx`/`E5xx`）が含まれないが、これらは `ruff format` が担当するため競合しない
 - **テスト・カバレッジ計測も標準で組み込む**。開発用依存として `pytest`・`pytest-cov` を追加し、テストは `tests/` 配下に置く。`main.py` はパッケージ化していないプロジェクト直下のモジュールなので、pytestのデフォルトのimportモードのままでは `tests/` から見えない。そのため `pyproject.toml` の `[tool.pytest.ini_options]` で `testpaths = ["tests"]` と `pythonpath = ["."]` を設定し、プロジェクトルートをsys.pathに加えて `from main import ...` を可能にする。カバレッジは `[tool.coverage.run]`（`source`/`omit` で `.venv/`・`tests/` を対象外にする）と `[tool.coverage.report]`（`show_missing = true`）で設定し、`uv run pytest --cov --cov-report=term-missing` でターミナルに未カバー行を表示、`uv run pytest --cov --cov-report=html` で `htmlcov/index.html` にHTMLレポートを生成できるようにする
@@ -103,6 +104,7 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
    - `just doc`（`uv run pdoc main.py -d google -o apidocs`）を実行し、`apidocs/index.html` と `apidocs/main.html` が生成されることを確認する。`main.html` を開き（またはgrepで）、`greet` のdocstringの `Args:`/`Returns:` が見出し付きで描画されていることも確認する。
    - `just clean` を実行し、`htmlcov`/`.coverage`/`coverage.lcov`/`apidocs`/`.pytest_cache`/`.ruff_cache` が削除されることを確認する。
    - `exclude-newer` が効いているかは、適当なパッケージを試験的に追加してverboseログを見て確認する。例: `uv add <パッケージ名> -v 2>&1 | grep -i exclude` を実行し、`Solving with exclude-newer: global: <実行日の7日前の日時>` のような行が出ることを確認する。確認後はこの試験的な依存追加を `pyproject.toml` から取り除く。
+   - `just audit`（`uvx pip-audit -r <一時ファイル>`）を実行し、まずテンプレート標準の依存構成で `No known vulnerabilities found` になることを確認する。そのうえで `pip-audit` が実際に検出できているかの反証テストとして、既知の脆弱性を持つ古いバージョンのパッケージ（例: `uv add urllib3==1.26.4`）を一時的に追加し、`just audit` が `Found N known vulnerabilities` として検出することを確認する。確認後はこの試験的な依存追加を `pyproject.toml` から取り除き、`uv sync` で `.venv`/`uv.lock` を元の依存構成に戻す。
 
 7. **（任意）bash補完を有効化する**
    - uvは `uv generate-shell-completion bash` でbash補完スクリプトを生成できる。ホスト環境ではroot権限で `/etc/bash_completion.d/` に置く方法は使えないことが多いので、ユーザー単位で有効化する。
@@ -115,4 +117,4 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
 
 - Docker/devcontainer環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
 - `.vscode/` ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはPython固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/` を新規作成したうえでPython向け設定を配置してよい。
-- `exclude-newer` の7日という値やuv前提の方針、ruff（lint・フォーマット一本化）、pytest/pytest-covによるテスト・カバレッジ計測環境一式、ruffの`D`ルール（`D400`/`D401`/`D415`無視・`tests/`除外込み）・`DOC`ルール（`preview = true`・`tests/`除外込み）とpdoc（`-d google`）によるドキュメンテーションコメント環境一式、justによるタスクランナーは、このリポジトリで検証済みの固定条件として扱い、単なる「Python環境を作って」的な依頼でも省略しない。
+- `exclude-newer` の7日という値やuv前提の方針、ruff（lint・フォーマット一本化）、pytest/pytest-covによるテスト・カバレッジ計測環境一式、ruffの`D`ルール（`D400`/`D401`/`D415`無視・`tests/`除外込み）・`DOC`ルール（`preview = true`・`tests/`除外込み）とpdoc（`-d google`）によるドキュメンテーションコメント環境一式、pip-audit（`uvx`経由の隔離実行）による依存の脆弱性検査、justによるタスクランナーは、このリポジトリで検証済みの固定条件として扱い、単なる「Python環境を作って」的な依頼でも省略しない。
