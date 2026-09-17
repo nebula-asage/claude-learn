@@ -1,0 +1,56 @@
+{
+  "name": "rust-learn (Ubuntu 24.04 / ja_JP / Asia-Tokyo)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace-root/projects/rust-learn",
+  "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/workspace-root,type=bind",
+  "mounts": [
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind",
+    "source=${localEnv:HOME}/.claude.json,target=/home/vscode/.claude.json,type=bind"
+  ],
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      },
+      "extensions": [
+        // VS CodeのUIを日本語化する
+        "ms-ceintl.vscode-language-pack-ja",
+        // SSH/WSL/コンテナ等のリモート開発をまとめて有効化する拡張機能パック
+        "ms-vscode-remote.vscode-remote-extensionpack",
+        // Gitの変更履歴・blame表示などを強化する
+        "eamodio.gitlens",
+        // コード・コメント・ドキュメントを問わずスペルミスを検出する
+        "streetsidesoftware.code-spell-checker",
+        // Markdownの目次自動生成・ショートカット・プレビュー等の編集支援
+        "yzhang.markdown-all-in-one",
+        // Markdownの構文・スタイルをlintする
+        "davidanson.vscode-markdownlint",
+        // 数式（KaTeX）・Mermaid図・PlantUML等に対応した高機能Markdownプレビュー（MPE）
+        "shd101wyy.markdown-preview-enhanced",
+        // HTML/CSS/JSファイルをローカルサーバーで即時プレビューする
+        "ritwickdey.liveserver",
+        // Dockerfile / docker-compose.yml の編集支援
+        "ms-azuretools.vscode-docker",
+        // Claude CodeをVS Code上で使うための公式拡張機能
+        "Anthropic.claude-code",
+        // justfileのシンタックスハイライト
+        "nefrob.vscode-just-syntax",
+        // Rust: rust-analyzer本体（既存devcontainerから引き継ぎ）
+        "rust-lang.rust-analyzer",
+        // Rust: Cargo.tomlの依存関係バージョン確認・更新支援（既存devcontainerから引き継ぎ）
+        "fill-labs.dependi",
+        // Rust: LLDBによるデバッグ支援（既存devcontainerから引き継ぎ）
+        "vadimcn.vscode-lldb",
+        // Rust: rustdocコメントのプレビュー（既存devcontainerから引き継ぎ）
+        "JScearcy.rust-doc-viewer",
+        // Rust: Cargo.toml/rustfmt.toml/deny.tomlの構文ハイライトと整形
+        "tamasfe.even-better-toml",
+        // Rust: lcov.infoを読んでカバレッジをエディタのガターに表示する
+        "ryanluker.vscode-coverage-gutters"
+      ]
+    }
+  }
+}

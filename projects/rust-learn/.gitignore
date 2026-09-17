@@ -1,0 +1,5 @@
+/target
+userdata.json
+
+# カバレッジ（Coverage Gutters 拡張が読む lcov 形式のレポート）
+/lcov.info

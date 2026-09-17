@@ -1,0 +1,55 @@
+[package]
+name = "rust-learn"
+version = "0.1.0"
+edition = "2024"
+description = "コマンドラインで動くユーザー管理システム"
+publish = false
+
+[dependencies]
+mockall = "0.13.1"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+regex = "1.10.2"
+tempfile = "3.10.0"
+
+# lint の設定は `#![warn(...)]` を各ソースの先頭に書く方式ではなく、Cargo.toml の
+# `[lints]` テーブルに集約している（Rust 1.74 以降で安定）。ソースに散らばらず、
+# lib と bin の両方のターゲットに同じ設定が自動で効くため。
+[lints.rust]
+# 公開アイテム（pub）にドキュメンテーションコメントを必須にする。
+# 注意: このルールは bin クレート（src/main.rs）に対しても「クレートレベルの
+# ドキュメント（//!）が無い」を検出する。src/main.rs 冒頭の `//!` を消すと lint が落ちる。
+missing_docs = "warn"
+# 本来は "forbid"（ローカルの#[allow]でも打ち消せない）にしたいところだが、
+# edition 2024で`std::env::set_var`がunsafe fn化されたため、テストコードで
+# 環境変数USER_DATA_FILEを差し替える箇所（4箇所）がunsafeブロックを必須とする。
+# "deny"にして、その4箇所だけ#[allow(unsafe_code)]で明示的に許可している
+# （新規のunsafeコードが紛れ込んだ場合は引き続き検出される）。
+unsafe_code = "deny"
+
+[lints.clippy]
+# `all` / `pedantic` はグループ指定なので priority を下げ、
+# 後続の個別ルール指定に上書きされる余地を残す（priority 省略だと衝突エラーになる）。
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Result / panic する関数には `# Errors` / `# Panics` セクションを必須にする。
+# どちらも pedantic グループに含まれるので指定は重複するが、明示しておけば
+# 将来 pedantic を外したときにドキュメントの強制が黙って失われることがない。
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+# パニックを起こしうる書き方を検出する restriction lint 群。
+# all / pedantic には含まれないため個別に有効化する。
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+unreachable = "warn"
+todo = "warn"
+unimplemented = "warn"
+indexing_slicing = "warn"
+arithmetic_side_effects = "warn"
+
+[lints.rustdoc]
+# `[Foo]` のようなリンク記法が解決できないまま放置されるのを防ぐ。
+broken_intra_doc_links = "deny"
+missing_crate_level_docs = "warn"
+private_intra_doc_links = "warn"

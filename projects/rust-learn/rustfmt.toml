@@ -1,0 +1,16 @@
+# rustfmt の設定。stable の rustfmt が受け付けるオプションだけを書いている。
+#
+# `group_imports` / `imports_granularity` / `wrap_comments` などの便利そうな
+# オプションは 2026 年時点でも nightly 限定で、stable の `cargo fmt` では
+# 「Warning: can't set ... , unstable features are only available in nightly」
+# と警告が出たうえで無視される。動いていると勘違いしやすいので入れていない。
+edition = "2024"
+max_width = 100
+newline_style = "Unix"
+# `use` 宣言と `mod` 宣言をアルファベット順に並べ替える（どちらも stable）。
+reorder_imports = true
+reorder_modules = true
+# `Foo { x: x }` を `Foo { x }` に、`match r { Err(e) => return Err(e), ... }` を
+# `?` に寄せる書き方へ統一する。
+use_field_init_shorthand = true
+use_try_shorthand = true

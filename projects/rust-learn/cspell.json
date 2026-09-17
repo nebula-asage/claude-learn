@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  // このモノレポはコメント・ドキュメントが日本語主体。英語辞書をベースにしつつ、
+  // 日本語部分はignoreRegExpListで検査対象から外し、コード識別子や英語コメントだけを検査する
+  "language": "en",
+  "ignorePaths": [
+    "target/**", // ビルド生成物（Cargo/Rust）
+    "docs/api/**", // APIドキュメント生成物（rustdoc）
+    "Cargo.lock", // cargoのロックファイル
+    "lcov.info", // cargo-llvm-covが生成するカバレッジレポート（Coverage Gutters拡張向け）
+    "*.log", // 実行時ログ
+    ".devcontainer/**" // devcontainer構成ファイル（Dockerfile内のパッケージ名等で未知語が多いため除外）
+  ],
+  // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
+  // これにより日本語部分は素通りし、コード中の識別子や英語のコメント部分だけを検査できる
+  "ignoreRegExpList": ["/[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f]+/gu"],
+  // 以下はこのcspell.json自身の`ignorePaths`コメント（ツール名の断片）に由来する未知語。
+  // プロジェクト固有の用語・識別子・略語はこれらの下に追加していく。
+  // 配置先で実際に `npx cspell --no-progress .` を実行して検出された未知語のうち、
+  // 誤字ではなく正当な語だけを1件ずつ追記する（由来がわかるようインラインコメントを添える）
+  "words": [
+    "rustdoc", // ignorePathsのコメント: RustのAPIドキュメント生成ツール名
+    "clippy", // Rustのlintツール名（Cargo.toml/CLAUDE.mdで使用）
+    "mockall", // Rustのモック生成クレート名（Cargo.toml/CLAUDE.md/docs/implementation.mdで使用）
+    "serde", // Rustのシリアライズ/デシリアライズクレート名（Cargo.toml/docs/implementation.mdで使用）
+    "testuser", // テストコード中のダミーユーザー名
+    "newuser", // テストコード中のダミーユーザー名
+    "doctest" // cargo/justfileの用語: ドキュメンテーションコメント内のコード例テスト
+  ]
+}

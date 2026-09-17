@@ -1,0 +1,76 @@
+{
+  // 桁の目安となる縦線を表示する（80桁・160桁。このプロジェクトで既に採用済みの値を維持）
+  "editor.rulers": [80, 160],
+  // 保存時に自動整形する（rustfmt。rust-analyzer拡張機能経由で動作する）
+  "editor.formatOnSave": true,
+  // 選択範囲に関わらず、空白文字を常に可視化する
+  "editor.renderWhitespace": "all",
+  // rust-analyzer: 保存時にcargo checkの代わりにclippyを実行する
+  // （Cargo.tomlの[lints]で設定したルール違反をエディタ上に直接出すため）
+  "rust-analyzer.checkOnSave": true,
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.extraArgs": ["--all-targets", "--all-features"],
+  // tests/ や examples/ も解析対象に含める
+  "rust-analyzer.cargo.allTargets": true,
+  // 型・引数名のインレイヒント
+  "rust-analyzer.inlayHints.typeHints.enable": true,
+  "rust-analyzer.inlayHints.parameterHints.enable": true,
+  "rust-analyzer.inlayHints.chainingHints.enable": true,
+
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true,
+    // rustfmt.toml の max_width = 100 に合わせる
+    "editor.rulers": [100]
+  },
+
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.formatOnSave": true
+  },
+
+  // Coverage Gutters拡張の設定。`just cover-lcov`/`just cover-all`が生成するlcov.infoを読み、
+  // エディタの行番号横に被覆行（緑）・未被覆行（赤）を表示する
+  "coverage-gutters.coverageFileNames": ["lcov.info"],
+  "coverage-gutters.coverageBaseDir": ".",
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.showGutterCoverage": true,
+
+  // ビルド成果物はファイル検索・監視の対象から外す（target/ は巨大になる）
+  "files.watcherExclude": {
+    "**/target/**": true
+  },
+  "search.exclude": {
+    "**/target": true
+  },
+
+  // ここから下はvscode-settingsスキルの共通設定（特定言語に依存しない項目）
+
+  // 保存時にファイル末尾に改行を1行だけ入れる（改行なし/複数改行の食い違いを防ぐ）
+  "files.insertFinalNewline": true,
+  // 保存時に行末の余分な空白を自動的に削除する
+  "files.trimTrailingWhitespace": true,
+  // 改行コードをLFに統一する（Windows由来のCRLF混入を防ぐ）
+  "files.eol": "\n",
+  // ファイルの文字エンコーディングを内容から自動推測する
+  "files.autoGuessEncoding": true,
+  // インデント幅・タブ/スペースをファイルの内容から自動検出する
+  "editor.detectIndentation": true,
+  // 差分表示で行頭・行末の空白の違いも差分として表示する
+  "diffEditor.ignoreTrimWhitespace": false,
+  // ソース管理ビューでファイルをツリー表示にする
+  "scm.defaultViewMode": "tree",
+  // VS Code組み込みのAI機能（インライン提案・チャット等）を無効化する
+  "chat.disableAIFeatures": true,
+  // cspell.jsonの$schemaが参照するJSONスキーマのダウンロード可否を毎回確認されないよう、配布元ドメインを信頼済みにする
+  "json.schemaDownload.trustedDomains": {
+    "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json": true
+  },
+  // JSON/JSONC（コメント付きJSON）はVS Code組み込みフォーマッタで完結するため、保存時に自動整形する
+  "[json]": {
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.formatOnSave": true
+  }
+}
