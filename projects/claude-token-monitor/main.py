@@ -40,13 +40,17 @@ SERIES_LABELS = {
 def encode_project_dir(cwd: Path) -> str:
     """カレントディレクトリのパスを `~/.claude/projects/` 配下のディレクトリ名に変換する。
 
+    Claude Code本体のエンコード方式に合わせ、パス区切り文字 "/" だけでなく "." も
+    "-" に置換する（`.claude/worktrees/` 配下のworktreeパスのように "." を含む
+    ディレクトリを対象にすると、"/" のみの置換ではエンコード後の名前が一致しない）。
+
     Args:
         cwd: エンコード対象のディレクトリパス。
 
     Returns:
-        パス区切り文字を "-" に置換したエンコード済みディレクトリ名。
+        エンコード済みディレクトリ名。
     """
-    return str(cwd).replace("/", "-")
+    return str(cwd).replace("/", "-").replace(".", "-")
 
 
 @dataclass
@@ -159,18 +163,21 @@ def resolve_session_file(
     Args:
         file: `--file` で直接指定されたJSONLファイルパス、またはNone。
         session: `--session` で指定されたセッションID、またはNone。
-        project_dir: `--project-dir` で指定されたプロジェクトディレクトリ、またはNone。
+        project_dir: `--project-dir` で指定されたプロジェクトの実ディレクトリパス、
+            またはNone。指定時は `~/.claude/projects/<encoded>/` へエンコードした上で
+            検索する(既にエンコード済みのディレクトリ名ではない)。
 
     Returns:
         監視/集計対象のセッションJSONLファイルのパス。
     """
     if file is not None:
         return Path(file)
-    base_dir = (
-        Path(project_dir)
+    target_dir = (
+        Path(project_dir).expanduser().resolve()
         if project_dir is not None
-        else CLAUDE_PROJECTS_DIR / encode_project_dir(Path.cwd())
+        else Path.cwd()
     )
+    base_dir = CLAUDE_PROJECTS_DIR / encode_project_dir(target_dir)
     if session is not None:
         return base_dir / f"{session}.jsonl"
     return find_latest_session_file(base_dir)
@@ -843,7 +850,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     common.add_argument(
         "--project-dir",
-        help="`~/.claude/projects/<encoded-cwd>/` の代わりに使うディレクトリを指定する",
+        help="カレントディレクトリの代わりに使う対象プロジェクトの実ディレクトリパスを指定する"
+        "(`~/.claude/projects/<encoded>/` へのエンコードは自動で行う)",
     )
 
     watch_parser = subparsers.add_parser(
