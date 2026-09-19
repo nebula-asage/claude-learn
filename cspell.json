@@ -46,11 +46,11 @@
     "pytest", // ignorePathsのコメント: Pythonのテストツール名
     "rustdoc", // ignorePathsのコメント: RustのAPIドキュメント生成ツール名
     "venv", // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
-    "dpkg", // CLAUDE.md: Debian系パッケージ管理コマンド名
-    "frontmatter", // CLAUDE.md: Markdownファイル冒頭のメタデータ記法を指す語
-    "GOPATH", // CLAUDE.md: Go言語の環境変数名
-    "pyproject", // CLAUDE.md: `pyproject.toml`を指す語
-    "rustup", // CLAUDE.md: Rustのツールチェーン管理ツール名
-    "worktree" // CLAUDE.md: git worktreeを指す用語
+    "dpkg", // AGENTS.md: Debian系パッケージ管理コマンド名
+    "frontmatter", // AGENTS.md: Markdownファイル冒頭のメタデータ記法を指す語
+    "GOPATH", // AGENTS.md: Go言語の環境変数名
+    "pyproject", // AGENTS.md: `pyproject.toml`を指す語
+    "rustup", // AGENTS.md: Rustのツールチェーン管理ツール名
+    "worktree" // AGENTS.md: git worktreeを指す用語
   ]
 }

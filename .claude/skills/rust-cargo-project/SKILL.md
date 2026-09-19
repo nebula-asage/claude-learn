@@ -56,7 +56,7 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 - **`cargo-deny`（`deny.toml`）を標準で入れる**。`[advisories]` でRustSec脆弱性DBと照合し、`[licenses]` で許可ライセンスを列挙し、`[bans] wildcards = "deny"` でワイルドカードのバージョン指定を禁止し、`[sources]` で取得元をcrates.ioに限定する（未知のレジストリ・gitリポジトリからの依存を禁止）
 - **`deny.toml` には `[licenses.private] ignore = true` が必須**。テンプレートの `Cargo.toml` は `publish = false` かつ `license` フィールドを持たないため、これを設定しないとプロジェクト自身が `error[unlicensed]: ... is unlicensed` として検出され `cargo deny check` が落ちる。あわせて `unused-allowed-license = "allow"` を設定し、許可リストのうち依存ツリーに出てこなかったライセンスについての警告で出力が埋もれないようにする
 
-### このリポジトリ共通のサプライチェーン方針との差分（`CLAUDE.md` の一般則参照。必ずユーザーに報告する）
+### このリポジトリ共通のサプライチェーン方針との差分（`AGENTS.md` の一般則参照。必ずユーザーに報告する）
 
 **cargoには「公開後N日未満を除外する」（npm/pnpmの`minimum-release-age`やuvの`exclude-newer`相当）も「インストール時の任意コード実行の抑制」（npmの`ignore-scripts`相当）も存在しない。** cargoは依存クレートの`build.rs`をビルド時に必ず実行する。
 
