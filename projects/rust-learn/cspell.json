@@ -21,8 +21,8 @@
   // 誤字ではなく正当な語だけを1件ずつ追記する（由来がわかるようインラインコメントを添える）
   "words": [
     "rustdoc", // ignorePathsのコメント: RustのAPIドキュメント生成ツール名
-    "clippy", // Rustのlintツール名（Cargo.toml/CLAUDE.mdで使用）
-    "mockall", // Rustのモック生成クレート名（Cargo.toml/CLAUDE.md/docs/implementation.mdで使用）
+    "clippy", // Rustのlintツール名（Cargo.toml/AGENTS.mdで使用）
+    "mockall", // Rustのモック生成クレート名（Cargo.toml/AGENTS.md/docs/implementation.mdで使用）
     "serde", // Rustのシリアライズ/デシリアライズクレート名（Cargo.toml/docs/implementation.mdで使用）
     "testuser", // テストコード中のダミーユーザー名
     "newuser", // テストコード中のダミーユーザー名

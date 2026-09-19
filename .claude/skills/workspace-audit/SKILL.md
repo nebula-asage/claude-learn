@@ -28,7 +28,7 @@ git worktree list
 ls projects/
 ```
 
-`README.md`・`CLAUDE.md`・`projects/README.md` を読み、リポジトリが自称している方針を確認する。以降の調査は「方針と実態がずれていないか」を見る作業になる。
+`README.md`・`AGENTS.md`・`projects/README.md` を読み、リポジトリが自称している方針を確認する。以降の調査は「方針と実態がずれていないか」を見る作業になる。
 
 ### 2. 抜け殻ディレクトリを探す
 
