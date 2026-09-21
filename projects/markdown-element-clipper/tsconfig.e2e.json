@@ -1,0 +1,9 @@
+// e2e(Playwright)側はNode上で動くため、Nodeの型を足した別設定にしている。
+// 拡張本体(src/)にNodeのグローバルが漏れないよう、tsconfig.jsonとは分けている。
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["chrome", "node"]
+  },
+  "include": ["e2e/**/*.ts", "playwright.config.ts"]
+}
