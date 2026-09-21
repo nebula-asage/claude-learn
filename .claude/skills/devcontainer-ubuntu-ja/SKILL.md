@@ -75,3 +75,13 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
   - どちらもバージョンは`ARG`で固定しており、更新する場合はそれぞれのGitHubリリースページで最新版を確認してARGの既定値を変更する
 
 Node.js・Python以外の言語ランタイム（Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
+
+## このスキルの `templates/` を編集したとき
+
+`templates/` 配下を変更したら、コミット前に以下を実行し、既に配置済みのファイルへの反映漏れ（ドリフト）が無いか確認する。
+
+```bash
+python3 .claude/skills/template-drift-sync/scripts/check_drift.py --only-suspect --path-filter <変更したファイル名>
+```
+
+差分があれば `AGENTS.md`「スキルを作成・編集するとき」に従い、配置済みファイルへ反映するかどうかを判断し、その結果を必ず報告する（黙って伏せない）。このスクリプト（`template-drift-sync` スキル自体）が存在しない環境では、この手順は省略してよい。

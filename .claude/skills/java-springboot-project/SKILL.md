@@ -388,3 +388,13 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 - Git hooks（コミット時の自動 lint/format）の設定はこのスキルの対象外。このリポジトリでは
   `core.hooksPath` がリポジトリ全体で1つしか持てず、プロジェクトごとにフックを設定すると互いに
   上書きし合う問題があるため、Java プロジェクト側では設定しない。
+
+## このスキルの `templates/` を編集したとき
+
+`templates/` 配下を変更したら、コミット前に以下を実行し、既に配置済みのファイルへの反映漏れ（ドリフト）が無いか確認する。
+
+```bash
+python3 .claude/skills/template-drift-sync/scripts/check_drift.py --only-suspect --path-filter <変更したファイル名>
+```
+
+差分があれば `AGENTS.md`「スキルを作成・編集するとき」に従い、配置済みファイルへ反映するかどうかを判断し、その結果を必ず報告する（黙って伏せない）。このスクリプト（`template-drift-sync` スキル自体）が存在しない環境では、この手順は省略してよい。

@@ -162,3 +162,13 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
 - Docker/devcontainer環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
 - Go本体・golangci-lint・gomarkdocのユーザーローカル導入方針、`install.sh` を使わない導入手順、golangci-lint v2設定形式、`go test` + `go tool cover` によるテスト・カバレッジ計測環境、`internal/` パッケージ分離とreviveによるドキュメンテーションコメント強制、gomarkdocによるAPIリファレンス生成は、このリポジトリで検証済みの固定条件として扱い、単なる「Go環境を作って」的な依頼でも省略しない。
 - `.vscode/` ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはGo固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/` を新規作成したうえでGo向け設定を配置してよい。
+
+## このスキルの `templates/` を編集したとき
+
+`templates/` 配下を変更したら、コミット前に以下を実行し、既に配置済みのファイルへの反映漏れ（ドリフト）が無いか確認する。
+
+```bash
+python3 .claude/skills/template-drift-sync/scripts/check_drift.py --only-suspect --path-filter <変更したファイル名>
+```
+
+差分があれば `AGENTS.md`「スキルを作成・編集するとき」に従い、配置済みファイルへ反映するかどうかを判断し、その結果を必ず報告する（黙って伏せない）。このスクリプト（`template-drift-sync` スキル自体）が存在しない環境では、この手順は省略してよい。
