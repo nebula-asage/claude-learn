@@ -77,3 +77,13 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
 - **Python3（`dnf`導入、Rocky Linux 9標準の3.9系）を標準搭載する。** これもNode.jsと同様に「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、コンテナ内で追加導入なしにPythonスクリプトを実行できるようにするためのもの。RHEL系の`python3`パッケージは`venv`モジュールを本体に同梱しているため、Debian/Ubuntu系のような`python3-venv`相当の別パッケージ導入は不要。`pip`は別パッケージのため`python3-pip`を導入する。バージョン固定やプロジェクト固有の依存管理（`uv`など）が必要な場合は、配置後の`Dockerfile`にユーザー自身が追記する
 
 Node.js・Python以外の言語ランタイム（Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
+
+## このスキルの `templates/` を編集したとき
+
+`templates/` 配下を変更したら、コミット前に以下を実行し、既に配置済みのファイルへの反映漏れ（ドリフト）が無いか確認する。
+
+```bash
+python3 .claude/skills/template-drift-sync/scripts/check_drift.py --only-suspect --path-filter <変更したファイル名>
+```
+
+差分があれば `AGENTS.md`「スキルを作成・編集するとき」に従い、配置済みファイルへ反映するかどうかを判断し、その結果を必ず報告する（黙って伏せない）。このスクリプト（`template-drift-sync` スキル自体）が存在しない環境では、この手順は省略してよい。
