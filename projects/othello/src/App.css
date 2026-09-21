@@ -1,0 +1,94 @@
+.othello {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 32px 16px;
+}
+
+.scoreboard {
+  display: flex;
+  gap: 24px;
+  font-size: 18px;
+}
+
+.score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status {
+  margin: 0;
+  min-height: 1.5em;
+  font-size: 16px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(8, 48px);
+  grid-template-rows: repeat(8, 48px);
+  gap: 2px;
+  background: #0a6e2f;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  background: #1b8a44;
+  border: none;
+  cursor: pointer;
+}
+
+.cell:disabled {
+  cursor: default;
+}
+
+.disc {
+  display: block;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.disc-black {
+  background: #111;
+}
+
+.disc-white {
+  background: #f5f5f5;
+}
+
+.scoreboard .disc {
+  width: 16px;
+  height: 16px;
+}
+
+.hint {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.reset {
+  font-size: 16px;
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: 1px solid #0a6e2f;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.reset:hover {
+  background: rgba(10, 110, 47, 0.1);
+}
