@@ -110,6 +110,14 @@ RUN curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=${PNPM_VERSION}
     && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
     && pnpm completion bash > /home/$USERNAME/.local/share/bash-completion/completions/pnpm
 
+# pnpmのサプライチェーン攻撃対策（ユーザー単位のグローバル設定でデフォルト有効化）
+# - minimumReleaseAge: 公開から7日間（10080分）は新しいバージョンのインストールをスキップする
+# - ignoreScripts: postinstallなどのライフサイクルスクリプトを実行しない
+# pnpm 11以降、.npmrcはauth/registry設定専用になり非auth設定は無視される（実機検証で確認済み）ため、
+# ユーザー単位のグローバル設定は ~/.config/pnpm/config.yaml（YAML、キャメルケース）に書く
+RUN mkdir -p /home/$USERNAME/.config/pnpm \
+    && printf 'ignoreScripts: true\nminimumReleaseAge: 10080\n' > /home/$USERNAME/.config/pnpm/config.yaml
+
 # Node.js（distro提供のnodejsパッケージやnvmには依存せず、pnpm自身のruntime機能で導入・管理する）
 RUN pnpm runtime set node lts -g
 
