@@ -100,6 +100,9 @@ RUN mkdir -p /home/$USERNAME/.config/pnpm \
     && printf 'ignoreScripts: true\nminimumReleaseAge: 10080\n' > /home/$USERNAME/.config/pnpm/config.yaml
 
 # Node.js（distro提供のnodejsパッケージやnvmには依存せず、pnpm自身のruntime機能で導入・管理する）
+# 言語ランタイムは本来このスキルの対象外だが、Playwrightでのブラウザ自動操作・スクリーンショット取得を
+# 標準機能として持たせるための例外としてNode.jsを導入する（Python3はapt-getで別途標準搭載済み。
+# Goなど他言語ランタイムは対象外のまま）。
 RUN pnpm runtime set node lts -g
 
 # Playwright(Chromium)の導入
