@@ -52,6 +52,7 @@
     "pydocstyle", // pyproject.toml/README.md: docstringスタイルを検証するruffルール名
     "pyproject", // README.md: `pyproject.toml`を指す語
     "pythonpath", // pyproject.toml: pytestの設定キー名
-    "testpaths" // pyproject.toml: pytestの設定キー名
+    "testpaths", // pyproject.toml: pytestの設定キー名
+    "pnpx" // justfile: pnpmが提供するnpx相当のパッケージ実行コマンド（cspellレシピで使用）
   ]
 }

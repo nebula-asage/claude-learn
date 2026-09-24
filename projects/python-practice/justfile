@@ -49,3 +49,7 @@ audit:
 # カバレッジ・ドキュメント生成物を削除する
 clean:
     rm -rf htmlcov .coverage coverage.lcov apidocs .pytest_cache .ruff_cache
+
+# pnpxでcspellを取得し、スペルチェックを実行する（未知語が出た場合はcspell.jsonのwordsに追記して解消する）
+cspell:
+    pnpx cspell --no-progress .

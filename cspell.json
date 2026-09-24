@@ -49,6 +49,7 @@
     "dpkg", // AGENTS.md: Debian系パッケージ管理コマンド名
     "frontmatter", // AGENTS.md: Markdownファイル冒頭のメタデータ記法を指す語
     "GOPATH", // AGENTS.md: Go言語の環境変数名
+    "pnpx", // justfile: pnpmが提供するnpx相当のパッケージ実行コマンド（cspellレシピで使用）
     "pyproject", // AGENTS.md: `pyproject.toml`を指す語
     "rustup", // AGENTS.md: Rustのツールチェーン管理ツール名
     "worktree" // AGENTS.md: git worktreeを指す用語
