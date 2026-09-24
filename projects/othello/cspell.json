@@ -61,6 +61,8 @@
     "serde", // src-tauri/Cargo.toml: Rustのシリアライズ/デシリアライズライブラリ名
     "staticlib", // src-tauri/Cargo.toml: Rustのクレート種別（静的ライブラリ）
     "tauri", // package.json/src-tauri等: このプロジェクトが使うデスクトップアプリフレームワーク名
-    "Tauri" // README.md等: 上記の大文字始まり表記
+    "Tauri", // README.md等: 上記の大文字始まり表記
+    "Vite", // justfile: このプロジェクトが使うビルドツール名
+    "Vitest" // justfile: このプロジェクトが使うテストランナー名
   ]
 }
