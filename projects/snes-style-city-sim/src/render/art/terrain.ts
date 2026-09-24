@@ -69,6 +69,7 @@ const SAND = [
 
 const TREE = ["..ff..", ".fFFf.", "fFFFFf", "fFFFFf", ".fFFf.", "..KK..", "..tK.."];
 
+// cspell:disable-next-line -- ドット絵をピクセルごとの文字コードで表現したデータ。単語ではない
 const ROCK = [".YYY.", "YLLYD", "YLYYD", ".DDD."];
 
 /** 森タイルのバリエーションごとの、木を植える位置。 */

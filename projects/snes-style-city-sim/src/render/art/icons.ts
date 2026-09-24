@@ -42,6 +42,7 @@ export interface GlyphIconSpec {
 /** アイコンの絵をどこから持ってくるかの指定。 */
 export type IconSpec = BuildingIconSpec | TileIconSpec | GlyphIconSpec;
 
+// cspell:disable -- 以下はドット絵をピクセルごとの文字コードで表現したデータ。単語ではない
 const GLYPHS: Record<GlyphName, readonly string[]> = {
   bulldozer: [
     "................",
@@ -79,6 +80,7 @@ const GLYPHS: Record<GlyphName, readonly string[]> = {
     "...........KKK..",
     "................",
   ],
+  // cspell:enable
 };
 
 /**
