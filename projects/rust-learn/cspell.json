@@ -26,6 +26,7 @@
     "serde", // Rustのシリアライズ/デシリアライズクレート名（Cargo.toml/docs/implementation.mdで使用）
     "testuser", // テストコード中のダミーユーザー名
     "newuser", // テストコード中のダミーユーザー名
-    "doctest" // cargo/justfileの用語: ドキュメンテーションコメント内のコード例テスト
+    "doctest", // cargo/justfileの用語: ドキュメンテーションコメント内のコード例テスト
+    "pnpx" // justfile: pnpmが提供するnpx相当のパッケージ実行コマンド（cspellレシピで使用）
   ]
 }

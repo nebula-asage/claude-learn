@@ -51,6 +51,7 @@
     "infile", // justfile: `gcov2lcov -infile`のフラグ名
     "gofmt", // Go標準のフォーマッタコマンド名
     "golangci", // golangci-lint（静的解析ツール）の名称の一部
-    "princjef" // README.md: gomarkdocの作者のGitHubユーザー名
+    "princjef", // README.md: gomarkdocの作者のGitHubユーザー名
+    "pnpx" // justfile: pnpmが提供するnpx相当のパッケージ実行コマンド（cspellレシピで使用）
   ]
 }
