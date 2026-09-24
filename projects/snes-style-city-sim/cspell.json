@@ -31,7 +31,9 @@
   ],
   // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
   // これにより日本語部分は素通りし、コード中の識別子や英語のコメント部分だけを検査できる
-  "ignoreRegExpList": ["/[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f]+/gu"],
+  "ignoreRegExpList": [
+    "/[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f]+/gu"
+  ],
   // 以下はこのcspell.json自身の`ignorePaths`コメント（ツール名・ディレクトリ名の断片）に
   // 由来する未知語で、テンプレートをそのまま配置するとどのプロジェクトでも必ず検出されるため
   // あらかじめ登録してある。プロジェクト固有の用語・識別子・略語はこれらの下に追加していく。
@@ -69,6 +71,8 @@
     "unpowered", // ゲーム内シミュレーションで「電力供給を受けていない」状態を表す語
     "datamap", // ツール内のオーバーレイ画像名の一部（tools/preview.ts）
     "landvalue", // ツール内のオーバーレイ画像名の一部（地価データマップ）
-    "newcity" // 新規都市作成画面の識別子（tools/preview.ts, NewCityScreen）
+    "newcity", // 新規都市作成画面の識別子（tools/preview.ts, NewCityScreen）
+    "Vite", // ビルドツール名（justfileのレシピコメント等で使用）
+    "Vitest" // テストツール名（justfileのレシピコメント等で使用）
   ]
 }
