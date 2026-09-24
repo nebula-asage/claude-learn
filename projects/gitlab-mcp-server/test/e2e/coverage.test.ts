@@ -4,7 +4,7 @@
  *
  * このプロジェクトは「新規ツールを追加したときテストが自動的に失敗する」設計を方針にしており
  * （`test/invariants.test.ts` の MINIMAL_ARGS、`test/tools/surface.test.ts` のツール名一覧）、
- * E2Eにも同じガードを置く。CLAUDE.mdに書いた手動 grep 手順の代わりになる。
+ * E2Eにも同じガードを置く。AGENTS.mdに書いた手動 grep 手順の代わりになる。
  *
  * 実装は `test/invariants.test.ts` が `node:fs` で `src/` を走査しているのと同じ流儀で、
  * テストソースそのものを読んで静的に呼び出しを数える。

@@ -208,7 +208,7 @@ describe("GitLabClient - エラー変換", () => {
     expect(err.message).toContain("タイムアウト");
   });
 
-  // CLAUDE.md の不変条件: GitLabApiError のメッセージにトークンを絶対に含めない。
+  // AGENTS.md の不変条件: GitLabApiError のメッセージにトークンを絶対に含めない。
   it.each([
     ["4xx（JSONボディあり）", () => jsonResponse({ message: "forbidden" }, { status: 403 })],
     ["5xx（非JSONボディ）", () => textResponse("boom", { status: 500 })],
