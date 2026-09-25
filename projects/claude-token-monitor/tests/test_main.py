@@ -11,6 +11,7 @@ from main import (
     _totals,
     encode_project_dir,
     find_latest_session_file,
+    find_session_file_by_id,
     find_subagent_dir,
     find_subagent_transcripts,
     parse_turn,
@@ -257,6 +258,57 @@ def test_resolve_session_file_falls_back_to_latest(
     resolved = resolve_session_file(None, None, str(real_project_dir))
 
     assert resolved == only
+
+
+def test_find_session_file_by_id_searches_across_all_project_dirs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    other_dir = tmp_path / "-home-user-other-project"
+    other_dir.mkdir()
+    target = other_dir / "abc123.jsonl"
+    target.write_text("{}", encoding="utf-8")
+
+    assert find_session_file_by_id("abc123") == target
+
+
+def test_find_session_file_by_id_raises_when_not_found(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    (tmp_path / "-home-user-other-project").mkdir()
+
+    with pytest.raises(FileNotFoundError):
+        find_session_file_by_id("missing")
+
+
+def test_find_session_file_by_id_raises_when_ambiguous(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    dir_a = tmp_path / "-home-user-project-a"
+    dir_b = tmp_path / "-home-user-project-b"
+    dir_a.mkdir()
+    dir_b.mkdir()
+    (dir_a / "dup123.jsonl").write_text("{}", encoding="utf-8")
+    (dir_b / "dup123.jsonl").write_text("{}", encoding="utf-8")
+
+    with pytest.raises(FileNotFoundError):
+        find_session_file_by_id("dup123")
+
+
+def test_resolve_session_file_searches_globally_when_project_dir_omitted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    other_dir = tmp_path / "-home-user-moved-away-project"
+    other_dir.mkdir()
+    target = other_dir / "abc123.jsonl"
+    target.write_text("{}", encoding="utf-8")
+
+    resolved = resolve_session_file(None, "abc123", None)
+
+    assert resolved == target
 
 
 def test_totals_sums_each_metric_across_turns() -> None:
