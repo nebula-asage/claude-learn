@@ -1,7 +1,10 @@
+import io
 import json
+import sys
 from pathlib import Path
 
 import pytest
+from rich.console import Console
 
 import main
 from main import (
@@ -9,6 +12,7 @@ from main import (
     _read_agent_type,
     _read_all_subagent_turns,
     _totals,
+    build_table,
     encode_project_dir,
     find_latest_session_file,
     find_session_file_by_id,
@@ -20,6 +24,12 @@ from main import (
     render_report,
     resolve_session_file,
 )
+
+
+def _render(table) -> str:
+    console = Console(file=io.StringIO(), width=200)
+    console.print(table)
+    return console.file.getvalue()
 
 
 def _assistant_line(
@@ -66,6 +76,18 @@ def test_parse_turn_ignores_non_assistant_lines() -> None:
 
 def test_parse_turn_ignores_assistant_message_without_usage() -> None:
     line = json.dumps({"type": "assistant", "message": {"model": "x"}})
+
+    assert parse_turn(line) is None
+
+
+def test_parse_turn_ignores_assistant_line_with_non_dict_message() -> None:
+    line = json.dumps({"type": "assistant", "message": "not-a-dict"})
+
+    assert parse_turn(line) is None
+
+
+def test_parse_turn_ignores_assistant_line_missing_message() -> None:
+    line = json.dumps({"type": "assistant"})
 
     assert parse_turn(line) is None
 
@@ -524,3 +546,302 @@ def test_read_all_subagent_turns_picks_up_newly_created_file(
     )
 
     assert [t.input_tokens for t in _read_all_subagent_turns(session_path)] == [9]
+
+
+def test_build_table_shows_only_last_n_turns_and_running_totals() -> None:
+    turns = [
+        TurnUsage("t1", "claude-sonnet-5", 1, 1, 1, 1),
+        TurnUsage("t2", "claude-sonnet-5", 2, 2, 2, 2),
+        TurnUsage("t3", "claude-sonnet-5", 3, 3, 3, 3),
+    ]
+
+    output = _render(build_table(turns, last_n=2))
+
+    assert "t1" not in output
+    assert "t2" in output
+    assert "t3" in output
+    assert "直近2件" in output
+    assert "累計3ターン" in output
+
+
+def test_build_table_handles_empty_turns() -> None:
+    output = _render(build_table([], last_n=15))
+
+    assert "累計0ターン" in output
+
+
+def test_watch_raises_system_exit_when_file_missing(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit):
+        main.watch(tmp_path / "missing.jsonl")
+
+
+def test_watch_appends_new_turn_before_interrupt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """新規行の到着(492-506行)と行が無い間のポーリング(486-491行)の両方を
+    通過させ、最終的に統合済みターン一覧に反映されることを確認する。"""
+    log = tmp_path / "session.jsonl"
+    log.write_text(
+        _assistant_line(input_tokens=1, message_id="msg_1") + "\n", encoding="utf-8"
+    )
+
+    captured: list[list[int]] = []
+    original_build_table = main.build_table
+
+    def spy_build_table(turns: list[TurnUsage], last_n: int = 15):
+        captured.append([t.input_tokens for t in turns])
+        return original_build_table(turns, last_n)
+
+    monkeypatch.setattr(main, "build_table", spy_build_table)
+
+    calls = {"n": 0}
+
+    def fake_sleep(_seconds: float) -> None:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            with log.open("a", encoding="utf-8") as f:
+                f.write(_assistant_line(input_tokens=2, message_id="msg_2") + "\n")
+            return
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(main.time, "sleep", fake_sleep)
+
+    main.watch(log, poll_interval=0)
+
+    assert captured[-1] == [1, 2]
+
+
+def test_watch_updates_existing_turn_when_message_id_repeats(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """output_tokens等が後続行で確定する場合、同一message_idの既存ターンを
+    上書きすることを確認する(500-501行)。"""
+    log = tmp_path / "session.jsonl"
+    log.write_text(
+        _assistant_line(output_tokens=1, message_id="msg_1") + "\n", encoding="utf-8"
+    )
+
+    captured: list[list[int]] = []
+    original_build_table = main.build_table
+
+    def spy_build_table(turns: list[TurnUsage], last_n: int = 15):
+        captured.append([t.output_tokens for t in turns])
+        return original_build_table(turns, last_n)
+
+    monkeypatch.setattr(main, "build_table", spy_build_table)
+
+    calls = {"n": 0}
+
+    def fake_sleep(_seconds: float) -> None:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            with log.open("a", encoding="utf-8") as f:
+                f.write(_assistant_line(output_tokens=330, message_id="msg_1") + "\n")
+            return
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(main.time, "sleep", fake_sleep)
+
+    main.watch(log, poll_interval=0)
+
+    assert captured[-1] == [330]
+
+
+def test_watch_reassembles_line_written_in_partial_chunks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """書き込み途中(改行なし)の行は次回分と結合してから解析することを
+    確認する(493-494行)。"""
+    log = tmp_path / "session.jsonl"
+    log.write_text("", encoding="utf-8")
+    full_line = _assistant_line(input_tokens=7, message_id="msg_1")
+    head, tail = full_line[:5], full_line[5:]
+
+    captured: list[list[int]] = []
+    original_build_table = main.build_table
+
+    def spy_build_table(turns: list[TurnUsage], last_n: int = 15):
+        captured.append([t.input_tokens for t in turns])
+        return original_build_table(turns, last_n)
+
+    monkeypatch.setattr(main, "build_table", spy_build_table)
+
+    calls = {"n": 0}
+
+    def fake_sleep(_seconds: float) -> None:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            with log.open("a", encoding="utf-8") as f:
+                f.write(head)
+            return
+        if calls["n"] == 2:
+            with log.open("a", encoding="utf-8") as f:
+                f.write(tail + "\n")
+            return
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(main.time, "sleep", fake_sleep)
+
+    main.watch(log, poll_interval=0)
+
+    assert captured[-1] == [7]
+
+
+def test_watch_ignores_new_line_without_usable_usage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """新規行がusageを持たないassistant以外の行の場合、無視して継続することを
+    確認する(497-498行)。"""
+    log = tmp_path / "session.jsonl"
+    log.write_text(
+        _assistant_line(input_tokens=1, message_id="msg_1") + "\n", encoding="utf-8"
+    )
+
+    captured: list[list[int]] = []
+    original_build_table = main.build_table
+
+    def spy_build_table(turns: list[TurnUsage], last_n: int = 15):
+        captured.append([t.input_tokens for t in turns])
+        return original_build_table(turns, last_n)
+
+    monkeypatch.setattr(main, "build_table", spy_build_table)
+
+    calls = {"n": 0}
+
+    def fake_sleep(_seconds: float) -> None:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            with log.open("a", encoding="utf-8") as f:
+                f.write(json.dumps({"type": "user", "message": {}}) + "\n")
+            return
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(main.time, "sleep", fake_sleep)
+
+    main.watch(log, poll_interval=0)
+
+    assert captured[-1] == [1]
+
+
+def test_report_raises_system_exit_when_file_missing(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit):
+        main.report(tmp_path / "missing.jsonl", tmp_path / "out.html")
+
+
+def test_report_generates_html_file_and_prints_summary(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    session = tmp_path / "session.jsonl"
+    session.write_text(_assistant_line(input_tokens=5) + "\n", encoding="utf-8")
+    output = tmp_path / "out.html"
+
+    main.report(session, output)
+
+    assert output.exists()
+    html = output.read_text(encoding="utf-8")
+    assert "<!doctype html>" in html
+    captured = capsys.readouterr()
+    flattened = captured.out.replace("\n", "")
+    assert "1 ターン分のレポートを生成しました" in flattened
+
+
+def test_build_arg_parser_watch_defaults() -> None:
+    parser = main.build_arg_parser()
+
+    args = parser.parse_args(["watch"])
+
+    assert args.command == "watch"
+    assert args.file is None
+    assert args.last_n == 15
+    assert args.interval == 0.5
+
+
+def test_build_arg_parser_report_defaults() -> None:
+    parser = main.build_arg_parser()
+
+    args = parser.parse_args(["report"])
+
+    assert args.command == "report"
+    assert args.output == "token-usage-report.html"
+
+
+def test_build_arg_parser_accepts_common_options() -> None:
+    parser = main.build_arg_parser()
+
+    args = parser.parse_args(
+        ["watch", "--session", "abc123", "--project-dir", "/tmp/x", "--last-n", "5"]
+    )
+
+    assert args.session == "abc123"
+    assert args.project_dir == "/tmp/x"
+    assert args.last_n == 5
+
+
+def test_build_arg_parser_requires_a_command() -> None:
+    parser = main.build_arg_parser()
+
+    with pytest.raises(SystemExit):
+        parser.parse_args([])
+
+
+def test_main_dispatches_to_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = tmp_path / "session.jsonl"
+    session.write_text("{}", encoding="utf-8")
+    output = tmp_path / "out.html"
+    called: dict[str, Path] = {}
+
+    def fake_report(path: Path, output_path: Path) -> None:
+        called["path"] = path
+        called["output"] = output_path
+
+    monkeypatch.setattr(main, "report", fake_report)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["prog", "report", "--file", str(session), "--output", str(output)],
+    )
+
+    main.main()
+
+    assert called == {"path": session, "output": output}
+
+
+def test_main_dispatches_to_watch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = tmp_path / "session.jsonl"
+    session.write_text("{}", encoding="utf-8")
+    called: dict[str, object] = {}
+
+    def fake_watch(path: Path, poll_interval: float, last_n: int) -> None:
+        called.update(path=path, poll_interval=poll_interval, last_n=last_n)
+
+    monkeypatch.setattr(main, "watch", fake_watch)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["prog", "watch", "--file", str(session), "--interval", "1.5", "--last-n", "5"],
+    )
+
+    main.main()
+
+    assert called == {"path": session, "poll_interval": 1.5, "last_n": 5}
+
+
+def test_main_exits_when_session_file_cannot_be_resolved(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["prog", "report", "--file", "/nonexistent.jsonl"])
+
+    def fake_resolve(*_args: object, **_kwargs: object) -> Path:
+        raise FileNotFoundError("boom")
+
+    monkeypatch.setattr(main, "resolve_session_file", fake_resolve)
+
+    with pytest.raises(SystemExit):
+        main.main()
+
+    captured = capsys.readouterr()
+    assert "エラー: boom" in captured.err
