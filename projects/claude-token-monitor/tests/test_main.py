@@ -9,8 +9,10 @@ from rich.console import Console
 import main
 from main import (
     TurnUsage,
+    _find_subagent_dirs,
     _read_agent_type,
     _read_all_subagent_turns,
+    _read_subagent_turns_from_dirs,
     _totals,
     build_table,
     encode_project_dir,
@@ -548,6 +550,85 @@ def test_read_all_subagent_turns_picks_up_newly_created_file(
     assert [t.input_tokens for t in _read_all_subagent_turns(session_path)] == [9]
 
 
+def test_find_subagent_dirs_finds_dir_via_known_dirs_even_when_main_jsonl_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """メインJSONLが既に移動済みで実体が無くなったディレクトリでも、
+    `known_dirs`に覚えている限りそこのsubagentsディレクトリは探し続けることを
+    確認する(worktree移動後、旧ディレクトリに残った完了済みサブエージェント
+    を取りこぼさないための挙動)。"""
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    old_dir = tmp_path / "old-encoded-cwd"
+    subagents_dir = old_dir / "abc123" / "subagents"
+    subagents_dir.mkdir(parents=True)
+    (subagents_dir / "agent-a.jsonl").write_text("{}", encoding="utf-8")
+
+    found = _find_subagent_dirs("abc123", {old_dir})
+
+    assert found == [subagents_dir]
+
+
+def test_find_subagent_dirs_discovers_new_dir_from_relocated_main_jsonl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`known_dirs`に含まれていない新しいディレクトリでも、メインJSONLの
+    横断globで新ディレクトリを発見できることを確認する(worktree移動直後、
+    まだ`known_dirs`に登録されていない新ディレクトリを見つける挙動)。"""
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    new_dir = tmp_path / "new-encoded-cwd"
+    new_dir.mkdir()
+    (new_dir / "abc123.jsonl").write_text("{}", encoding="utf-8")
+    subagents_dir = new_dir / "abc123" / "subagents"
+    subagents_dir.mkdir(parents=True)
+    (subagents_dir / "agent-a.jsonl").write_text("{}", encoding="utf-8")
+
+    known_dirs: set[Path] = set()
+    found = _find_subagent_dirs("abc123", known_dirs)
+
+    assert found == [subagents_dir]
+    assert new_dir in known_dirs
+
+
+def test_find_subagent_dirs_discovers_new_dir_when_main_jsonl_already_gone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """メインJSONLが既に別の場所へ再移動済みでも、`subagents`ディレクトリ
+    自体の横断globで発見できることを確認する。"""
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    stale_dir = tmp_path / "stale-encoded-cwd"
+    subagents_dir = stale_dir / "abc123" / "subagents"
+    subagents_dir.mkdir(parents=True)
+    (subagents_dir / "agent-a.jsonl").write_text("{}", encoding="utf-8")
+
+    found = _find_subagent_dirs("abc123", set())
+
+    assert found == [subagents_dir]
+
+
+def test_read_subagent_turns_from_dirs_merges_across_dirs(tmp_path: Path) -> None:
+    dir_a = tmp_path / "dirA" / "subagents"
+    dir_a.mkdir(parents=True)
+    (dir_a / "agent-a.meta.json").write_text(
+        json.dumps({"agentType": "git-merger"}), encoding="utf-8"
+    )
+    (dir_a / "agent-a.jsonl").write_text(
+        _assistant_line(input_tokens=1), encoding="utf-8"
+    )
+    dir_b = tmp_path / "dirB" / "subagents"
+    dir_b.mkdir(parents=True)
+    (dir_b / "agent-b.meta.json").write_text(
+        json.dumps({"agentType": "workspace-auditor"}), encoding="utf-8"
+    )
+    (dir_b / "agent-b.jsonl").write_text(
+        _assistant_line(input_tokens=2), encoding="utf-8"
+    )
+
+    turns = _read_subagent_turns_from_dirs([dir_a, dir_b])
+
+    assert [t.input_tokens for t in turns] == [1, 2]
+    assert [t.source for t in turns] == ["git-merger", "workspace-auditor"]
+
+
 def test_build_table_shows_only_last_n_turns_and_running_totals() -> None:
     turns = [
         TurnUsage("t1", "claude-sonnet-5", 1, 1, 1, 1),
@@ -721,6 +802,77 @@ def test_watch_ignores_new_line_without_usable_usage(
     main.watch(log, poll_interval=0)
 
     assert captured[-1] == [1]
+
+
+def test_watch_follows_session_relocated_to_another_project_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`EnterWorktree`等でカレントディレクトリが変わり、メインJSONLが別の
+    `~/.claude/projects/<encoded-cwd>/`へOSレベルのrenameで移動した後も、
+    (1)開いたままのファイルディスクリプタでメインターンの追記を追跡し続け、
+    (2)移動後に新ディレクトリ配下へ作られたサブエージェントのトランスクリプト
+    も取り込むことを確認する(実機でのrename挙動を検証した上での回帰テスト)。
+    """
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    session_id = "sess123"
+    old_dir = tmp_path / "old-encoded-cwd"
+    old_dir.mkdir()
+    log = old_dir / f"{session_id}.jsonl"
+    log.write_text(
+        _assistant_line(
+            input_tokens=1, message_id="msg_1", timestamp="2026-09-25T00:00:00.000Z"
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    new_dir = tmp_path / "new-encoded-cwd"
+    new_dir.mkdir()
+
+    captured: list[tuple[list[int], list[str]]] = []
+    original_build_table = main.build_table
+
+    def spy_build_table(turns: list[TurnUsage], last_n: int = 15):
+        captured.append(([t.input_tokens for t in turns], [t.source for t in turns]))
+        return original_build_table(turns, last_n)
+
+    monkeypatch.setattr(main, "build_table", spy_build_table)
+
+    calls = {"n": 0}
+
+    def fake_sleep(_seconds: float) -> None:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            new_log = new_dir / f"{session_id}.jsonl"
+            log.rename(new_log)  # worktree移動を模したメインJSONLのOS rename
+            with new_log.open("a", encoding="utf-8") as writer:
+                writer.write(
+                    _assistant_line(
+                        input_tokens=2,
+                        message_id="msg_2",
+                        timestamp="2026-09-25T00:01:00.000Z",
+                    )
+                    + "\n"
+                )
+            # 移動後に完了したサブエージェントは新ディレクトリ配下に作られる
+            subagents_dir = new_dir / session_id / "subagents"
+            subagents_dir.mkdir(parents=True)
+            (subagents_dir / "agent-a.meta.json").write_text(
+                json.dumps({"agentType": "git-merger"}), encoding="utf-8"
+            )
+            (subagents_dir / "agent-a.jsonl").write_text(
+                _assistant_line(input_tokens=3, timestamp="2026-09-25T00:00:30.000Z"),
+                encoding="utf-8",
+            )
+            return
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(main.time, "sleep", fake_sleep)
+
+    main.watch(log, poll_interval=0)
+
+    final_inputs, final_sources = captured[-1]
+    assert final_inputs == [1, 3, 2]
+    assert final_sources == ["main", "git-merger", "main"]
 
 
 def test_report_raises_system_exit_when_file_missing(tmp_path: Path) -> None:
