@@ -90,19 +90,25 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
    | `__PROJECT_NAME__` | パッケージ名（ディレクトリ名そのままでよい。例: `rust-practice`） |
    | `__PROJECT_DESCRIPTION__` | プロジェクトの1行説明。用途が指定されていればそれに合わせる |
 
-   コピーするファイル:
-   - `templates/Cargo.toml` → `<配置先>/Cargo.toml`
-   - `templates/rustfmt.toml` → `<配置先>/rustfmt.toml`（置換不要）
-   - `templates/deny.toml` → `<配置先>/deny.toml`（置換不要）
-   - `templates/justfile` → `<配置先>/justfile`
-   - `templates/src/lib.rs` → `<配置先>/src/lib.rs`
-   - `templates/src/greeting.rs` → `<配置先>/src/greeting.rs`
-   - `templates/src/main.rs` → `<配置先>/src/main.rs`
-   - `templates/tests/greeting.rs` → `<配置先>/tests/greeting.rs`
-   - `templates/README.md` → `<配置先>/README.md`
-   - `templates/.gitignore` → `<配置先>/.gitignore`（置換不要。リポジトリルートの `.gitignore` にRustの項目は無いので、ルート側は変更しない）
+   `templates/` 配下は `vscode/` を除きそのまま `<配置先>` へ1階層でコピーできる構成になっているため、
+   ファイルを1つずつ Read/Write するのではなく `cp -a` で一括コピーし、そのうえでプレースホルダを含む
+   ファイルだけを Edit系ツールで置換する2段構成にする。
 
-   `templates/vscode/` はここではコピーしない（手順5で扱う）。
+   ```bash
+   mkdir -p "<配置先>"
+   cp -a .claude/skills/rust-cargo-project/templates/. "<配置先>/"
+   rm -rf "<配置先>/vscode"
+   ```
+
+   （`templates/vscode/` はここではコピーしない。手順5で扱う。`cp -a` は権限・タイムスタンプを保ったまま
+   複製するため、個別ファイルの権限調整は不要。）
+
+   コピー後、`grep -rl "__PROJECT_NAME__\|__PROJECT_NAME_SNAKE__\|__PROJECT_DESCRIPTION__" "<配置先>"`
+   でプレースホルダを含むファイルを洗い出し、その結果に対してだけ Edit系ツールで置換する
+   （現時点では `Cargo.toml` / `README.md` / `justfile` / `src/main.rs` / `src/lib.rs` / `src/greeting.rs` /
+   `tests/greeting.rs` の7ファイルが該当する。テンプレートが変わった場合はこの一覧ではなく grep の結果を
+   優先すること）。`rustfmt.toml` / `deny.toml` / `.gitignore` にはプレースホルダが無いため対象外
+   （`.gitignore` はリポジトリルートの `.gitignore` にRustの項目が無いことの確認のみで、内容の変更は不要）。
 
 5. **配置先がVS Codeプロジェクトの場合、Rust向けのVS Code設定を追加する**
    - 判定は `<配置先>/.vscode/` ディレクトリ（`settings.json` または `extensions.json`）の有無で行う。存在しなければVS Code向けの設定は持たないプロジェクトとみなし、この手順はスキップする（`.vscode/` を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、`.vscode/` を新規作成したうえで以下と同じ内容を配置してよい）。
