@@ -62,7 +62,7 @@ description: スキルの`templates/`と、既に配置済みのファイル（`
 
 `scripts/check_drift.py`は、テンプレートからの相対パスの**末尾一致**で配置先を探す（配置先ではディレクトリ名の先頭に`.`が付くことがあるため、各セグメントの先頭ドットを無視して比較する）。
 
-```
+```text
 templates/vscode/settings.json      -> projects/foo/.vscode/settings.json
 templates/devcontainer.json         -> .devcontainer/devcontainer.json
 templates/scripts/install-husky.mjs -> projects/foo/scripts/install-husky.mjs

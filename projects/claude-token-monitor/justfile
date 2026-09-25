@@ -57,3 +57,7 @@ audit:
 # カバレッジ・ドキュメント生成物を削除する
 clean:
     rm -rf htmlcov .coverage coverage.lcov apidocs .pytest_cache .ruff_cache
+
+# pnpxでmarkdownlint-cli2を取得し、Markdownの構文・スタイルをlintする
+markdownlint:
+    pnpx markdownlint-cli2 "**/*.md"

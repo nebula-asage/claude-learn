@@ -87,7 +87,7 @@ git push origin --delete <feature-branch>
 
 成功時は**この4行だけ**を返す。前置きも所感も要らない。
 
-```
+```text
 マージ: <feature-branch> → <base>（<マージコミットの短縮ハッシュ>）
 push: 成功 / 失敗（理由）
 ローカルブランチ削除: 成功 / スキップ（理由）

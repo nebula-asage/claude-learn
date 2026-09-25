@@ -12,6 +12,7 @@ React(UI) + Tauri(デスクトップアプリ化)で作ったオセロ(リバー
 - パッケージマネージャ: pnpm(`npm install -g pnpm@^10`。corepackは使わない)
 - Rust: [rustup](https://rustup.rs/)で導入
 - Tauriのシステム依存(Linux/Ubuntu):
+
   ```bash
   sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
     libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
@@ -53,7 +54,7 @@ pnpm exec tauri build
 
 ## ディレクトリ構成
 
-```
+```text
 src/
   othello.ts   # ゲームロジック(純粋関数、JSDoc必須、テスト対象)
   App.tsx      # 盤面UI

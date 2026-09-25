@@ -28,6 +28,7 @@ tar -xzf /tmp/jdk.tar.gz -C ~/sdk  # ~/sdk/jdk-<version>/ ができる
 ## just（タスクランナー）
 
 - justはRust製の単体バイナリで、GitHub Releasesにtarballと集約チェックサムファイル（`SHA256SUMS`）が公開されているため、それを取得して照合してから展開する。
+
   ```bash
   VERSION=<確認したバージョン、例: 1.58.0>
   curl -LsSf -o /tmp/just.tar.gz \
@@ -35,7 +36,9 @@ tar -xzf /tmp/jdk.tar.gz -C ~/sdk  # ~/sdk/jdk-<version>/ ができる
   curl -LsSf -o /tmp/just-SHA256SUMS \
     "https://github.com/casey/just/releases/download/${VERSION}/SHA256SUMS"
   ```
+
 - `sha256sum -c` は相対パスで実行するかフルパスを一致させる必要があるので、`/tmp` に `cd` してから実行する。
+
   ```bash
   grep "just-${VERSION}-x86_64-unknown-linux-musl.tar.gz$" /tmp/just-SHA256SUMS > /tmp/just-checksum-line.txt
   mkdir -p /tmp/just-extract
@@ -43,10 +46,13 @@ tar -xzf /tmp/jdk.tar.gz -C ~/sdk  # ~/sdk/jdk-<version>/ ができる
   cp /tmp/just-checksum-line.txt /tmp/just-extract/checksum.txt
   cd /tmp/just-extract && sha256sum -c checksum.txt
   ```
+
 - 検証が通ったら展開し、`~/.local/bin/just` に配置する。
+
   ```bash
   tar -C /tmp/just-extract -xzf "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz" just
   mkdir -p ~/.local/bin
   mv /tmp/just-extract/just ~/.local/bin/just
   ```
+
 - 一時ファイル（`/tmp/just*`）は導入後に削除する。`~/.local/bin` がまだ `PATH` に無ければ `~/.bashrc` に追記する。

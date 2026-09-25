@@ -24,10 +24,12 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
 4. **`workspaceFolder` / `workspaceMount` を配置先に合わせる**
    - リポジトリルートに置く場合はテンプレートのまま（`/workspace` にリポジトリ全体をマウント）でよい。
    - 特定プロジェクト配下（`projects/<name>/`）に置く場合は、**そのプロジェクトディレクトリだけをマウントしてはいけない**。このリポジトリは `.git` がリポジトリルートにしかないmonorepoのため、サブディレクトリだけをbind mountすると `.git` が一切見えず、コンテナ内でgitリポジトリとして認識されない（`git status` が `fatal: not a git repository` になり、VS CodeのSource Controlパネルにも何も表示されない）。代わりにリポジトリルート全体をマウントし、`workspaceFolder` だけを対象プロジェクトのサブパスに向ける。
+
      ```json
      "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/workspace-root,type=bind",
      "workspaceFolder": "/workspace-root/projects/<name>"
      ```
+
      `${localWorkspaceFolder}` はコンテナ設定ファイルのある場所（`projects/<name>/`）が基準になるため、リポジトリルートまで `../..` で遡る。この相対パス表記はDocker側で正規化されるため、bind mountの `source` にそのまま使える。
 
 5. **動作確認する**
@@ -40,9 +42,11 @@ Rocky Linux 9 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式
    - pnpmは公式インストーラーが`~/.bashrc`の**末尾**にPATH設定を追記するため、非対話の`bash -c`では`pnpm`/`node`が届かない。検証時は`bash -c 'export PATH="$PNPM_HOME/bin:$PATH" && ...'`のように明示的にPATHへ`$PNPM_HOME/bin`を足すか、`bash -ic '...'`（対話モード）を使う。
    - `docker run --rm <一時タグ> bash -c 'export PATH="$PNPM_HOME/bin:$PATH"; pnpm -v && node -v && pnpm exec playwright --version'` でpnpm/Node.js/Playwrightが導入されていることを確認する。
    - Chromiumが実際に起動できるかも確認する。`playwright screenshot`などのCLIコマンド経由（`pnpm exec playwright ...`）で確認すること。pnpm 12はグローバルインストールをハッシュ付きサブディレクトリに分散して保存するため、`NODE_PATH=$(pnpm root -g)`を使ったNode.jsスクリプトからの直接`require('playwright')`は`MODULE_NOT_FOUND`になる（実機検証で判明。`pnpm root -g`が返すパス自体に実体が無い）。`pnpm exec`/CLIコマンド経由なら問題なく解決される。
-     ```
+
+     ```bash
      docker run --rm <一時タグ> bash -c 'export PATH="$PNPM_HOME/bin:$PATH"; echo "<h1>ok</h1>" > /tmp/t.html && pnpm exec playwright screenshot /tmp/t.html /tmp/shot.png && ls -la /tmp/shot.png'
      ```
+
      **これは特に重要な確認項目。** PlaywrightのOS依存ライブラリはDebian/Ubuntu系のみ自動導入に対応しており、Rocky LinuxではDockerfileに手動で列挙したRPMパッケージ一覧が実際に足りているかがこのコマンドでしか分からない。Playwrightのバージョンが上がって必要な共有ライブラリが増えた場合、ここが`error while loading shared libraries`系のエラーで失敗する。失敗したら`ldd <chrome-headless-shellのパス>`（`$PLAYWRIGHT_BROWSERS_PATH`配下）で不足ライブラリ名を特定し、対応するRPMパッケージ名を探して`Dockerfile`のdnfパッケージ一覧に追加する。
    - `docker run --rm <一時タグ> bash -c 'just --version'` でjustが導入されていることを確認する。
    - `docker run --rm <一時タグ> bash -ic 'complete -p just'` でjustのbash補完（`/etc/bash_completion.d/just`）が有効になっていることを確認する。**他のツールと違い`_completion_loader just`を明示的に呼び出してはいけない**（実機検証で判明。`/etc/bash_completion.d/just`は遅延読込用のローダーではなく、対話シェル起動時に毎回そのまま読み込まれる静的な補完スクリプトのため、`_completion_loader`経由で呼ぶと`_minimal`にフォールバックしてしまい誤ってNG判定になる。素の対話シェルなら自動で`_clap_complete_just`が登録される）
