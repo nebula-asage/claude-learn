@@ -84,10 +84,12 @@ def _parse_assistant_line(line: str) -> tuple[str, TurnUsage] | None:
     """トランスクリプトJSONLの1行を解析し、メッセージIDとturnの組を抽出する。
 
     Claude Codeは1回のAPIレスポンス(thinking/text/tool_useなど複数のcontent
-    ブロックを含みうる)を複数のJSONL行に分けて書き出すことがあり、その全行が
-    同一の `message.usage` スナップショットを重複して持つ。そのため
-    `message.id` を添えて返し、呼び出し側で同一IDの2行目以降を無視できる
-    ようにする(ccusageも同様にmessage単位で重複除去して集計している)。
+    ブロックを含みうる)を複数のJSONL行に分けて書き出すことがある。各行は
+    同一の`message.usage`スナップショットを持つことが多いが、`output_tokens`
+    等はcontentブロックが確定するまで値が変わり続け、最後に出現した行で
+    初めて最終値になる場合がある。そのため`message.id`を添えて返し、呼び出し
+    側で同一IDの行は最後に出現したものを採用できるようにする(ccusageも
+    同様にmessage単位で重複除去して集計している)。
 
     Args:
         line: JSONL形式の1行。
@@ -138,8 +140,12 @@ def parse_turn(line: str) -> TurnUsage | None:
 
 def _read_turns_with_ids(
     path: Path, source: str = "main"
-) -> tuple[list[TurnUsage], set[str]]:
+) -> tuple[list[TurnUsage], dict[str, int]]:
     """トランスクリプトJSONLファイル全体を読み込み、重複除去済みのターン一覧を返す。
+
+    同一の`message.id`を持つ行が複数ある場合、最初に出現した位置を保ったまま
+    最後に出現した行のusageで上書きする(thinking/tool_useブロックの時点では
+    `output_tokens`等が未確定で、最後のcontentブロックの行で確定するため)。
 
     Args:
         path: トランスクリプトJSONLファイルのパス。
@@ -147,32 +153,34 @@ def _read_turns_with_ids(
             (メインセッションなら `"main"`、サブエージェントなら`agentType`)。
 
     Returns:
-        `(重複除去済みのターン一覧, 出現したmessage.idの集合)`。空文字列の
-        message_id(`message.id`が取れなかった行)は重複除去の対象にしない。
+        `(重複除去済みのターン一覧, message.id→turnsでの位置の対応表)`。
+        空文字列のmessage_id(`message.id`が取れなかった行)は重複除去の対象
+        にしない。
     """
     turns: list[TurnUsage] = []
-    seen_ids: set[str] = set()
+    index_by_id: dict[str, int] = {}
     with path.open(encoding="utf-8") as f:
         for line in f:
             parsed = _parse_assistant_line(line)
             if parsed is None:
                 continue
             message_id, turn = parsed
-            if message_id:
-                if message_id in seen_ids:
-                    continue
-                seen_ids.add(message_id)
             turn.source = source
+            if message_id:
+                if message_id in index_by_id:
+                    turns[index_by_id[message_id]] = turn
+                    continue
+                index_by_id[message_id] = len(turns)
             turns.append(turn)
-    return turns, seen_ids
+    return turns, index_by_id
 
 
 def read_turns(path: Path, source: str = "main") -> list[TurnUsage]:
     """トランスクリプトJSONLファイル全体を読み込み、ターンの一覧を返す。
 
     同一の `message.id` を持つ行(1回のAPIレスポンスが複数のcontentブロック
-    行に分かれて書き出されたもの)は先頭の1件のみを採用し、以降は重複として
-    無視する。
+    行に分かれて書き出されたもの)は、最初に出現した位置のまま最後に出現した
+    行のusageで上書きする。
 
     Args:
         path: トランスクリプトJSONLファイルのパス。
@@ -236,6 +244,28 @@ def find_subagent_transcripts(session_path: Path) -> list[Path]:
     return sorted(subagents_dir.glob("*.jsonl"))
 
 
+def _read_all_subagent_turns(session_path: Path) -> list[TurnUsage]:
+    """完了済み全サブエージェントのトランスクリプトを読み直し、現時点の全ターンを返す。
+
+    サブエージェントのトランスクリプトは十分小さいため、呼び出しのたびに
+    全体を読み直して最新の状態を得る。バイト位置や件数によるインクリメンタル
+    な差分検出は、content-block分割行の`output_tokens`確定タイミングと相性が
+    悪く(後から確定した値への更新を取りこぼす)採用しない。
+
+    Args:
+        session_path: メインセッションJSONLファイルのパス。
+
+    Returns:
+        現時点で完了しているサブエージェント全ターンの一覧(ファイル名順)。
+        サブエージェントが1つも無ければ空リスト。
+    """
+    turns: list[TurnUsage] = []
+    for jsonl_path in find_subagent_transcripts(session_path):
+        agent_type = _read_agent_type(jsonl_path.with_suffix(".meta.json"))
+        turns.extend(read_turns(jsonl_path, source=agent_type))
+    return turns
+
+
 def read_all_turns(session_path: Path) -> list[TurnUsage]:
     """メインセッションと完了済み全サブエージェントを合わせ、timestamp昇順で返す。
 
@@ -251,9 +281,7 @@ def read_all_turns(session_path: Path) -> list[TurnUsage]:
         各ターンの `source` には `"main"` または `meta.json` の `agentType` が入る。
     """
     turns = read_turns(session_path, source="main")
-    for jsonl_path in find_subagent_transcripts(session_path):
-        agent_type = _read_agent_type(jsonl_path.with_suffix(".meta.json"))
-        turns.extend(read_turns(jsonl_path, source=agent_type))
+    turns.extend(_read_all_subagent_turns(session_path))
     turns.sort(key=lambda t: t.timestamp)
     return turns
 
@@ -384,38 +412,6 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
     return table
 
 
-def _poll_new_subagent_turns(
-    subagents_dir: Path, emitted_counts: dict[Path, int]
-) -> list[TurnUsage]:
-    """subagents_dir配下を読み直し、前回poll時点より後ろの新規ターンだけを返す。
-
-    サブエージェントのトランスクリプトは追記のみで過去の行が変わらないため、
-    `read_turns` が返す重複除去済みリストの「前回までに返した件数より後ろ」を
-    新規分とみなす。書き込み途中の不完全な行はその回はNoneとして無視され、
-    完全な行になった次回のpollで自然に拾われる。
-
-    Args:
-        subagents_dir: 監視対象セッションの `<session>/subagents/` ディレクトリ。
-        emitted_counts: ファイルパスごとの、前回までに新規分として返した件数
-            (呼び出し側が保持し、この呼び出しのたびに更新される)。
-
-    Returns:
-        前回のpoll以降に新しく出現したターンの一覧(ファイル名順、ファイル内は出現順)。
-        ディレクトリが存在しなければ空リスト。
-    """
-    new_turns: list[TurnUsage] = []
-    if not subagents_dir.is_dir():
-        return new_turns
-    for jsonl_path in sorted(subagents_dir.glob("*.jsonl")):
-        agent_type = _read_agent_type(jsonl_path.with_suffix(".meta.json"))
-        turns = read_turns(jsonl_path, source=agent_type)
-        already = emitted_counts.get(jsonl_path, 0)
-        if len(turns) > already:
-            new_turns.extend(turns[already:])
-            emitted_counts[jsonl_path] = len(turns)
-    return new_turns
-
-
 def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
     """セッションJSONLを末尾から監視し、ターン毎のトークン使用量をライブ表示する。
 
@@ -435,30 +431,27 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
         console.print(f"[red]{path} が見つかりません[/red]")
         raise SystemExit(1)
 
-    turns, seen_ids = _read_turns_with_ids(path)
-    subagents_dir = find_subagent_dir(path)
-    emitted_counts: dict[Path, int] = {}
-    turns.extend(_poll_new_subagent_turns(subagents_dir, emitted_counts))
-    turns.sort(key=lambda t: t.timestamp)
+    main_turns, index_by_id = _read_turns_with_ids(path)
+    subagent_turns = _read_all_subagent_turns(path)
+
+    def combined_turns() -> list[TurnUsage]:
+        merged = main_turns + subagent_turns
+        merged.sort(key=lambda t: t.timestamp)
+        return merged
 
     console.print(f"[dim]{path} を監視中(Ctrl+Cで終了)[/dim]")
     with path.open(encoding="utf-8") as f:
-        f.seek(0, 2)  # 既存行は read_turns 済みなので、末尾から追記分だけを追う
+        f.seek(0, 2)  # 既存行は読み込み済みなので、末尾から追記分だけを追う
         buffer = ""
         with Live(
-            build_table(turns, last_n), console=console, refresh_per_second=4
+            build_table(combined_turns(), last_n), console=console, refresh_per_second=4
         ) as live:
             try:
                 while True:
                     chunk = f.readline()
                     if not chunk:
-                        new_sub_turns = _poll_new_subagent_turns(
-                            subagents_dir, emitted_counts
-                        )
-                        if new_sub_turns:
-                            turns.extend(new_sub_turns)
-                            turns.sort(key=lambda t: t.timestamp)
-                            live.update(build_table(turns, last_n))
+                        subagent_turns = _read_all_subagent_turns(path)
+                        live.update(build_table(combined_turns(), last_n))
                         time.sleep(poll_interval)
                         continue
                     buffer += chunk
@@ -469,12 +462,13 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
                     if parsed is None:
                         continue
                     message_id, turn = parsed
-                    if message_id:
-                        if message_id in seen_ids:
-                            continue  # 同一APIレスポンスの別contentブロック行
-                        seen_ids.add(message_id)
-                    turns.append(turn)
-                    live.update(build_table(turns, last_n))
+                    if message_id and message_id in index_by_id:
+                        main_turns[index_by_id[message_id]] = turn
+                    else:
+                        if message_id:
+                            index_by_id[message_id] = len(main_turns)
+                        main_turns.append(turn)
+                    live.update(build_table(combined_turns(), last_n))
             except KeyboardInterrupt:
                 pass
 

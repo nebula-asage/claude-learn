@@ -6,8 +6,8 @@ import pytest
 import main
 from main import (
     TurnUsage,
-    _poll_new_subagent_turns,
     _read_agent_type,
+    _read_all_subagent_turns,
     _totals,
     encode_project_dir,
     find_latest_session_file,
@@ -117,6 +117,53 @@ def test_read_turns_deduplicates_lines_sharing_message_id(tmp_path: Path) -> Non
     turns = read_turns(log)
 
     assert [t.input_tokens for t in turns] == [10, 20]
+
+
+def test_read_turns_uses_final_occurrence_when_usage_differs_across_duplicate_ids(
+    tmp_path: Path,
+) -> None:
+    """thinking/tool_useブロックの時点ではoutput_tokens等が未確定で、最後の
+    contentブロックの行で確定する場合がある(実際にAgentツールのサブエージェント
+    出力で観測された)。この場合、最後に出現した行のusageを採用しないと
+    ccusageの集計値より少なく数えてしまう。"""
+    log = tmp_path / "session.jsonl"
+    log.write_text(
+        "\n".join(
+            [
+                _assistant_line(output_tokens=1, message_id="msg_1"),
+                _assistant_line(output_tokens=330, message_id="msg_1"),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    turns = read_turns(log)
+
+    assert [t.output_tokens for t in turns] == [330]
+
+
+def test_read_turns_keeps_original_position_when_id_repeats_later(
+    tmp_path: Path,
+) -> None:
+    """同一message_idの行が離れた位置で再出現しても、ターンの並び順は最初に
+    出現した位置のまま(値だけ最後の行で上書きされる)ことを確認する。"""
+    log = tmp_path / "session.jsonl"
+    log.write_text(
+        "\n".join(
+            [
+                _assistant_line(input_tokens=1, message_id="msg_1"),
+                _assistant_line(input_tokens=2, message_id="msg_2"),
+                _assistant_line(input_tokens=99, message_id="msg_1"),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    turns = read_turns(log)
+
+    assert [t.input_tokens for t in turns] == [99, 2]
 
 
 def test_read_turns_keeps_lines_without_message_id(tmp_path: Path) -> None:
@@ -370,45 +417,52 @@ def test_render_report_omits_subagent_note_when_all_main() -> None:
     assert "うちサブエージェント分" not in html
 
 
-def test_poll_new_subagent_turns_returns_empty_when_dir_missing(
+def test_read_all_subagent_turns_returns_empty_when_dir_missing(
     tmp_path: Path,
 ) -> None:
-    assert _poll_new_subagent_turns(tmp_path / "missing", {}) == []
+    session_path = tmp_path / "abc123.jsonl"
+    session_path.write_text("{}", encoding="utf-8")
+
+    assert _read_all_subagent_turns(session_path) == []
 
 
-def test_poll_new_subagent_turns_returns_only_newly_appended_turns(
+def test_read_all_subagent_turns_rereads_full_file_on_every_call(
     tmp_path: Path,
 ) -> None:
-    subagents_dir = tmp_path / "subagents"
-    subagents_dir.mkdir()
+    """新しく確定したusage(content-block分割行の最終値)を次回呼び出しで
+    取りこぼさないことを確認する。バイト位置や件数によるインクリメンタルな
+    差分検出ではなく、毎回全体を読み直す設計であることの裏付け。"""
+    session_path = tmp_path / "abc123.jsonl"
+    session_path.write_text("{}", encoding="utf-8")
+    subagents_dir = tmp_path / "abc123" / "subagents"
+    subagents_dir.mkdir(parents=True)
     (subagents_dir / "agent-a.meta.json").write_text(
         json.dumps({"agentType": "reviewer-helper"}), encoding="utf-8"
     )
     jsonl_path = subagents_dir / "agent-a.jsonl"
-    jsonl_path.write_text(_assistant_line(input_tokens=1), encoding="utf-8")
+    jsonl_path.write_text(
+        _assistant_line(output_tokens=1, message_id="msg_1"), encoding="utf-8"
+    )
 
-    emitted_counts: dict[Path, int] = {}
-    first_poll = _poll_new_subagent_turns(subagents_dir, emitted_counts)
-    assert [t.input_tokens for t in first_poll] == [1]
-    assert [t.source for t in first_poll] == ["reviewer-helper"]
-
-    unchanged_poll = _poll_new_subagent_turns(subagents_dir, emitted_counts)
-    assert unchanged_poll == []
+    first = _read_all_subagent_turns(session_path)
+    assert [t.output_tokens for t in first] == [1]
+    assert [t.source for t in first] == ["reviewer-helper"]
 
     with jsonl_path.open("a", encoding="utf-8") as f:
-        f.write("\n" + _assistant_line(input_tokens=2))
-    grown_poll = _poll_new_subagent_turns(subagents_dir, emitted_counts)
-    assert [t.input_tokens for t in grown_poll] == [2]
+        f.write("\n" + _assistant_line(output_tokens=330, message_id="msg_1"))
+    second = _read_all_subagent_turns(session_path)
+    assert [t.output_tokens for t in second] == [330]
 
 
-def test_poll_new_subagent_turns_picks_up_newly_created_file(
+def test_read_all_subagent_turns_picks_up_newly_created_file(
     tmp_path: Path,
 ) -> None:
-    subagents_dir = tmp_path / "subagents"
-    subagents_dir.mkdir()
-    emitted_counts: dict[Path, int] = {}
+    session_path = tmp_path / "abc123.jsonl"
+    session_path.write_text("{}", encoding="utf-8")
+    subagents_dir = tmp_path / "abc123" / "subagents"
+    subagents_dir.mkdir(parents=True)
 
-    assert _poll_new_subagent_turns(subagents_dir, emitted_counts) == []
+    assert _read_all_subagent_turns(session_path) == []
 
     (subagents_dir / "agent-b.meta.json").write_text(
         json.dumps({"agentType": "reviewer-helper"}), encoding="utf-8"
@@ -417,5 +471,4 @@ def test_poll_new_subagent_turns_picks_up_newly_created_file(
         _assistant_line(input_tokens=9), encoding="utf-8"
     )
 
-    new_poll = _poll_new_subagent_turns(subagents_dir, emitted_counts)
-    assert [t.input_tokens for t in new_poll] == [9]
+    assert [t.input_tokens for t in _read_all_subagent_turns(session_path)] == [9]
