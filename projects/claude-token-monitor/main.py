@@ -310,6 +310,39 @@ def find_latest_session_file(project_dir: Path) -> Path:
     return candidates[0]
 
 
+def find_session_file_by_id(session: str) -> Path:
+    """`~/.claude/projects/` 配下を横断してセッションIDに対応するJSONLファイルを探す。
+
+    セッションの実行中に `EnterWorktree` 等でカレントディレクトリが変わっても、
+    そのセッションのトランスクリプト自体は開始時のプロジェクトディレクトリに
+    紐づいたまま(セッションIDのファイルが別ディレクトリへ移動することはない)。
+    そのため`--project-dir`を省略して`--session`だけを頼りに横断検索すれば、
+    呼び出し側が現在のカレントディレクトリを気にする必要がなくなる。
+
+    Args:
+        session: 探索対象のセッションID(JSONLファイル名の拡張子抜き)。
+
+    Returns:
+        該当するJSONLファイルのパス。
+
+    Raises:
+        FileNotFoundError: 該当ファイルが1件も見つからない、または複数見つかった場合。
+    """
+    matches = sorted(CLAUDE_PROJECTS_DIR.glob(f"*/{session}.jsonl"))
+    if not matches:
+        raise FileNotFoundError(
+            f"セッションID '{session}' に該当するJSONLファイルが"
+            f"{CLAUDE_PROJECTS_DIR} 配下に見つかりません"
+        )
+    if len(matches) > 1:
+        candidates = ", ".join(str(m) for m in matches)
+        raise FileNotFoundError(
+            f"セッションID '{session}' に該当するJSONLファイルが複数見つかりました"
+            f"(--project-dirで絞り込んでください): {candidates}"
+        )
+    return matches[0]
+
+
 def resolve_session_file(
     file: str | None, session: str | None, project_dir: str | None
 ) -> Path:
@@ -327,6 +360,8 @@ def resolve_session_file(
     """
     if file is not None:
         return Path(file)
+    if session is not None and project_dir is None:
+        return find_session_file_by_id(session)
     target_dir = (
         Path(project_dir).expanduser().resolve()
         if project_dir is not None
@@ -1038,7 +1073,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--file", help="監視/集計対象のJSONLファイルを直接指定する")
     common.add_argument(
-        "--session", help="セッションID(JSONLファイル名の拡張子抜き)を指定する"
+        "--session",
+        help="セッションID(JSONLファイル名の拡張子抜き)を指定する"
+        "(`--project-dir`を省略した場合は`~/.claude/projects/`配下を横断検索するため、"
+        "セッション中にカレントディレクトリが変わっても追跡できる)",
     )
     common.add_argument(
         "--project-dir",
