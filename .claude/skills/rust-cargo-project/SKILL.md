@@ -73,47 +73,7 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 
 2. **未導入の場合、ユーザーローカルに導入する**
    - **これはホスト環境に実際にソフトウェアを導入する操作であり、rustupの場合はシェル設定ファイル（`~/.bashrc` 等）へのPATH追記も伴う。** ユーザーが今回の依頼で明示的にこの方法を指定していない場合は、実行前に「Rustツールチェーン/justが入っていないのでユーザーローカルに導入してよいか（sudoは使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
-
-   **rustup（ツールチェーン本体）:**
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-   ```
-   - `~/.cargo` と `~/.rustup` に入り、`~/.cargo/env` を読む行が `~/.bashrc` に追記される。
-   - **注意**: `~/.bashrc` は非対話シェルだと冒頭の `case $- in *i*) ;; *) return;; esac` で早期returnする。そのためシェルツール経由（非対話シェル）で動作確認する際は `source ~/.bashrc` が効かない。`source "$HOME/.cargo/env"` を直接読むか、`export PATH="$HOME/.cargo/bin:$PATH"` をそのコマンド内で明示すること。
-
-   **カバレッジ計測用コンポーネントと追加ツール:**
-   ```bash
-   rustup component add llvm-tools-preview
-   cargo install cargo-llvm-cov cargo-deny --locked
-   ```
-   - `llvm-tools-preview` を入れ忘れると `cargo llvm-cov` が実行時にエラーになる。
-   - `cargo install` はソースからビルドするため、cargo-denyを含めて数分かかる。`--locked` はクレート側の `Cargo.lock` を使わせる指定で、ビルドが壊れにくくなる。
-   - `~/.cargo/bin/` に配置される（rustupが同じディレクトリをPATHに通しているので追加のPATH設定は不要）。
-
-   **just（タスクランナー）:**
-   - justはRust製の単体バイナリで、`cargo install` の対象にはできるが数分かかるビルドが必要になる。GitHub Releasesにtarballと集約チェックサムファイル（`SHA256SUMS`）が公開されているため、それを取得して照合してから展開する方がはるかに速い。
-     ```bash
-     VERSION=<確認したバージョン、例: 1.58.0>
-     curl -LsSf -o /tmp/just.tar.gz \
-       "https://github.com/casey/just/releases/download/${VERSION}/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-     curl -LsSf -o /tmp/just-SHA256SUMS \
-       "https://github.com/casey/just/releases/download/${VERSION}/SHA256SUMS"
-     ```
-   - `sha256sum -c` は相対パスで実行するかフルパスを一致させる必要があるので、`/tmp` に `cd` してから実行する。
-     ```bash
-     grep "just-${VERSION}-x86_64-unknown-linux-musl.tar.gz$" /tmp/just-SHA256SUMS > /tmp/just-checksum-line.txt
-     mkdir -p /tmp/just-extract
-     cp /tmp/just.tar.gz "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-     cp /tmp/just-checksum-line.txt /tmp/just-extract/checksum.txt
-     cd /tmp/just-extract && sha256sum -c checksum.txt
-     ```
-   - 検証が通ったら展開し、`~/.local/bin/just` に配置する（rustupのツールチェーンとは無関係のバイナリのため `~/.cargo/bin` ではなくこのリポジトリ共通の `~/.local/bin` を使う）。
-     ```bash
-     tar -C /tmp/just-extract -xzf "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz" just
-     mkdir -p ~/.local/bin
-     mv /tmp/just-extract/just ~/.local/bin/just
-     ```
-   - 一時ファイル（`/tmp/just*`）は導入後に削除する。`~/.local/bin` がまだ `PATH` に無ければ `~/.bashrc` に追記する。
+   - 具体的な導入コマンド（rustup・カバレッジ計測用コンポーネント・cargo-llvm-cov・cargo-deny・just）は `references/install.md` を参照する。
 
 3. **配置先とプロジェクト名を確認する**
    - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に1プロジェクトとして自己完結させる。
@@ -156,27 +116,7 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 
 6. **動作確認する**
 
-   `<配置先>` に移動し、以下を順に確認する。非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら `source "$HOME/.cargo/env"` を各コマンドの前に入れる。
-
-   - 引数なしで `just` を実行し、レシピ一覧（`just --list`相当）が表示されることを確認する。
-   - **`just lock` を最初に実行する。** これを飛ばすと以降の `--locked` 付きコマンドが全て `cannot create the lock file` で落ちる。生成された `Cargo.lock` はコミット対象。
-   - `just fmt-check` が差分なしで終了することを確認する（テンプレートはrustfmt適用済みの状態にしてある）。
-   - `just lint` が警告ゼロで終了することを確認する。
-   - `just run` を実行し、`Hello, world!` が出力されることを確認する。引数付きの動作は `cargo run --locked -- Rust` で確認できる。
-   - `just test` を実行し、ユニットテスト4件・統合テスト3件・doctest 2件が全て通ることを確認する。
-   - `just cover` を実行し、ファイルごとのカバレッジ表と未カバー行番号が表示されることを確認する（`src/main.rs` はテストから呼ばれないので0%になるのが正常）。
-   - `just cover-html` を実行し、`target/llvm-cov/html/index.html` が生成されることを確認する。
-   - 手順5でVS Code向け設定を配置した場合は `just cover-all` を実行し、`lcov.info` と `target/llvm-cov/html/index.html` が**両方同時に**存在することを確認する（`just cover-lcov` を単体で実行するとHTMLレポート側が消えるため、両方を確認したいときは `cover-all` を使う）。
-   - `just doc` を実行し、`target/doc/<スネークケースのクレート名>/index.html` が生成されることを確認する。
-   - `just deny` を実行し、`advisories ok, bans ok, licenses ok, sources ok` と表示されることを確認する。
-   - 最後に `just clean` で `target/` と `lcov.info` を削除し、コミット対象に成果物が残っていないことを `git status` で確かめる。
-
-   **lintが本当に効いているかを反証で確かめる**（設定を書いただけで実は無効、という状態を防ぐため。以下はいずれも検証済みで、確認後は必ず元に戻すこと）:
-   - `src/greeting.rs` の `///` コメントを削ると、`missing documentation for a struct` / `missing documentation for a function`（いずれも `pub` なアイテム）と `docs for function returning \`Result\` missing \`# Errors\` section` が `just lint` で検出される。private な `format_greeting` にはドキュメンテーションコメントを強制していないので、そちらのコメントを削っても `just lint` は落ちない。
-   - `src/main.rs` 冒頭の `//!` を削ると `missing documentation for the crate` が検出される。
-   - `src/greeting.rs` の `` [`try_greet`] `` を存在しない名前に書き換えると、`just doc` が `unresolved link to ...` で落ちる（`just lint` では検出されない。rustdocのlintなので `cargo doc` 側で出る）。
-   - `Cargo.toml` の依存を `foo = "*"` のようなワイルドカード指定にすると `just deny` が `error[wildcard]` で落ちる。`cargo add <crate> --git <URL>` でgit依存を足すと `error[source-not-allowed]` で落ちる。
-   - `src/greeting.rs` の `try_greet(name).unwrap_or_else(...)` を `try_greet(name).unwrap()` に書き換えると `used \`unwrap()\` on a \`Result\` value` が `just lint` で検出される。
+   `<配置先>` に移動し、`references/verify.md` の手順に従って確認する。非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら `source "$HOME/.cargo/env"` を各コマンドの前に入れる。lintが本当に効いているかを反証で確かめる場合は `references/counter-tests.md` を参照する（設定を書いただけで実は無効、という状態を防ぐため。確認後は必ず元に戻すこと）。
 
 ## このスキルの対象外
 

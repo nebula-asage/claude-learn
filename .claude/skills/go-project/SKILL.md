@@ -35,84 +35,7 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
 
 2. **未導入の場合、ユーザーローカルに導入する**
    - **これはホスト環境に実際にソフトウェアを導入する操作であり、`~/.bashrc` へのPATH追記も伴う。** ユーザーが今回の依頼で明示的にこの方法を指定していない場合は、実行前に「Go/golangci-lint/gomarkdoc/gcov2lcov/justが入っていないのでユーザーローカルに導入してよいか（sudoは使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
-
-   **Go本体:**
-   - `https://go.dev/dl/?mode=json` を参照し、`stable: true` かつ `os: linux` / `arch: amd64`（環境に応じて調整）の最新版tarballのファイル名・sha256を確認する。
-   - tarballをダウンロードし、`sha256sum -c` で公式が公開しているハッシュと一致することを確認してから展開する。ここで検証をスキップしない。
-     ```bash
-     curl -LsSf -o /tmp/go.tar.gz https://go.dev/dl/<filename>
-     echo "<sha256>  /tmp/go.tar.gz" | sha256sum -c -
-     mkdir -p ~/sdk
-     rm -rf ~/sdk/go
-     tar -C ~/sdk -xzf /tmp/go.tar.gz
-     ```
-   - `~/.bashrc` に以下を追記する（`GOPATH` はデフォルトの `~/go` を使う）。
-     ```bash
-     export GOROOT="$HOME/sdk/go"
-     export GOPATH="$HOME/go"
-     export PATH="$GOROOT/bin:$GOPATH/bin:$PATH"
-     ```
-   - **注意**: `~/.bashrc` は非対話シェルだと冒頭の `case $- in *i*) ;; *) return;; esac` で早期returnする。そのため、この後の動作確認をシェルツール経由（非対話シェル）で行う際は `source ~/.bashrc` が効かない。動作確認時は `export GOROOT=... GOPATH=... PATH=...` を明示的にそのコマンド内で設定してから実行すること。
-
-   **golangci-lint:**
-   - `https://github.com/golangci/golangci-lint/releases` で最新バージョンを確認する。
-   - **`install.sh` は使わない**（前述の通り資産選択バグでchecksum検証に失敗する既知の問題があるため）。代わりにGitHub Releasesからtarballと `checksums.txt` を直接取得し、突き合わせる。
-     ```bash
-     VERSION=<確認したバージョン、例: 2.12.2>
-     curl -LsSf -o /tmp/golangci-lint.tar.gz \
-       "https://github.com/golangci/golangci-lint/releases/download/v${VERSION}/golangci-lint-${VERSION}-linux-amd64.tar.gz"
-     curl -LsSf -o /tmp/golangci-lint-checksums.txt \
-       "https://github.com/golangci/golangci-lint/releases/download/v${VERSION}/golangci-lint-${VERSION}-checksums.txt"
-     grep "linux-amd64.tar.gz$" /tmp/golangci-lint-checksums.txt | sha256sum -c -
-     ```
-     （`sha256sum -c` は相対パスで実行するかフルパスを一致させる必要があるので、`/tmp` に `cd` してから実行するとよい）
-   - 検証が通ったら展開し、`$(go env GOPATH)/bin/golangci-lint` に配置する。
-     ```bash
-     tar -C /tmp/golangci-lint-extract -xzf /tmp/golangci-lint.tar.gz
-     mkdir -p "$(go env GOPATH)/bin"
-     cp /tmp/golangci-lint-extract/golangci-lint-${VERSION}-linux-amd64/golangci-lint "$(go env GOPATH)/bin/golangci-lint"
-     chmod +x "$(go env GOPATH)/bin/golangci-lint"
-     ```
-   - 一時ファイル（`/tmp/golangci-lint*`）は導入後に削除する。
-
-   **gomarkdoc:**
-   - `go install` で導入する。Goのモジュールシステムが標準でチェックサム検証（GOSUMDB）を行うため、golangci-lintのような追加の手動検証は不要。
-     ```bash
-     go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
-     ```
-   - `$(go env GOPATH)/bin/gomarkdoc` に配置される。多数の間接依存（cobra/viper等）を取得するため初回はやや時間がかかる点に留意する。
-
-   **gcov2lcov:**
-   - `go install` で導入する。gomarkdocと同様、GOSUMDBによるチェックサム検証があるため追加の手動検証は不要。
-     ```bash
-     go install github.com/jandelgado/gcov2lcov@latest
-     ```
-   - `$(go env GOPATH)/bin/gcov2lcov` に配置される。
-
-   **just:**
-   - justはRust製の単体バイナリで、golangci-lintと違い `go install` の対象外。GitHub Releasesにtarballと集約チェックサムファイル（`SHA256SUMS`）が公開されているため、それを取得して照合してから展開する。
-     ```bash
-     VERSION=<確認したバージョン、例: 1.58.0>
-     curl -LsSf -o /tmp/just.tar.gz \
-       "https://github.com/casey/just/releases/download/${VERSION}/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-     curl -LsSf -o /tmp/just-SHA256SUMS \
-       "https://github.com/casey/just/releases/download/${VERSION}/SHA256SUMS"
-     ```
-   - `sha256sum -c` は相対パスで実行するかフルパスを一致させる必要があるので、`/tmp` に `cd` してから実行する。
-     ```bash
-     grep "just-${VERSION}-x86_64-unknown-linux-musl.tar.gz$" /tmp/just-SHA256SUMS > /tmp/just-checksum-line.txt
-     mkdir -p /tmp/just-extract
-     cp /tmp/just.tar.gz "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-     cp /tmp/just-checksum-line.txt /tmp/just-extract/checksum.txt
-     cd /tmp/just-extract && sha256sum -c checksum.txt
-     ```
-   - 検証が通ったら展開し、`~/.local/bin/just` に配置する（Goツールチェーンとは無関係のバイナリのため `$(go env GOPATH)/bin` ではなくこのリポジトリ共通の `~/.local/bin` を使う）。
-     ```bash
-     tar -C /tmp/just-extract -xzf "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz" just
-     mkdir -p ~/.local/bin
-     mv /tmp/just-extract/just ~/.local/bin/just
-     ```
-   - 一時ファイル（`/tmp/just*`）は導入後に削除する。`~/.local/bin` がまだ `PATH` に無ければ `~/.bashrc` に追記する。
+   - 具体的な導入コマンド（Go本体・golangci-lint・gomarkdoc・gcov2lcov・just）は `.claude/skills/go-project/references/install.md` を参照する。
 
 3. **配置先とプロジェクト名を確認する**
    - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に1プロジェクトとして自己完結させる。
@@ -138,24 +61,7 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
      - `devcontainer.json`が存在しない場合: `.claude/skills/go-project/templates/vscode/extensions.json`の内容を`<配置先>/.vscode/extensions.json`にマージする（既存の`recommendations`があれば重複を除いて追記し、既存の非Go系の推奨拡張機能はそのまま残す）。
 
 6. **動作確認する**
-   `<配置先>` に移動し、以下を確認する。前述の通り、非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら各コマンドの前に `export GOROOT/GOPATH/PATH` を明示する。確認後、動作確認で生成された `coverage.out` / `coverage.html` / `coverage.lcov` / `API.md`（各パッケージディレクトリ配下）は `just clean` で削除し、コミット対象に残さないこと。
-   - 引数なしで `just` を実行し、レシピ一覧（`just --list`相当）が表示されることを確認する。
-   - `just run`（`go run .`）を実行し、正常に動作することを確認する。
-   - `just fmt`（`gofmt -l -w .`）を実行し、フォーマットが適用されることを確認する。
-   - `just lint`（`golangci-lint run ./...`）が `0 issues.` で終了することを確認する。`main.go`・`internal/greeting/greeting.go` にパッケージコメント／関数コメントが入っているかもここで再確認する。
-   - `just test`（`go test ./... -v`）を実行し、テンプレート同梱のサンプルテスト（`internal/greeting/greeting_test.go`）が通ることを確認する。
-   - `just cover` を実行し、ターミナルに関数ごとのカバレッジ（`go tool cover -func`）が表示されることを確認する。
-   - `just cover-html` を実行し、`coverage.html` が生成されることを確認する。
-   - 手順5でVS Code向け設定を配置した場合は、`just cover-lcov` を実行し、`coverage.lcov` が生成されることも確認する（VS Codeで開いてCoverage Gutters拡張の「Watch」コマンドを実行すると、テストで呼ばれていない行があればエディタのガターに未被覆として表示されるはずだが、これはVS Code上での見た目の確認なので必須ではない）。
-   - `just doc` を実行し、ドキュメンテーションコメントから生成されたMarkdownがターミナルに表示されることを確認する。
-   - `just doc-report` を実行し、`internal/greeting/API.md`（および `main` パッケージ側）にAPIリファレンスが生成されることを確認する。`gomarkdoc`自身のテンプレート構文（`{{.Dir}}`）とjustのテンプレート展開が衝突するため、`justfile`側でエスケープしている点に注意する（詳細はjustfileのコメント参照。gomarkdocの出力パス指定を直接書くとjustが`{{.Dir}}`をjust式として解析しようとして構文エラーになる）。
-   - `just clean` で `coverage.out` / `coverage.html` / `coverage.lcov` / `API.md` を削除する。
-
-   **lintが本当に効いているかを反証で確かめる**（設定を書いただけで実は無効、という状態を防ぐため。以下はいずれも検証済みで、確認後は必ず元に戻すこと）:
-   - `internal/greeting/greeting.go` の `Greet` 関数のコメントを削ると、`exported: exported function Greet should have comment or be unexported (revive)` が `just lint` で検出される。
-   - `internal/greeting/greeting.go` または `main.go` 冒頭の `// Package ... は` を削ると、`package-comments: should have a package comment (revive)` が検出される。
-   - `os.Setenv(...)` のようなエラーを返す呼び出しの戻り値を受け取らずに書くと、`Error return value of ... is not checked (errcheck)` が検出される。
-   - 使わない変数への再代入（例: 後で上書きされるだけの `result := "unused"`）を書くと、`ineffectual assignment to result (ineffassign)` が検出される。
+   `<配置先>` に移動し、`.claude/skills/go-project/references/verify.md` の手順に従って確認する。前述の通り、非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら各コマンドの前に `export GOROOT/GOPATH/PATH` を明示する。lintが本当に効いているかを反証で確かめる場合は `.claude/skills/go-project/references/counter-tests.md` を参照する（設定を書いただけで実は無効、という状態を防ぐため。確認後は必ず元に戻すこと）。
 
 ## このスキルの対象外
 

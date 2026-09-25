@@ -33,39 +33,7 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
 
 2. **未導入の場合、ユーザーローカルに導入する**
    - **これはホスト環境に実際にソフトウェアを導入する操作であり、シェルの設定ファイル（`~/.bashrc` 等）へのPATH追記も伴う。** ユーザーが今回の依頼で明示的にこの方法を指定していない場合は、実行前に「uv/justが入っていないのでユーザーローカルに導入してよいか」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
-
-   **uv:**
-   - [uv公式が推奨するインストーラー](https://docs.astral.sh/uv/getting-started/installation/)を使う。
-     ```bash
-     curl -LsSf https://astral.sh/uv/install.sh | sh
-     ```
-   - インストール後は新しいシェルを開くかプロファイルを再読込しないと `uv` コマンドが見つからないことがある点に注意する（`source ~/.bashrc` 等、あるいはインストーラーが出力するPATHの案内に従う）。
-   - 続けて `uv python install 3.12` を実行する。これでdistro提供のpythonに頼らず、uvが管理するPythonが使えるようになる。
-
-   **just（タスクランナー）:**
-   - justはRust製の単体バイナリで、GitHub Releasesにtarballと集約チェックサムファイル（`SHA256SUMS`）が公開されているため、それを取得して照合してから展開する。
-     ```bash
-     VERSION=<確認したバージョン、例: 1.58.0>
-     curl -LsSf -o /tmp/just.tar.gz \
-       "https://github.com/casey/just/releases/download/${VERSION}/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-     curl -LsSf -o /tmp/just-SHA256SUMS \
-       "https://github.com/casey/just/releases/download/${VERSION}/SHA256SUMS"
-     ```
-   - `sha256sum -c` は相対パスで実行するかフルパスを一致させる必要があるので、`/tmp` に `cd` してから実行する。
-     ```bash
-     grep "just-${VERSION}-x86_64-unknown-linux-musl.tar.gz$" /tmp/just-SHA256SUMS > /tmp/just-checksum-line.txt
-     mkdir -p /tmp/just-extract
-     cp /tmp/just.tar.gz "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-     cp /tmp/just-checksum-line.txt /tmp/just-extract/checksum.txt
-     cd /tmp/just-extract && sha256sum -c checksum.txt
-     ```
-   - 検証が通ったら展開し、`~/.local/bin/just` に配置する。
-     ```bash
-     tar -C /tmp/just-extract -xzf "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz" just
-     mkdir -p ~/.local/bin
-     mv /tmp/just-extract/just ~/.local/bin/just
-     ```
-   - 一時ファイル（`/tmp/just*`）は導入後に削除する。`~/.local/bin` がまだ `PATH` に無ければ `~/.bashrc` に追記する。
+   - 具体的な導入コマンド（uv・`uv python install`・just）は `.claude/skills/python-uv-project/references/install.md` を参照する。
 
 3. **配置先とプロジェクト名を確認する**
    - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に1プロジェクトとして自己完結させる。
@@ -90,28 +58,10 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
    - `settings.json`/`extensions.json`（および `devcontainer.json`）はJSONC（コメント付きJSON）として解釈されるため、標準の `jq` に通す前にコメント行を取り除くか、目視でカンマ・かっこの対応を確認する。
 
 6. **依存関係を同期し、動作確認する**
-   `<配置先>` に移動し、以下を確認する。確認後、テストで作った一時的な依存追加や `uv.lock` / `.venv` / `.pytest_cache` / `htmlcov` / `.coverage` / `coverage.lcov` / `apidocs` は元に戻す/削除すること。
-   - `just sync`（`uv sync`）を実行し、`pyproject.toml` に記載した `ruff`/`pytest`/`pytest-cov`/`pdoc` を含む依存が解決されることを確認する（`uv.lock` が生成される。これはコミット対象）。
-   - 引数なしで `just` を実行し、レシピ一覧（`just --list`相当）が表示されることを確認する。
-   - `just run`（`uv run main.py`）を実行し、`.venv` の自動生成込みで動くことを確認する。
-   - `just lint`（`uv run ruff check .`）が警告なしで終了する（exit 0）ことを確認する。ruffは `.venv` をデフォルトで除外するため、flake8の頃のような除外設定は不要。テンプレートの `main.py` にはdocstringが入っているので、まずはこれが素直に通ることを確認し、そのうえで一時的に `main.py` のdocstringを削って `D100`/`D103` が検出されること・`tests/test_main.py` にdocstringが無くてもエラーにならないことも確認するとよい（確認後は削った内容を必ず元に戻す）。
-   - `ruff` の `DOC` ルールによる引数名不一致検出も確認する。一時的に `main.py` の `greet` 関数のdocstring内の `Args:` の引数名（`name`）だけを別の文字列（例: `nam`）に書き換え、`just lint` で `docstring-extraneous-parameter`（シグネチャに無い `nam`）と `undocumented-param`（記述漏れの `name`）の両方が検出されることを確認する。確認後は必ず元の引数名に戻す。
-   - `just fmt-check`（`uv run ruff format --check .`）で `main.py`/`tests/test_main.py` がruffのフォーマットに沿っていることを確認する。
-   - `just test`（`uv run pytest`）を実行し、テンプレート同梱のサンプルテスト（`tests/test_main.py`）が通ることを確認する。
-   - `just cover` を実行し、ターミナルにカバレッジのサマリと未カバー行が表示されることを確認する（`.venv/`・`tests/` がカバレッジ集計から除外されているかも見る）。
-   - `just cover-html` を実行し、`htmlcov/index.html` が生成されることを確認する。
-   - 手順5でVS Code向け設定を配置した場合は、`just cover-lcov` を実行し、`coverage.lcov` が生成されることも確認する（VS Codeで開いてCoverage Gutters拡張の「Watch」コマンドを実行すると、`tests/test_main.py` から呼ばれていない行があればエディタのガターに未被覆として表示されるはずだが、これはVS Code上での見た目の確認なので必須ではない）。
-   - `just doc`（`uv run pdoc main.py -d google -o apidocs`）を実行し、`apidocs/index.html` と `apidocs/main.html` が生成されることを確認する。`main.html` を開き（またはgrepで）、`greet` のdocstringの `Args:`/`Returns:` が見出し付きで描画されていることも確認する。
-   - `just clean` を実行し、`htmlcov`/`.coverage`/`coverage.lcov`/`apidocs`/`.pytest_cache`/`.ruff_cache` が削除されることを確認する。
-   - `exclude-newer` が効いているかは、適当なパッケージを試験的に追加してverboseログを見て確認する。例: `uv add <パッケージ名> -v 2>&1 | grep -i exclude` を実行し、`Solving with exclude-newer: global: <実行日の7日前の日時>` のような行が出ることを確認する。確認後はこの試験的な依存追加を `pyproject.toml` から取り除く。
-   - `just audit`（`uvx pip-audit -r <一時ファイル>`）を実行し、まずテンプレート標準の依存構成で `No known vulnerabilities found` になることを確認する。そのうえで `pip-audit` が実際に検出できているかの反証テストとして、既知の脆弱性を持つ古いバージョンのパッケージ（例: `uv add urllib3==1.26.4`）を一時的に追加し、`just audit` が `Found N known vulnerabilities` として検出することを確認する。確認後はこの試験的な依存追加を `pyproject.toml` から取り除き、`uv sync` で `.venv`/`uv.lock` を元の依存構成に戻す。
+   `<配置先>` に移動し、`.claude/skills/python-uv-project/references/verify.md` の手順に従って確認する（正常動作の確認とlint/検査の実効性の反証が同じ手順の中に混在している。反証部分の確認後は必ず元に戻すこと）。確認後、テストで作った一時的な依存追加や `uv.lock` / `.venv` / `.pytest_cache` / `htmlcov` / `.coverage` / `coverage.lcov` / `apidocs` は元に戻す/削除すること。
 
 7. **（任意）bash補完を有効化する**
-   - uvは `uv generate-shell-completion bash` でbash補完スクリプトを生成できる。ホスト環境ではroot権限で `/etc/bash_completion.d/` に置く方法は使えないことが多いので、ユーザー単位で有効化する。
-     ```bash
-     echo 'eval "$(uv generate-shell-completion bash)"' >> ~/.bashrc
-     ```
-   - これもユーザーのシェル設定ファイルを変更する操作なので、追加してよいか確認してから実施する。
+   - 手順は `.claude/skills/python-uv-project/references/install.md` を参照する。
 
 ## このスキルの対象外
 
