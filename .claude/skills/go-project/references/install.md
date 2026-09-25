@@ -73,32 +73,11 @@
 
 **just:**
 
-- justはRust製の単体バイナリで、golangci-lintと違い `go install` の対象外。GitHub Releasesにtarballと集約チェックサムファイル（`SHA256SUMS`）が公開されているため、それを取得して照合してから展開する。
+- justはRust製の単体バイナリで、golangci-lintと違い `go install` の対象外。GitHub Releasesにtarballと集約チェックサムファイル（`SHA256SUMS`）が公開されているため、それを取得して照合してから展開する。導入・チェックサム検証・一時ファイルの後片付けは同梱スクリプトに任せる（Goツールチェーンとは無関係のバイナリのため `$(go env GOPATH)/bin` ではなくこのリポジトリ共通の `~/.local/bin` に配置する）。
 
   ```bash
-  VERSION=<確認したバージョン、例: 1.58.0>
-  curl -LsSf -o /tmp/just.tar.gz \
-    "https://github.com/casey/just/releases/download/${VERSION}/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-  curl -LsSf -o /tmp/just-SHA256SUMS \
-    "https://github.com/casey/just/releases/download/${VERSION}/SHA256SUMS"
+  VERSION=<GitHub Releasesで確認したバージョン、例: 1.58.0>
+  bash .claude/skills/go-project/scripts/install-just.sh "$VERSION"
   ```
 
-- `sha256sum -c` は相対パスで実行するかフルパスを一致させる必要があるので、`/tmp` に `cd` してから実行する。
-
-  ```bash
-  grep "just-${VERSION}-x86_64-unknown-linux-musl.tar.gz$" /tmp/just-SHA256SUMS > /tmp/just-checksum-line.txt
-  mkdir -p /tmp/just-extract
-  cp /tmp/just.tar.gz "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-  cp /tmp/just-checksum-line.txt /tmp/just-extract/checksum.txt
-  cd /tmp/just-extract && sha256sum -c checksum.txt
-  ```
-
-- 検証が通ったら展開し、`~/.local/bin/just` に配置する（Goツールチェーンとは無関係のバイナリのため `$(go env GOPATH)/bin` ではなくこのリポジトリ共通の `~/.local/bin` を使う）。
-
-  ```bash
-  tar -C /tmp/just-extract -xzf "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz" just
-  mkdir -p ~/.local/bin
-  mv /tmp/just-extract/just ~/.local/bin/just
-  ```
-
-- 一時ファイル（`/tmp/just*`）は導入後に削除する。`~/.local/bin` がまだ `PATH` に無ければ `~/.bashrc` に追記する。
+- `~/.local/bin` がまだ `PATH` に無い場合、スクリプトはその旨を表示するだけで `~/.bashrc` は変更しない（シェル設定ファイルの変更は事前にユーザー確認が要るため）。追記が必要な場合はユーザーに確認したうえで行う。
