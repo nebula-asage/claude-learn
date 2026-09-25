@@ -63,6 +63,7 @@ class TurnUsage:
     output_tokens: int
     cache_creation_input_tokens: int
     cache_read_input_tokens: int
+    source: str = "main"
 
     @property
     def total_tokens(self) -> int:
@@ -135,11 +136,15 @@ def parse_turn(line: str) -> TurnUsage | None:
     return parsed[1] if parsed is not None else None
 
 
-def _read_turns_with_ids(path: Path) -> tuple[list[TurnUsage], set[str]]:
+def _read_turns_with_ids(
+    path: Path, source: str = "main"
+) -> tuple[list[TurnUsage], set[str]]:
     """トランスクリプトJSONLファイル全体を読み込み、重複除去済みのターン一覧を返す。
 
     Args:
         path: トランスクリプトJSONLファイルのパス。
+        source: 各ターンの `TurnUsage.source` に設定する値
+            (メインセッションなら `"main"`、サブエージェントなら`agentType`)。
 
     Returns:
         `(重複除去済みのターン一覧, 出現したmessage.idの集合)`。空文字列の
@@ -157,11 +162,12 @@ def _read_turns_with_ids(path: Path) -> tuple[list[TurnUsage], set[str]]:
                 if message_id in seen_ids:
                     continue
                 seen_ids.add(message_id)
+            turn.source = source
             turns.append(turn)
     return turns, seen_ids
 
 
-def read_turns(path: Path) -> list[TurnUsage]:
+def read_turns(path: Path, source: str = "main") -> list[TurnUsage]:
     """トランスクリプトJSONLファイル全体を読み込み、ターンの一覧を返す。
 
     同一の `message.id` を持つ行(1回のAPIレスポンスが複数のcontentブロック
@@ -170,11 +176,85 @@ def read_turns(path: Path) -> list[TurnUsage]:
 
     Args:
         path: トランスクリプトJSONLファイルのパス。
+        source: 各ターンの `TurnUsage.source` に設定する値
+            (メインセッションなら `"main"`、サブエージェントなら`agentType`)。
 
     Returns:
         ファイル中の重複除去済みターンをusageの出現順に並べたリスト。
     """
-    turns, _ = _read_turns_with_ids(path)
+    turns, _ = _read_turns_with_ids(path, source)
+    return turns
+
+
+def find_subagent_dir(session_path: Path) -> Path:
+    """メインセッションJSONLのパスからサブエージェント格納ディレクトリのパスを返す。
+
+    実在するとは限らない。
+
+    Args:
+        session_path: メインセッションJSONLファイルのパス。
+
+    Returns:
+        `<session_pathと同じディレクトリ>/<session_pathのstem>/subagents/` のパス。
+    """
+    return session_path.parent / session_path.stem / "subagents"
+
+
+def _read_agent_type(meta_path: Path) -> str:
+    """サブエージェントの `*.meta.json` から `agentType` を読み取る。
+
+    Args:
+        meta_path: サブエージェントのトランスクリプトに対応する `.meta.json` のパス。
+
+    Returns:
+        `agentType` の値。ファイルが無い・壊れている・キーが空の場合は `"subagent"`。
+    """
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "subagent"
+    return meta.get("agentType") or "subagent"
+
+
+def find_subagent_transcripts(session_path: Path) -> list[Path]:
+    """メインセッションに紐づく、完了済みサブエージェントのトランスクリプト一覧を返す。
+
+    Claude Codeは `Agent` ツールで起動したサブエージェントの実行結果を、完了後に
+    `<session>/subagents/agent-<hash>.jsonl` として永続化する(実行中は `/tmp`
+    配下の一時ファイルにのみ存在し、このディレクトリには現れない)。
+
+    Args:
+        session_path: メインセッションJSONLファイルのパス。
+
+    Returns:
+        `<session>/subagents/*.jsonl` にマッチするファイルパスの一覧(ファイル名順)。
+        ディレクトリが存在しなければ空リスト。
+    """
+    subagents_dir = find_subagent_dir(session_path)
+    if not subagents_dir.is_dir():
+        return []
+    return sorted(subagents_dir.glob("*.jsonl"))
+
+
+def read_all_turns(session_path: Path) -> list[TurnUsage]:
+    """メインセッションと完了済み全サブエージェントを合わせ、timestamp昇順で返す。
+
+    ccusageは `~/.claude/projects/` 配下を再帰的に走査して集計しており、
+    サブエージェント分のトランスクリプト(`<session>/subagents/agent-*.jsonl`)も
+    その対象に含まれる。この関数はそれに合わせて同じ範囲を集計する。
+
+    Args:
+        session_path: 対象のメインセッションJSONLファイルのパス。
+
+    Returns:
+        メインセッションと全サブエージェントのターンをtimestamp昇順にまとめたリスト。
+        各ターンの `source` には `"main"` または `meta.json` の `agentType` が入る。
+    """
+    turns = read_turns(session_path, source="main")
+    for jsonl_path in find_subagent_transcripts(session_path):
+        agent_type = _read_agent_type(jsonl_path.with_suffix(".meta.json"))
+        turns.extend(read_turns(jsonl_path, source=agent_type))
+    turns.sort(key=lambda t: t.timestamp)
     return turns
 
 
@@ -264,6 +344,7 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
     )
     table.add_column("#", justify="right")
     table.add_column("時刻", justify="left")
+    table.add_column("エージェント", justify="left")
     table.add_column("モデル", justify="left")
     table.add_column("input", justify="right")
     table.add_column("output", justify="right")
@@ -277,6 +358,7 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
         table.add_row(
             str(i),
             t.timestamp,
+            t.source,
             t.model,
             f"{t.input_tokens:,}",
             f"{t.output_tokens:,}",
@@ -291,6 +373,7 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
         "累計",
         "",
         "",
+        "",
         f"{totals.input_tokens:,}",
         f"{totals.output_tokens:,}",
         f"{totals.cache_creation_input_tokens:,}",
@@ -301,8 +384,43 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
     return table
 
 
+def _poll_new_subagent_turns(
+    subagents_dir: Path, emitted_counts: dict[Path, int]
+) -> list[TurnUsage]:
+    """subagents_dir配下を読み直し、前回poll時点より後ろの新規ターンだけを返す。
+
+    サブエージェントのトランスクリプトは追記のみで過去の行が変わらないため、
+    `read_turns` が返す重複除去済みリストの「前回までに返した件数より後ろ」を
+    新規分とみなす。書き込み途中の不完全な行はその回はNoneとして無視され、
+    完全な行になった次回のpollで自然に拾われる。
+
+    Args:
+        subagents_dir: 監視対象セッションの `<session>/subagents/` ディレクトリ。
+        emitted_counts: ファイルパスごとの、前回までに新規分として返した件数
+            (呼び出し側が保持し、この呼び出しのたびに更新される)。
+
+    Returns:
+        前回のpoll以降に新しく出現したターンの一覧(ファイル名順、ファイル内は出現順)。
+        ディレクトリが存在しなければ空リスト。
+    """
+    new_turns: list[TurnUsage] = []
+    if not subagents_dir.is_dir():
+        return new_turns
+    for jsonl_path in sorted(subagents_dir.glob("*.jsonl")):
+        agent_type = _read_agent_type(jsonl_path.with_suffix(".meta.json"))
+        turns = read_turns(jsonl_path, source=agent_type)
+        already = emitted_counts.get(jsonl_path, 0)
+        if len(turns) > already:
+            new_turns.extend(turns[already:])
+            emitted_counts[jsonl_path] = len(turns)
+    return new_turns
+
+
 def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
     """セッションJSONLを末尾から監視し、ターン毎のトークン使用量をライブ表示する。
+
+    メインセッションの新規行に加え、`<session>/subagents/` 配下に完了済み
+    サブエージェントのトランスクリプトが現れた場合もポーリングで取り込む。
 
     Args:
         path: 監視対象のセッションJSONLファイルのパス。
@@ -318,6 +436,11 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
         raise SystemExit(1)
 
     turns, seen_ids = _read_turns_with_ids(path)
+    subagents_dir = find_subagent_dir(path)
+    emitted_counts: dict[Path, int] = {}
+    turns.extend(_poll_new_subagent_turns(subagents_dir, emitted_counts))
+    turns.sort(key=lambda t: t.timestamp)
+
     console.print(f"[dim]{path} を監視中(Ctrl+Cで終了)[/dim]")
     with path.open(encoding="utf-8") as f:
         f.seek(0, 2)  # 既存行は read_turns 済みなので、末尾から追記分だけを追う
@@ -329,6 +452,13 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
                 while True:
                     chunk = f.readline()
                     if not chunk:
+                        new_sub_turns = _poll_new_subagent_turns(
+                            subagents_dir, emitted_counts
+                        )
+                        if new_sub_turns:
+                            turns.extend(new_sub_turns)
+                            turns.sort(key=lambda t: t.timestamp)
+                            live.update(build_table(turns, last_n))
                         time.sleep(poll_interval)
                         continue
                     buffer += chunk
@@ -377,6 +507,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
         {
             "index": i + 1,
             "timestamp": t.timestamp,
+            "source": t.source,
             "model": t.model,
             **{k: getattr(t, k) for k in series_keys},
             "total": t.total_tokens,
@@ -384,6 +515,12 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
         }
         for i, t in enumerate(turns)
     ]
+    subagent_turn_count = sum(1 for t in turns if t.source != "main")
+    subagent_note = (
+        f"(うちサブエージェント分 {subagent_turn_count} ターン)"
+        if subagent_turn_count
+        else ""
+    )
     data_json = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     series_json = json.dumps(
         [{"key": k, "label": SERIES_LABELS[k]} for k in series_keys],
@@ -486,7 +623,8 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
   }}
   table.data-table th:first-child, table.data-table td:first-child,
   table.data-table th:nth-child(2), table.data-table td:nth-child(2),
-  table.data-table th:nth-child(3), table.data-table td:nth-child(3) {{ text-align: left; }}
+  table.data-table th:nth-child(3), table.data-table td:nth-child(3),
+  table.data-table th:nth-child(4), table.data-table td:nth-child(4) {{ text-align: left; }}
   table.data-table thead th {{ color: var(--text-secondary); font-weight: 500; }}
   #table-section {{ display: none; }}
 </style>
@@ -495,7 +633,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
 <div class="viz-root">
 <div class="page">
   <h1>Claude Code トークン使用量レポート</h1>
-  <p class="subtitle">セッション: {_escape(title)} ／ 全 {len(turns)} ターン</p>
+  <p class="subtitle">セッション: {_escape(title)} ／ 全 {len(turns)} ターン{subagent_note}</p>
 
   <div class="toolbar">
     <button id="theme-toggle" type="button">ダーク/ライト切替</button>
@@ -699,7 +837,9 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
           return {{label: s.label, value: fmt(d[s.key]), color: pal[s.key]}};
         }});
         rows.push({{label: "合計", value: fmt(d.total)}});
-        rows.unshift({{label: "ターン#" + d.index + "  " + (d.timestamp || ""), value: ""}});
+        var header = "ターン#" + d.index + "  " + (d.timestamp || "");
+        if (d.source && d.source !== "main") header += "  [" + d.source + "]";
+        rows.unshift({{label: header, value: ""}});
         showTooltip(evt, rows);
       }});
       g.addEventListener("pointerleave", hideTooltip);
@@ -773,8 +913,10 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
       var dot = el("circle", {{cx: p[0], cy: p[1], r: 4, fill: hue, stroke: "var(--surface-1)", "stroke-width": 2}});
       var hit = el("circle", {{cx: p[0], cy: p[1], r: 12, fill: "transparent", "class": "hit-target"}});
       hit.addEventListener("pointermove", function (evt) {{
+        var header = "ターン#" + d.index + "  " + (d.timestamp || "");
+        if (d.source && d.source !== "main") header += "  [" + d.source + "]";
         showTooltip(evt, [
-          {{label: "ターン#" + d.index + "  " + (d.timestamp || ""), value: ""}},
+          {{label: header, value: ""}},
           {{label: "累計トークン", value: fmt(d.cumulative), color: hue}},
         ]);
       }});
@@ -795,7 +937,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     table.innerHTML = "";
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
-    ["#", "時刻", "モデル", "input", "output", "cache_creation", "cache_read", "合計", "累計"].forEach(function (h) {{
+    ["#", "時刻", "エージェント", "モデル", "input", "output", "cache_creation", "cache_read", "合計", "累計"].forEach(function (h) {{
       var th = document.createElement("th");
       th.textContent = h;
       headRow.appendChild(th);
@@ -805,7 +947,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     var tbody = document.createElement("tbody");
     DATA.forEach(function (d) {{
       var tr = document.createElement("tr");
-      [d.index, d.timestamp, d.model, fmt(d.input_tokens), fmt(d.output_tokens),
+      [d.index, d.timestamp, d.source, d.model, fmt(d.input_tokens), fmt(d.output_tokens),
        fmt(d.cache_creation_input_tokens), fmt(d.cache_read_input_tokens), fmt(d.total), fmt(d.cumulative)]
         .forEach(function (v) {{
           var td = document.createElement("td");
@@ -865,6 +1007,9 @@ def _escape(s: str) -> str:
 def report(path: Path, output: Path) -> None:
     """セッションJSONLを読み込み、スタンドアロンHTMLレポートを生成する。
 
+    メインセッションに加え、完了済みサブエージェントのトランスクリプト
+    (`<session>/subagents/agent-*.jsonl`)も合わせて集計する。
+
     Args:
         path: 集計対象のセッションJSONLファイルのパス。
         output: 生成したHTMLの出力先パス。
@@ -876,7 +1021,7 @@ def report(path: Path, output: Path) -> None:
     if not path.exists():
         console.print(f"[red]{path} が見つかりません[/red]")
         raise SystemExit(1)
-    turns = read_turns(path)
+    turns = read_all_turns(path)
     html = render_report(turns, title=path.stem)
     output.write_text(html, encoding="utf-8")
     console.print(

@@ -24,6 +24,8 @@ uv python install 3.12
 
 Claude Codeは1回のAPIレスポンス（thinking/text/tool_useなど複数のcontentブロック）を複数のJSONL行に分けて書き出すことがあり、各行は同一の`message.usage`スナップショットを重複して持つ。このツールは`message.id`が同じ行を1件目のみ採用し、2件目以降は重複として無視する（[ccusage](https://github.com/ryoppippi/ccusage)も同様にmessage単位で重複除去して集計している）。このため、対象範囲が同じ（同一セッション・同一日など）であればccusageの集計値と一致するはずだが、対象範囲が異なる（このツールは既定で「直近1セッション」のみ、ccusageは「日/月/セッション横断」など集計単位が違う）場合は一致しない点に注意する。
 
+対象セッション中に `Agent` ツールで起動したサブエージェント（`git-committer`・`workspace-auditor`等）がいる場合、その実行結果は完了後に `<セッションID>/subagents/agent-<hash>.jsonl` として永続化される。このツールは `watch`/`report` どちらもこれを自動的に検出して本体のトークン使用量に合算する（`watch`は起動時に既存分を取り込み、以後もポーリングで新規に完了したサブエージェント分を追いかける）。テーブル・HTMLレポートには「エージェント」列として `main` か、サブエージェントの `agentType`（`meta.json`から読み取る。取得できない場合は `subagent`）が表示される。ccusageも `~/.claude/projects/` 配下を再帰的に走査するため、このサブエージェント分もその集計対象に含まれている。
+
 ### リアルタイム監視（watch）
 
 ```bash
