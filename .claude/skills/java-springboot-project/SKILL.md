@@ -205,33 +205,46 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
    | `__BASE_PACKAGE_PATH__` | `__BASE_PACKAGE__` の `.` を `/` にしたもの | `com/example/javapractice` |
    | `__APP_CLASS__` | 起動クラス名。**必ず `Application` で終わらせる**（除外設定3箇所がこの命名に依存している） | `JavaPracticeApplication` |
 
-   コピーするファイル（`<配置先>` = `projects/<project-name>/`）:
+   `templates/` の大半（`build.gradle.kts`・`gradle.properties`・`gradlew`・`gradlew.bat`・
+   `gradle/wrapper/`・`config/`・`.gitignore`・`justfile`・`README.md` など）は `<配置先>` へそのまま
+   1階層でコピーできる。一方 `templates/java/` 配下と `templates/application.yaml` だけは、最終的な配置先
+   （`src/main/java/__BASE_PACKAGE_PATH__/...` や `src/main/resources/`）が `__BASE_PACKAGE_PATH__` の
+   実際の値に依存するため、テンプレート側では平坦な仮置き構造になっている。そのため
+   「一括コピー→パッケージ構造への再配置→プレースホルダ置換」の3段構成にする（`<配置先>` =
+   `projects/<project-name>/`、`<base_path>` = `__BASE_PACKAGE_PATH__` の実際の値、`<起動クラス名>` =
+   `__APP_CLASS__` の実際の値）。
 
-   | テンプレート | 配置先 |
-   | --- | --- |
-   | `templates/build.gradle.kts` | `<配置先>/build.gradle.kts` |
-   | `templates/settings.gradle.kts` | `<配置先>/settings.gradle.kts` |
-   | `templates/gradle.properties` | `<配置先>/gradle.properties`（置換不要） |
-   | `templates/gradlew` | `<配置先>/gradlew`（置換不要。**実行権限を付ける**） |
-   | `templates/gradlew.bat` | `<配置先>/gradlew.bat`（置換不要） |
-   | `templates/gradle/wrapper/gradle-wrapper.jar` | `<配置先>/gradle/wrapper/gradle-wrapper.jar`（**バイナリ。テキスト置換をかけない**） |
-   | `templates/gradle/wrapper/gradle-wrapper.properties` | `<配置先>/gradle/wrapper/gradle-wrapper.properties`（置換不要） |
-   | `templates/config/checkstyle/checkstyle.xml` | `<配置先>/config/checkstyle/checkstyle.xml`（置換不要） |
-   | `templates/config/checkstyle/suppressions.xml` | `<配置先>/config/checkstyle/suppressions.xml`（置換不要） |
-   | `templates/config/spotbugs/exclude.xml` | `<配置先>/config/spotbugs/exclude.xml`（置換不要） |
-   | `templates/.gitignore` | `<配置先>/.gitignore`（置換不要。ルートの `.gitignore` に Java/Gradle の項目は無いので、ルート側は変更しない） |
-   | `templates/justfile` | `<配置先>/justfile`（置換不要） |
-   | `templates/README.md` | `<配置先>/README.md` |
-   | `templates/application.yaml` | `<配置先>/src/main/resources/application.yaml` |
-   | `templates/java/main/__APP_CLASS__.java` | `<配置先>/src/main/java/__BASE_PACKAGE_PATH__/<起動クラス名>.java` |
-   | `templates/java/main/package-info.java` | `<配置先>/src/main/java/__BASE_PACKAGE_PATH__/package-info.java` |
-   | `templates/java/main/greeting/*.java` | `<配置先>/src/main/java/__BASE_PACKAGE_PATH__/greeting/` |
-   | `templates/java/test/__APP_CLASS__Tests.java` | `<配置先>/src/test/java/__BASE_PACKAGE_PATH__/<起動クラス名>Tests.java` |
-   | `templates/java/test/greeting/*.java` | `<配置先>/src/test/java/__BASE_PACKAGE_PATH__/greeting/` |
+   ```bash
+   mkdir -p "<配置先>"
+   cp -a .claude/skills/java-springboot-project/templates/. "<配置先>/"
+   rm -rf "<配置先>/vscode"
 
-   `templates/vscode/` はここではコピーしない（手順6で扱う）。
+   mkdir -p "<配置先>/src/main/java/<base_path>/greeting" \
+            "<配置先>/src/test/java/<base_path>/greeting" \
+            "<配置先>/src/main/resources"
+   mv "<配置先>/java/main/__APP_CLASS__.java" "<配置先>/src/main/java/<base_path>/<起動クラス名>.java"
+   mv "<配置先>/java/main/package-info.java" "<配置先>/src/main/java/<base_path>/package-info.java"
+   mv "<配置先>/java/main/greeting/"*.java "<配置先>/src/main/java/<base_path>/greeting/"
+   mv "<配置先>/java/test/__APP_CLASS__Tests.java" "<配置先>/src/test/java/<base_path>/<起動クラス名>Tests.java"
+   mv "<配置先>/java/test/greeting/"*.java "<配置先>/src/test/java/<base_path>/greeting/"
+   rm -rf "<配置先>/java"
+   mv "<配置先>/application.yaml" "<配置先>/src/main/resources/application.yaml"
+   ```
 
-   **`gradlew` の実行権限を忘れない。** 付け忘れると `bash: ./gradlew: Permission denied` になる。
+   （`templates/vscode/` はここではコピーしない。手順6で扱う。`cp -a` は権限・タイムスタンプを保ったまま
+   複製するため、`gradlew`・`gradle-wrapper.jar` を含め個別ファイルの権限調整や「バイナリなのでテキスト
+   置換をかけない」といった配慮は不要——置換はこの後の grep で見つかったファイルにしか行わないため
+   バイナリが誤って書き換わることもない。）
+
+   再配置後、`grep -rl "__PROJECT_NAME__\|__PROJECT_DESCRIPTION__\|__GROUP__\|__BASE_PACKAGE__\|__BASE_PACKAGE_PATH__\|__APP_CLASS__" "<配置先>"`
+   でプレースホルダを含むファイルを洗い出し、その結果に対してだけ Edit系ツールで置換する
+   （現時点では `README.md` / `application.yaml` / `settings.gradle.kts` / `build.gradle.kts` と、
+   移動後の起動クラス・`package-info.java`・`greeting/` 配下の各 `.java`（main/test 合わせて10ファイル）の
+   計14ファイルが該当する。テンプレートが変わった場合はこの一覧ではなく grep の結果を優先すること）。
+   `gradle.properties` / `gradlew` / `gradlew.bat` / `gradle-wrapper.jar` / `gradle-wrapper.properties` /
+   `checkstyle.xml` / `suppressions.xml` / `exclude.xml` / `.gitignore` / `justfile` にはプレースホルダが
+   無いため対象外（`.gitignore` はリポジトリルートの `.gitignore` に Java/Gradle の項目が無いことの確認の
+   みで、内容の変更は不要）。
 
 5. **依存をロックし、動作確認する**
 
