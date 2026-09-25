@@ -6,10 +6,15 @@ import pytest
 import main
 from main import (
     TurnUsage,
+    _poll_new_subagent_turns,
+    _read_agent_type,
     _totals,
     encode_project_dir,
     find_latest_session_file,
+    find_subagent_dir,
+    find_subagent_transcripts,
     parse_turn,
+    read_all_turns,
     read_turns,
     render_report,
     resolve_session_file,
@@ -237,3 +242,180 @@ def test_render_report_handles_empty_turns() -> None:
 
     assert "empty-session" in html
     assert "<!doctype html>" in html
+
+
+def test_turn_usage_defaults_source_to_main() -> None:
+    turn = parse_turn(_assistant_line())
+
+    assert turn is not None
+    assert turn.source == "main"
+
+
+def test_find_subagent_dir_derives_path_from_session_stem(tmp_path: Path) -> None:
+    session_path = tmp_path / "abc123.jsonl"
+
+    assert find_subagent_dir(session_path) == tmp_path / "abc123" / "subagents"
+
+
+def test_find_subagent_transcripts_returns_empty_when_dir_missing(
+    tmp_path: Path,
+) -> None:
+    session_path = tmp_path / "abc123.jsonl"
+    session_path.write_text("{}", encoding="utf-8")
+
+    assert find_subagent_transcripts(session_path) == []
+
+
+def test_find_subagent_transcripts_lists_jsonl_files(tmp_path: Path) -> None:
+    session_path = tmp_path / "abc123.jsonl"
+    session_path.write_text("{}", encoding="utf-8")
+    subagents_dir = tmp_path / "abc123" / "subagents"
+    subagents_dir.mkdir(parents=True)
+    (subagents_dir / "agent-b.jsonl").write_text("{}", encoding="utf-8")
+    (subagents_dir / "agent-a.jsonl").write_text("{}", encoding="utf-8")
+    (subagents_dir / "agent-a.meta.json").write_text("{}", encoding="utf-8")
+
+    found = find_subagent_transcripts(session_path)
+
+    assert found == [subagents_dir / "agent-a.jsonl", subagents_dir / "agent-b.jsonl"]
+
+
+def test_read_agent_type_reads_agent_type_from_meta(tmp_path: Path) -> None:
+    meta_path = tmp_path / "agent-a.meta.json"
+    meta_path.write_text(json.dumps({"agentType": "git-merger"}), encoding="utf-8")
+
+    assert _read_agent_type(meta_path) == "git-merger"
+
+
+def test_read_agent_type_falls_back_when_meta_missing(tmp_path: Path) -> None:
+    assert _read_agent_type(tmp_path / "missing.meta.json") == "subagent"
+
+
+def test_read_agent_type_falls_back_when_meta_malformed(tmp_path: Path) -> None:
+    meta_path = tmp_path / "agent-a.meta.json"
+    meta_path.write_text("{not valid json", encoding="utf-8")
+
+    assert _read_agent_type(meta_path) == "subagent"
+
+
+def test_read_all_turns_merges_main_and_subagent_turns_sorted_by_timestamp(
+    tmp_path: Path,
+) -> None:
+    session_path = tmp_path / "abc123.jsonl"
+    session_path.write_text(
+        "\n".join(
+            [
+                _assistant_line(input_tokens=1, timestamp="2026-09-17T00:00:00.000Z"),
+                _assistant_line(input_tokens=4, timestamp="2026-09-17T00:03:00.000Z"),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    subagents_dir = tmp_path / "abc123" / "subagents"
+    subagents_dir.mkdir(parents=True)
+    (subagents_dir / "agent-a.meta.json").write_text(
+        json.dumps({"agentType": "git-merger"}), encoding="utf-8"
+    )
+    (subagents_dir / "agent-a.jsonl").write_text(
+        _assistant_line(input_tokens=2, timestamp="2026-09-17T00:01:00.000Z")
+        + "\n"
+        + _assistant_line(input_tokens=3, timestamp="2026-09-17T00:02:00.000Z"),
+        encoding="utf-8",
+    )
+
+    turns = read_all_turns(session_path)
+
+    assert [t.input_tokens for t in turns] == [1, 2, 3, 4]
+    assert [t.source for t in turns] == ["main", "git-merger", "git-merger", "main"]
+
+
+def test_read_all_turns_skips_main_only_when_subagents_dir_missing(
+    tmp_path: Path,
+) -> None:
+    session_path = tmp_path / "abc123.jsonl"
+    session_path.write_text(_assistant_line(input_tokens=1), encoding="utf-8")
+
+    turns = read_all_turns(session_path)
+
+    assert [t.input_tokens for t in turns] == [1]
+    assert turns[0].source == "main"
+
+
+def test_render_report_notes_subagent_turn_count() -> None:
+    turns = [
+        TurnUsage("2026-09-17T00:00:00.000Z", "claude-sonnet-5", 1, 2, 3, 4, "main"),
+        TurnUsage(
+            "2026-09-17T00:01:00.000Z",
+            "claude-haiku-4-5",
+            1,
+            2,
+            3,
+            4,
+            "git-merger",
+        ),
+    ]
+
+    html = render_report(turns, title="my-session")
+
+    assert "うちサブエージェント分 1 ターン" in html
+    assert "git-merger" in html
+
+
+def test_render_report_omits_subagent_note_when_all_main() -> None:
+    turns = [TurnUsage("2026-09-17T00:00:00.000Z", "claude-sonnet-5", 1, 2, 3, 4)]
+
+    html = render_report(turns, title="my-session")
+
+    assert "うちサブエージェント分" not in html
+
+
+def test_poll_new_subagent_turns_returns_empty_when_dir_missing(
+    tmp_path: Path,
+) -> None:
+    assert _poll_new_subagent_turns(tmp_path / "missing", {}) == []
+
+
+def test_poll_new_subagent_turns_returns_only_newly_appended_turns(
+    tmp_path: Path,
+) -> None:
+    subagents_dir = tmp_path / "subagents"
+    subagents_dir.mkdir()
+    (subagents_dir / "agent-a.meta.json").write_text(
+        json.dumps({"agentType": "reviewer-helper"}), encoding="utf-8"
+    )
+    jsonl_path = subagents_dir / "agent-a.jsonl"
+    jsonl_path.write_text(_assistant_line(input_tokens=1), encoding="utf-8")
+
+    emitted_counts: dict[Path, int] = {}
+    first_poll = _poll_new_subagent_turns(subagents_dir, emitted_counts)
+    assert [t.input_tokens for t in first_poll] == [1]
+    assert [t.source for t in first_poll] == ["reviewer-helper"]
+
+    unchanged_poll = _poll_new_subagent_turns(subagents_dir, emitted_counts)
+    assert unchanged_poll == []
+
+    with jsonl_path.open("a", encoding="utf-8") as f:
+        f.write("\n" + _assistant_line(input_tokens=2))
+    grown_poll = _poll_new_subagent_turns(subagents_dir, emitted_counts)
+    assert [t.input_tokens for t in grown_poll] == [2]
+
+
+def test_poll_new_subagent_turns_picks_up_newly_created_file(
+    tmp_path: Path,
+) -> None:
+    subagents_dir = tmp_path / "subagents"
+    subagents_dir.mkdir()
+    emitted_counts: dict[Path, int] = {}
+
+    assert _poll_new_subagent_turns(subagents_dir, emitted_counts) == []
+
+    (subagents_dir / "agent-b.meta.json").write_text(
+        json.dumps({"agentType": "reviewer-helper"}), encoding="utf-8"
+    )
+    (subagents_dir / "agent-b.jsonl").write_text(
+        _assistant_line(input_tokens=9), encoding="utf-8"
+    )
+
+    new_poll = _poll_new_subagent_turns(subagents_dir, emitted_counts)
+    assert [t.input_tokens for t in new_poll] == [9]
