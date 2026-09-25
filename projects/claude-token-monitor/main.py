@@ -266,6 +266,60 @@ def _read_all_subagent_turns(session_path: Path) -> list[TurnUsage]:
     return turns
 
 
+def _find_subagent_dirs(session_id: str, known_dirs: set[Path]) -> list[Path]:
+    """このセッションIDのサブエージェント格納ディレクトリを、既知の全ロケーションから横断して集める。
+
+    `EnterWorktree`等でカレントディレクトリが変わると、メインJSONLは新しい
+    `~/.claude/projects/<encoded-cwd>/`へOSレベルのrenameで移動する(`watch()`
+    がメインターンを追い続けられるのは、最初に開いたファイルディスクリプタが
+    renameを跨いで同一inodeを指し続けるため)。一方サブエージェントの完了時
+    トランスクリプトは、完了した時点のカレントディレクトリ配下に新規作成
+    されるため、移動前に完了した分は旧ディレクトリに、移動後に完了した分は
+    新ディレクトリに残る。取りこぼしを避けるため、このセッションIDのメイン
+    JSONLまたは`<session_id>/subagents/`が(現在または過去に)存在した全
+    ディレクトリを毎回横断して探す。
+
+    Args:
+        session_id: 対象セッションのID(JSONLファイル名の拡張子抜き)。
+        known_dirs: これまでに見つかった`~/.claude/projects/<encoded-cwd>/`の
+            集合。呼び出し側がポーリングをまたいで同じ集合を使い回すことで、
+            移動済みで現在は該当しなくなった旧ディレクトリも覚え続ける。
+            この関数が新たに見つけたディレクトリも追加で書き込む。
+
+    Returns:
+        実在する`subagents`ディレクトリの一覧(ソート済み)。
+    """
+    known_dirs.update(
+        m.parent for m in CLAUDE_PROJECTS_DIR.glob(f"*/{session_id}.jsonl")
+    )
+    known_dirs.update(
+        m.parent.parent for m in CLAUDE_PROJECTS_DIR.glob(f"*/{session_id}/subagents")
+    )
+    return sorted(
+        d / session_id / "subagents"
+        for d in known_dirs
+        if (d / session_id / "subagents").is_dir()
+    )
+
+
+def _read_subagent_turns_from_dirs(subagent_dirs: list[Path]) -> list[TurnUsage]:
+    """指定した`subagents`ディレクトリ群から、完了済み全サブエージェントのターンを読み直す。
+
+    Args:
+        subagent_dirs: `<session>/subagents/`ディレクトリのパス一覧。
+
+    Returns:
+        各ディレクトリの`*.jsonl`から読み取ったターンを、ディレクトリ・
+        ファイル名順に連結した一覧。
+    """
+    turns: list[TurnUsage] = []
+    for subagents_dir in subagent_dirs:
+        for jsonl_path in sorted(subagents_dir.glob("*.jsonl")):
+            agent_type = _read_agent_type(jsonl_path.with_suffix(".meta.json"))
+            turns.extend(read_turns(jsonl_path, source=agent_type))
+    return turns
+
+
 def read_all_turns(session_path: Path) -> list[TurnUsage]:
     """メインセッションと完了済み全サブエージェントを合わせ、timestamp昇順で返す。
 
@@ -313,11 +367,12 @@ def find_latest_session_file(project_dir: Path) -> Path:
 def find_session_file_by_id(session: str) -> Path:
     """`~/.claude/projects/` 配下を横断してセッションIDに対応するJSONLファイルを探す。
 
-    セッションの実行中に `EnterWorktree` 等でカレントディレクトリが変わっても、
-    そのセッションのトランスクリプト自体は開始時のプロジェクトディレクトリに
-    紐づいたまま(セッションIDのファイルが別ディレクトリへ移動することはない)。
-    そのため`--project-dir`を省略して`--session`だけを頼りに横断検索すれば、
-    呼び出し側が現在のカレントディレクトリを気にする必要がなくなる。
+    セッションの実行中に `EnterWorktree` 等でカレントディレクトリが変わると、
+    そのセッションのメインJSONLは実際に新しい`~/.claude/projects/<encoded-cwd>/`
+    配下へOSレベルのrenameで移動する(旧パスは消える。実機で
+    `os.rename`相当の挙動を確認済み)。`--project-dir`を省略して`--session`
+    だけを頼りに横断検索すれば、呼び出し側が現在のカレントディレクトリや
+    過去の移動履歴を気にする必要がなくなる。
 
     Args:
         session: 探索対象のセッションID(JSONLファイル名の拡張子抜き)。
@@ -453,6 +508,14 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
     メインセッションの新規行に加え、`<session>/subagents/` 配下に完了済み
     サブエージェントのトランスクリプトが現れた場合もポーリングで取り込む。
 
+    `EnterWorktree`等でカレントディレクトリが変わると、Claude Code本体は
+    このセッションのメインJSONLを新しい`~/.claude/projects/<encoded-cwd>/`
+    配下へOSレベルのrenameで移動する。メインターンの読み取りは最初に開いた
+    ファイルディスクリプタがrenameを跨いで同一inodeを指し続けるため、パスの
+    再解決なしに自動で追従できる(実機で確認済み)。サブエージェントの探索
+    だけはパス起点のglobのため、起動時のセッションIDを手がかりに
+    `_find_subagent_dirs`で全ロケーションを横断して探す。
+
     Args:
         path: 監視対象のセッションJSONLファイルのパス。
         poll_interval: 新規行が無いときに待機する秒数。
@@ -466,8 +529,13 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
         console.print(f"[red]{path} が見つかりません[/red]")
         raise SystemExit(1)
 
+    session_id = path.stem
+    known_dirs: set[Path] = {path.parent}
+
     main_turns, index_by_id = _read_turns_with_ids(path)
-    subagent_turns = _read_all_subagent_turns(path)
+    subagent_turns = _read_subagent_turns_from_dirs(
+        _find_subagent_dirs(session_id, known_dirs)
+    )
 
     def combined_turns() -> list[TurnUsage]:
         merged = main_turns + subagent_turns
@@ -478,6 +546,7 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
     with path.open(encoding="utf-8") as f:
         f.seek(0, 2)  # 既存行は読み込み済みなので、末尾から追記分だけを追う
         buffer = ""
+        move_notice_shown = False
         with Live(
             build_table(combined_turns(), last_n), console=console, refresh_per_second=4
         ) as live:
@@ -485,7 +554,17 @@ def watch(path: Path, poll_interval: float = 0.5, last_n: int = 15) -> None:
                 while True:
                     chunk = f.readline()
                     if not chunk:
-                        subagent_turns = _read_all_subagent_turns(path)
+                        if not move_notice_shown and not path.exists():
+                            move_notice_shown = True
+                            live.console.print(
+                                f"[dim]{path} が見つからなくなりました"
+                                "(worktree移動等でリネームされた可能性)。"
+                                "開いたままのファイルディスクリプタで"
+                                "メインセッションの追跡は継続します[/dim]"
+                            )
+                        subagent_turns = _read_subagent_turns_from_dirs(
+                            _find_subagent_dirs(session_id, known_dirs)
+                        )
                         live.update(build_table(combined_turns(), last_n))
                         time.sleep(poll_interval)
                         continue
