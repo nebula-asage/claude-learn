@@ -22,6 +22,13 @@
     // Claude CodeをVS Code上で使うための公式拡張機能
     "Anthropic.claude-code",
     // justfileのシンタックスハイライト
-    "nefrob.vscode-just-syntax"
+    "nefrob.vscode-just-syntax",
+    // Python本体の言語サポート（インタプリタ選択・デバッグ・テストUI等）
+    "ms-python.python",
+    // ruff拡張。pyproject.tomlの[tool.ruff.lint]設定を読み込んでエディタ上にlint結果を表示し、
+    // 保存時フォーマット（settings.jsonの[python].editor.defaultFormatter）にも使用する
+    "charliermarsh.ruff",
+    // pytest-covが出力するカバレッジレポート（coverage.lcov）を読み込み、エディタの行番号横に被覆/未被覆を色付け表示する
+    "ryanluker.vscode-coverage-gutters"
   ]
 }
