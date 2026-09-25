@@ -1,0 +1,7 @@
+# 引数なしで実行された場合、レシピ一覧を表示する
+default:
+    @just --list
+
+# pnpxでmarkdownlint-cli2を取得し、Markdownの構文・スタイルをlintする
+markdownlint:
+    pnpx markdownlint-cli2 "**/*.md"
