@@ -24,10 +24,12 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
 4. **`workspaceFolder` / `workspaceMount` を配置先に合わせる**
    - リポジトリルートに置く場合はテンプレートのまま（`/workspace` にリポジトリ全体をマウント）でよい。
    - 特定プロジェクト配下（`projects/<name>/`）に置く場合は、**そのプロジェクトディレクトリだけをマウントしてはいけない**。このリポジトリは `.git` がリポジトリルートにしかないmonorepoのため、サブディレクトリだけをbind mountすると `.git` が一切見えず、コンテナ内でgitリポジトリとして認識されない（`git status` が `fatal: not a git repository` になり、VS CodeのSource Controlパネルにも何も表示されない）。代わりにリポジトリルート全体をマウントし、`workspaceFolder` だけを対象プロジェクトのサブパスに向ける。
+
      ```json
      "workspaceMount": "source=${localWorkspaceFolder}/../..,target=/workspace-root,type=bind",
      "workspaceFolder": "/workspace-root/projects/<name>"
      ```
+
      `${localWorkspaceFolder}` はコンテナ設定ファイルのある場所（`projects/<name>/`）が基準になるため、リポジトリルートまで `../..` で遡る。この相対パス表記はDocker側で正規化されるため、bind mountの `source` にそのまま使える。
 
 5. **動作確認する**
@@ -38,9 +40,11 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
    - `pnpm`/`node`はpnpmの公式インストーラーが`~/.bashrc`の**末尾**にPATH設定を追記する方式のため、非対話の`bash -c`では届かない（Ubuntu標準の`.bashrc`は先頭で「非対話シェルなら即return」するガードがあるが、これとは別に単純に追記位置の問題でPATHが通らない）。検証時は `bash -c 'export PATH="$PNPM_HOME/bin:$PATH" && ...'` のように明示的にPATHへ`$PNPM_HOME/bin`を足すか、`bash -ic '...'`（対話モード）を使う。
    - `docker run --rm <一時タグ> bash -c 'export PATH="$PNPM_HOME/bin:$PATH"; pnpm -v && node -v && pnpm exec playwright --version'` でpnpm/Node.js/Playwrightが導入されていることを確認する。
    - Chromiumが実際に起動できるかも確認する。`playwright screenshot`などのCLIコマンド経由（`pnpm exec playwright ...`）で確認すること。pnpm 12はグローバルインストールをハッシュ付きサブディレクトリに分散して保存するため、`NODE_PATH=$(pnpm root -g)`を使ったNode.jsスクリプトからの直接`require('playwright')`は`MODULE_NOT_FOUND`になる（実機検証で判明。`pnpm root -g`が返すパス自体に実体が無い）。`pnpm exec`/CLIコマンド経由なら問題なく解決される。
-     ```
+
+     ```bash
      docker run --rm <一時タグ> bash -c 'export PATH="$PNPM_HOME/bin:$PATH"; echo "<h1>ok</h1>" > /tmp/t.html && pnpm exec playwright screenshot /tmp/t.html /tmp/shot.png && ls -la /tmp/shot.png'
      ```
+
      Dockerのseccomp/AppArmor設定次第ではChromiumのサンドボックスが使えず`Failed to move to new namespace`系のエラーで失敗する環境がある（Docker 29系・WSL2ホストでの検証では素の設定のまま成功した）。失敗した場合は `chromium.launch({args:['--no-sandbox']})` でも試し、成功するなら「devcontainer内でPlaywrightを使う際は環境によって`chromium.launch({ args: ['--no-sandbox'] })` が必要になることがある」という注意点をユーザーへの報告に添える。
    - `docker run --rm <一時タグ> bash -c 'python3 --version && python3 -m venv /tmp/venvtest && /tmp/venvtest/bin/pip --version'` でPython3・venv・pipが導入されていることを確認する。
    - `docker run --rm <一時タグ> bash -c 'just --version'` でjustが導入されていることを確認する。

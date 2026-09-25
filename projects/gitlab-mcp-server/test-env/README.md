@@ -33,7 +33,7 @@ cd test-env
 
 完了すると、以下のような接続情報が表示される（`.env.test` にも保存される）。
 
-```
+```text
 GITLAB_BASE_URL=http://localhost:8929           # ホストから使う場合
 GITLAB_BASE_URL_INTERNAL=http://gitlab:8929      # gitlab-mcp-serverコンテナから使う場合
 GITLAB_TOKEN=glpat-mcptestonly0000000000

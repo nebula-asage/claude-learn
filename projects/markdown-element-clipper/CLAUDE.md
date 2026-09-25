@@ -21,7 +21,7 @@ pnpm test:e2e    # playwright test (実ブラウザに拡張を読み込む通�
 
 ### レイヤー構成
 
-```
+```text
 src/background/index.ts   action.onClicked / commands.onCommand → 既注入なら
                            sendMessageでトグル、未注入ならscripting.executeScript
 src/content/index.ts       content scriptのエントリ。globalThis.__MD_CLIPPER__

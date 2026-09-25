@@ -75,7 +75,7 @@ vitest ^4 を使用。`test/` 配下にドメインごとにテストファイ�
 
 ### レイヤー構成
 
-```
+```text
 src/index.ts           起動エントリポイント。設定読込 → サーバ生成 → トランスポート起動
 src/config.ts          環境変数の読込・検証（loadConfig）。不正時はConfigErrorで即座に落とす
 src/server.ts          McpServerを生成し、5つのtoolsモジュールの register関数を呼ぶ
