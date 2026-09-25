@@ -1,0 +1,53 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  // このモノレポはコメント・ドキュメントが日本語主体。英語辞書をベースにしつつ、
+  // 日本語部分はignoreRegExpListで検査対象から外し、コード識別子や英語コメントだけを検査する
+  "language": "en",
+  "ignorePaths": [
+    "node_modules/**", // Node.js依存パッケージ本体
+    "coverage/**", // カバレッジレポート生成物（vitest/pytest-cov等）
+    "htmlcov/**", // カバレッジHTMLレポート生成物（pytest-cov）
+    "apidocs/**", // APIドキュメント生成物（pdoc）
+    ".venv/**", // Python仮想環境（uv）
+    "__pycache__/**", // Pythonのバイトコードキャッシュ
+    ".pytest_cache/**", // pytestのキャッシュ
+    ".ruff_cache/**", // ruffのキャッシュ
+    "uv.lock", // uvのロックファイル
+    "*.log" // 実行時ログ
+  ],
+  // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
+  // これにより日本語部分は素通りし、コード中の識別子や英語のコメント部分だけを検査できる
+  "ignoreRegExpList": ["/[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f]+/gu"],
+  // 以下はこのcspell.json自身の`ignorePaths`コメント（ツール名・ディレクトリ名の断片）に
+  // 由来する未知語で、テンプレートをそのまま配置するとどのプロジェクトでも必ず検出されるため
+  // あらかじめ登録してある。プロジェクト固有の用語・識別子・略語はこれらの下に追加していく。
+  // 配置先で実際に `npx cspell --no-progress .` を実行して検出された未知語のうち、
+  // 誤字ではなく正当な語だけを1件ずつ追記する（由来がわかるようインラインコメントを添える）
+  "words": [
+    "htmlcov", // ignorePathsのパス・コメント: pytest-covが生成するカバレッジHTMLディレクトリ名
+    "pdoc", // ignorePathsのコメント: PythonのAPIドキュメント生成ツール名
+    "pycache", // ignorePathsのパス: Pythonのバイトコードキャッシュディレクトリ名（__pycache__）
+    "pytest", // ignorePathsのコメント: Pythonのテストツール名
+    "venv", // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
+    "apidocs", // このプロジェクトのAPIドキュメント生成先ディレクトリ名（just doc）
+    "Segoe", // レポートHTMLのCSSで指定するWindows標準フォント名（Segoe UI）
+    "capsys", // pytestの標準出力キャプチャ用フィクスチャ名
+    "ccusage", // トークン集計の突き合わせに使う外部CLIツール名
+    "dataviz", // グラフ配色の参照元スキル名
+    "gridline", // レポートHTML内のチャートで使う識別子（グリッド線）
+    "linecap", // SVGのstroke-linecap属性
+    "linejoin", // SVGのstroke-linejoin属性
+    "mktemp", // justfileのauditレシピで使うUNIXコマンド名
+    "pointerleave", // DOMのpointerleaveイベント名
+    "pointermove", // DOMのpointermoveイベント名
+    "pnpx", // pnpm付属のnpx相当コマンド名
+    "pydoclint", // ruffのdocstring引数名検証プラグイン名
+    "pydocstyle", // ruffのdocstring規約チェックプラグイン名
+    "pyproject", // pyproject.tomlの略称
+    "pythonpath", // pytest.iniのpythonpath設定キー
+    "testpaths", // pytest.iniのtestpaths設定キー
+    "unshift", // JavaScriptのArray.prototype.unshiftメソッド名
+    "worktrees" // git worktreeの複数形
+  ]
+}
