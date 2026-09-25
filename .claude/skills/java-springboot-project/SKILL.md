@@ -182,53 +182,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
    - **これはホスト環境に実際にソフトウェアを導入する操作である。** ユーザーが今回の依頼で
      明示的にこの方法を指定していない場合は、実行前に「JDK/just が入っていないのでユーザーローカルに
      導入してよいか（sudo は使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
-
-   **JDK:**
-   ```bash
-   # 最新の Temurin 21 の URL とチェックサムを取得する
-   curl -sS "https://api.adoptium.net/v3/assets/latest/21/hotspot?architecture=x64&image_type=jdk&os=linux&vendor=eclipse"
-   ```
-
-   返ってきた JSON の `binary.package.link`（ダウンロード URL）と `binary.package.checksum`
-   （SHA-256）を使って、次のように展開する。
-
-   ```bash
-   curl -fsSL -o /tmp/jdk.tar.gz "<binary.package.link>"
-   sha256sum /tmp/jdk.tar.gz          # <binary.package.checksum> と一致することを必ず確認する
-   mkdir -p ~/sdk
-   tar -xzf /tmp/jdk.tar.gz -C ~/sdk  # ~/sdk/jdk-<version>/ ができる
-   ```
-
-   - **チェックサムが一致しない場合は絶対に先へ進まない。**
-   - `~/.bashrc` は書き換えない。以降のコマンドでは
-     `export JAVA_HOME="$HOME/sdk/jdk-<version>"` と `export PATH="$JAVA_HOME/bin:$PATH"` を
-     その都度指定する。恒久的に PATH を通したい場合は、ユーザーに確認したうえで行う。
-   - 展開が終わったら `/tmp/jdk.tar.gz` を消す。
-
-   **just（タスクランナー）:**
-   - justはRust製の単体バイナリで、GitHub Releasesにtarballと集約チェックサムファイル（`SHA256SUMS`）が公開されているため、それを取得して照合してから展開する。
-     ```bash
-     VERSION=<確認したバージョン、例: 1.58.0>
-     curl -LsSf -o /tmp/just.tar.gz \
-       "https://github.com/casey/just/releases/download/${VERSION}/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-     curl -LsSf -o /tmp/just-SHA256SUMS \
-       "https://github.com/casey/just/releases/download/${VERSION}/SHA256SUMS"
-     ```
-   - `sha256sum -c` は相対パスで実行するかフルパスを一致させる必要があるので、`/tmp` に `cd` してから実行する。
-     ```bash
-     grep "just-${VERSION}-x86_64-unknown-linux-musl.tar.gz$" /tmp/just-SHA256SUMS > /tmp/just-checksum-line.txt
-     mkdir -p /tmp/just-extract
-     cp /tmp/just.tar.gz "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
-     cp /tmp/just-checksum-line.txt /tmp/just-extract/checksum.txt
-     cd /tmp/just-extract && sha256sum -c checksum.txt
-     ```
-   - 検証が通ったら展開し、`~/.local/bin/just` に配置する。
-     ```bash
-     tar -C /tmp/just-extract -xzf "/tmp/just-extract/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz" just
-     mkdir -p ~/.local/bin
-     mv /tmp/just-extract/just ~/.local/bin/just
-     ```
-   - 一時ファイル（`/tmp/just*`）は導入後に削除する。`~/.local/bin` がまだ `PATH` に無ければ `~/.bashrc` に追記する。
+   - 具体的な導入コマンド（Eclipse Temurin JDK・just）は `references/install.md` を参照する。
 
 3. **配置先とプロジェクト名を確認する**
    - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に
@@ -281,54 +235,10 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
 5. **依存をロックし、動作確認する**
 
-   `<配置先>` に移動し、以下を順に確認する。`JAVA_HOME` と `PATH` は都度指定する
+   `<配置先>` に移動し、`references/verify.md` の手順に従って確認する。`JAVA_HOME` と `PATH` は都度指定する
    （`~/.bashrc` は非対話シェルだと冒頭で早期 return するため、`source ~/.bashrc` は効かない）。
-
-   - **`just lock`（`./gradlew dependencies --write-locks`）を最初に実行する。** `gradle.lockfile` が生成される。
-     これはコミット対象。初回は Gradle 本体（約 130MB）のダウンロードが走るので数分かかることがある。
-   - 引数なしで `just` を実行し、レシピ一覧（`just --list`相当）が表示されることを確認する。
-   - `just check`（`./gradlew check`）が成功することを確認する。テンプレートの状態でテストは合計 11 件
-     （`GreetingServiceTest` 7件 = 通常3件 + パラメータ化1件が4パターンに展開、
-     `GreetingControllerTest` 3件、`__APP_CLASS__Tests` 1件）が全て通り、
-     行カバレッジ 100%（16/16）になる。
-   - `just check` の後に、レポートが 6 種類すべて生成されていることを確認する。
-     `build/reports/jacoco/test/html/index.html`、
-     `build/reports/jacoco/test/jacocoTestReport.xml`、
-     `build/reports/tests/test/index.html`、
-     `build/reports/checkstyle/main.html`、
-     `build/reports/spotbugs/main.html`、
-     `build/docs/javadoc/index.html`。
-     **SpotBugs のレポートが出ない場合は `build.gradle.kts` の
-     `tasks.withType<SpotBugsTask> { reports.create("html") { required = true } }` が
-     消えていないか確認する。** SpotBugs プラグインは既定ではレポートファイルを一切出さず、
-     コンソールに出すだけで終わる。
-   - **アプリを実際に起動して応答を確認する。** ビルドが通ることと動くことは別。
-
-     ```bash
-     just run &                     # ./gradlew bootRun。または ./gradlew bootJar && java -jar build/libs/*.jar
-     curl 'http://localhost:8080/api/greetings'            # {"message":"Hello, world!"}
-     curl 'http://localhost:8080/api/greetings?name=Java'  # {"message":"Hello, Java!"}
-     curl 'http://localhost:8080/actuator/health'          # {"status":"UP", ...}
-     curl "http://localhost:8080/api/greetings?name=$(printf 'a%.0s' $(seq 1 51))"  # 400
-     ```
-
-     確認できたら必ずプロセスを止める。
-   - 最後に `just clean`（`./gradlew clean`）で `build/` を消し、コミット対象に成果物が残っていないことを
-     `git status` で確かめる。
-
-   **lint が本当に効いているかを反証で確かめる**（設定を書いただけで実は無効、という状態を防ぐため。
-   以下はいずれも検証済みで、確認後は必ず元に戻すこと）:
-
-   | わざと壊すもの | 落ちるタスク | 出るメッセージ |
-   | --- | --- | --- |
-   | `public` メソッドの Javadoc を消す | `checkstyleMain` | `Missing a Javadoc comment for 'greet'. [MissingJavadocMethod]` |
-   | `{@link}` を存在しない名前に書き換える | `javadoc` | `reference not found` |
-   | `@param` の名前を実際の引数とずらす | `javadoc` | `@param name not found` |
-   | インデントや空白を崩す | `spotlessCheck` | `The following files had format violations` |
-   | 確実に NPE になるコードを書く | `spotbugsMain` | `NP: Null pointer dereference` |
-   | テストを削ってカバレッジを下げる | `jacocoTestCoverageVerification` | `lines covered ratio is 0.31, but expected minimum is 0.80` |
-   | `gradle.lockfile` のバージョンを書き換える | どのビルドでも | `Did not resolve '...' which has been forced / substituted to a different version` |
-   | `build.gradle.kts` に `repositories {}` を足す | どのビルドでも | `Build was configured to prefer settings repositories over project repositories` |
+   lint が本当に効いているかを反証で確かめる場合は `references/counter-tests.md` を参照する
+   （設定を書いただけで実は無効、という状態を防ぐため。確認後は必ず元に戻すこと）。
 
 6. **配置先が VS Code プロジェクトの場合、Java 向けの VS Code 設定を追加する**
    - 判定は `<配置先>/.vscode/` ディレクトリ（`settings.json` または `extensions.json`）の有無で行う。
