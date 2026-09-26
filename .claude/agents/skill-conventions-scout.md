@@ -1,7 +1,7 @@
 ---
 name: skill-conventions-scout
 description: 既存スキルのSKILL.mdとtemplates/を読んで、新しいスキルを既存の流儀に揃えるために必要な情報だけを箇条書きで返す偵察エージェント。ディレクトリ構成、命名規則、利用者への入口の作り方(justfileのレシピ等)、プレースホルダの方式、サプライチェーン対策の書き方、SKILL.mdの節構成といった横断的な共通パターンを抽出する。SKILL.mdは1本15〜32KBあり全文を読むと呼び出し元のコンテキストを圧迫するため、読むのを肩代わりする。スキルの新規作成・編集そのもの、テンプレートの動作検証はこのエージェントの対象外。
-model: sonnet
+model: haiku
 color: blue
 tools: Read, Glob, Grep, Bash
 ---
