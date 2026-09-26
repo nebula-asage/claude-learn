@@ -52,6 +52,8 @@
     "gofmt", // Go標準のフォーマッタコマンド名
     "golangci", // golangci-lint（静的解析ツール）の名称の一部
     "princjef", // README.md: gomarkdocの作者のGitHubユーザー名
-    "pnpx" // justfile: pnpmが提供するnpx相当のパッケージ実行コマンド（cspellレシピで使用）
+    "pnpx", // justfile: pnpmが提供するnpx相当のパッケージ実行コマンド（cspellレシピで使用）
+    "testuser", // internal/*/テストコード: テスト用ユーザー名の固定値
+    "newuser" // internal/command/user_command_test.go: 更新後のテスト用ユーザー名の固定値
   ]
 }

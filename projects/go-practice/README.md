@@ -1,10 +1,15 @@
 # go-practice
 
 Goの練習用プロジェクト。リンター・フォーマッター・単体テスト・カバレッジ計測・ドキュメンテーションコメントの一式を組み込んでいる。
+アプリケーション本体は、コマンドラインでユーザーデータを管理するシンプルなユーザー管理システム（`../rust-learn`のGo版）。
 
 ## 構成
 
-- `main.go` — エントリーポイント
+- `main.go` — エントリーポイント。サブコマンドを`internal/command`にディスパッチする
+- `internal/model/` — ユーザー情報を表すドメインモデル
+- `internal/repository/` — ユーザーデータの永続化（JSONファイル）
+- `internal/service/` — 入力値のバリデーションとビジネスロジック
+- `internal/command/` — コマンドライン操作の実装
 - `internal/greeting/` — 挨拶メッセージを組み立てるロジック（`main`パッケージには`revive`の`exported`ルール（exportされた識別子にコメント必須）が適用されないため、コメント強制を意味あるものにするためにロジックを別パッケージへ分離している）
 
 ## 前提
@@ -14,10 +19,30 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 - [gomarkdoc](https://github.com/princjef/gomarkdoc)（`gomarkdoc --version` で確認。`go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest` で導入）
 - [just](https://just.systems/)（`just --version` で確認。GitHub ReleasesのtarballとSHA256SUMSで導入。devcontainerには標準搭載済み）
 
-## 実行方法
+## 使い方
 
 ```sh
-just run          # 実行
+go run . create <メールアドレス> <ユーザー名> <電話番号> <年齢>
+go run . update <メールアドレス> <ユーザー名> <電話番号> <年齢>
+go run . list
+go run . get <メールアドレス>
+go run . delete <メールアドレス>
+
+# 例
+go run . create john@example.com "John Doe" 1234567890 25
+```
+
+入力値の制限（メールアドレスは標準形式、ユーザー名は3文字以上、電話番号は10桁以上の数字、
+年齢は0〜150）はrust-learn版と同じ。データの保存先は環境変数`USER_DATA_FILE`で指定でき、
+未指定時はカレントディレクトリの`userdata.json`を使う。
+
+引数付きでCLIを実行する場合、`just run`は空白入りの引数（ユーザー名等）を正しく渡せないため、
+上記のように`go run .`を直接使う。
+
+## 開発用コマンド
+
+```sh
+just run          # 実行（引数なし。Usageが表示される）
 just fmt          # gofmtでフォーマット
 just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知）
 just test         # go testで単体テスト
