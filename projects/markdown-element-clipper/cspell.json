@@ -50,17 +50,19 @@
     "venv", // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
     // 以下はmarkdown-element-clipperプロジェクト固有の未知語
     "Blockable", // src/content/picker.ts: onBlockableEvent等、独自命名の識別子
+    "chdir", // AGENTS.md: process.chdir()への言及
     "chromedeps", // playwright.config.ts, README.md: Playwright用Chrome依存ライブラリの展開先ディレクトリ名（独自命名）
     "dpkg", // README.md: Debianパッケージ管理コマンド名
     "gitdir", // scripts/install-husky.mjs: git worktreeの.gitファイルが指すポインタのキー名（Git用語）
     "libnspr", // playwright.config.ts, README.md: Playwright ChromiumがLinuxで要求する依存ライブラリ名（libnspr4）
     "libnss", // playwright.config.ts, README.md: Playwright ChromiumがLinuxで要求する依存ライブラリ名（libnss3）
     "mdclip", // e2e/fixtures.ts: 一時ディレクトリ名のプレフィックス（markdown-element-clipperの略、独自命名）
-    "mixmark", // CLAUDE.md, README.md, scripts/build.mjs: Node専用依存パッケージ名（@mixmark-io/domino）
+    "mixmark", // AGENTS.md, README.md, scripts/build.mjs: Node専用依存パッケージ名（@mixmark-io/domino）
     "pnpx", // justfile: pnpm付属のワンショット実行コマンド名
     "serviceworker", // e2e/fixtures.ts: Playwrightのイベント名（context.waitForEvent("serviceworker")）
     "setext", // src/convert/turndown.ts: Markdownの見出し記法の一種（setext形式）
-    "unshift", // CLAUDE.md: Array.prototype.unshiftへの言及
-    "visibilitychange" // CLAUDE.md: DOMイベント名
+    "toplevel", // AGENTS.md: git rev-parse --show-toplevelへの言及
+    "unshift", // AGENTS.md: Array.prototype.unshiftへの言及
+    "visibilitychange" // AGENTS.md: DOMイベント名
   ]
 }

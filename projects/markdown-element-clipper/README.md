@@ -6,26 +6,19 @@ Chrome / Edge 用のManifest V3拡張機能。ページ上の要素をDevTools�
 
 ## セットアップ
 
-`nvm` が未導入の場合は公式インストーラーで導入する。
+pnpmが未導入の場合は[公式スタンドアロンインストーラー](https://pnpm.io/ja/installation#on-posix-systems)で導入する（npm・nvm・corepackには依存しない）。
 
 ```bash
-NVM_LATEST=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest \
-  | grep -m1 '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_LATEST}/install.sh" | bash
+curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=12 sh -
 ```
 
-Node.jsランタイムはdistroのパッケージではなく `nvm` に導入・管理させる。
+Node.jsランタイムもdistroのパッケージやnvmではなく、pnpm自身の`runtime`機能で導入・管理する。
 
 ```bash
-nvm install --lts
-nvm alias default 'lts/*'
+pnpm runtime set node lts -g
 ```
 
-pnpmはcorepackを使わず、npm経由で10系に固定して導入する。
-
-```bash
-npm install -g pnpm@^10
-```
+タスクランナーとして[just](https://just.systems/)も使う（`package.json`の`scripts`を呼ぶ薄いラッパー。無くてもpnpmコマンドを直接呼べば動く。`just`を引数なしで実行するとレシピ一覧を確認できる）。
 
 ## 実行方法
 
@@ -51,14 +44,42 @@ pnpm build
 ## 開発
 
 ```bash
-pnpm dev         # esbuildのwatchモードでビルド(拡張は手動リロードが必要)
-pnpm typecheck   # 型チェックのみ(--noEmit)
-pnpm test        # vitestでMarkdown変換ロジックの単体テストを実行
-pnpm test:e2e    # Playwrightで実ブラウザに拡張を読み込んで通しテスト
-pnpm build       # 本番ビルド
+pnpm dev                 # esbuildのwatchモードでビルド(拡張は手動リロードが必要)
+pnpm run typecheck       # 型チェックのみ(--noEmit)
+pnpm test                # vitestでMarkdown変換ロジックの単体テストを実行
+pnpm run test:coverage   # カバレッジを計測し、coverage/にHTML・clover.xml・coverage-final.jsonを出力
+pnpm test:e2e            # Playwrightで実ブラウザに拡張を読み込んで通しテスト
+pnpm build               # 本番ビルド
 ```
 
+`just`を使う場合は `just dev` / `just typecheck` / `just test` / `just cover` / `just build` のように読み替えられる（`just`のみ実行するとレシピ一覧を確認できる）。
+
 コードを変更したら、`chrome://extensions` / `edge://extensions` の拡張のリロードボタンを押し、その後対象ページもリロードする（順序が逆だと古いcontent scriptが残る）。
+
+### Lint / Format / ドキュメント生成
+
+```bash
+pnpm run lint          # eslint . (型情報を使った検査を含む)
+pnpm run lint:fix      # eslint . --fix
+pnpm run format        # prettier --write .
+pnpm run format:check  # prettier --check .
+pnpm run docs          # TypeDocでAPIドキュメント(HTML)をdocs/apiに生成(生成物はgit管理外)
+pnpm run docs:check    # HTMLを出さずドキュメント記述漏れだけ検証する
+just cspell            # pnpxでcspellを取得しスペルチェック
+just markdownlint      # pnpxでmarkdownlint-cli2を取得しMarkdownをlint
+```
+
+`src/**/*.ts`のexportしたシンボルにはJSDocコメントが必須（ESLintの`eslint-plugin-jsdoc`とTypeDocの記述漏れ検証の両方でチェックされる）。
+
+### Git hooks（Husky + lint-staged）
+
+`pnpm-workspace.yaml`の`ignoreScripts: true`（サプライチェーン攻撃対策）により、`pnpm install`時に`prepare`スクリプトは自動実行されない。`pnpm install`の後、**初回のみ手動で以下を実行**してGitのpre-commitフックを有効化すること。
+
+```bash
+pnpm run prepare
+```
+
+これにより、コミット時にステージされた`.ts`ファイルへ`eslint --fix`と`prettier --write`が、それ以外の対象拡張子には`prettier --write`が自動適用される。このプロジェクトはmonorepo（`claude-learn`）のサブディレクトリにあり`.git`はリポジトリルート直下にしか無いため、clone後の環境では毎回`pnpm run prepare`の実行が必要。
 
 ビルド後、以下のコマンドでturndownがブラウザ向けビルド（Node専用の依存 `@mixmark-io/domino` を含まない版）で正しくバンドルされていることを確認できる。
 
@@ -107,10 +128,10 @@ pnpm add <パッケージ名>
 
 ## サプライチェーン攻撃対策
 
-`.npmrc` に以下を設定している。
+`pnpm-workspace.yaml` に以下を設定している（pnpm 11以降、`.npmrc`はauth/registry設定専用になり非auth/registry設定は無視されるため、こちらに書く）。
 
-- `ignore-scripts=true`: postinstallなどのライフサイクルスクリプトを実行しない
-- `min-release-age=7` / `minimum-release-age=10080`: 公開から7日間は新しいバージョンのインストールをスキップする（npmとpnpmでキー名・単位が異なるため両方指定している）
+- `ignoreScripts: true`: postinstallなどのライフサイクルスクリプトを実行しない
+- `minimumReleaseAge: 10080`: 公開から7日間（10080分）は新しいバージョンのインストールをスキップする
 
 ## 既知の制限
 
