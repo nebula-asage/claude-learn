@@ -1,5 +1,7 @@
 # lint/JSDoc/カバレッジが本当に効いているかを反証で確かめる
 
+**この反証は`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。**
+
 設定を書いただけで実は無効、という状態を防ぐため。以下はいずれも検証済みで、確認後は必ず元に戻すこと。
 
 - `src/index.ts`の`greet`関数内に使っていない変数（例: `const unused = 1;`）を追加すると、`just lint`で`'unused' is assigned a value but never used. Allowed unused vars must match /^_/u (@typescript-eslint/no-unused-vars)`が検出される。

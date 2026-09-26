@@ -35,7 +35,7 @@ echo "=== clean ==="; just clean
 
 途中で失敗したら、そのコマンドだけ単独で再実行して詳細を確認する。
 
-以下はlint/依存検査が「設定を書いただけで実は無効」になっていないかを確かめる反証で、ソースや`pyproject.toml`を一時的に書き換えて確認後に必ず元へ戻す作業を伴うため、バッチ化はせず個別に行う。
+以下はlint/依存検査が「設定を書いただけで実は無効」になっていないかを確かめる反証で、ソースや`pyproject.toml`を一時的に書き換えて確認後に必ず元へ戻す作業を伴うため、バッチ化はせず個別に行う。**この反証は、このスキルの`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。**
 
 - ruffの `D100`/`D103`（docstring必須）の実効性: `main.py` のdocstringを一時的に削り、`just lint` で検出されることを確認する。`tests/test_main.py` にdocstringが無くてもエラーにならないこともあわせて確認する。確認後は削った内容を必ず元に戻す。
 - ruffの `DOC` ルール（引数名不一致検出）の実効性: `main.py` の `greet` 関数のdocstring内の `Args:` の引数名（`name`）だけを別の文字列（例: `nam`）に書き換え、`just lint` で `docstring-extraneous-parameter`（シグネチャに無い `nam`）と `undocumented-param`（記述漏れの `name`）の両方が検出されることを確認する。確認後は必ず元の引数名に戻す。

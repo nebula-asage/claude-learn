@@ -61,7 +61,7 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
      - `devcontainer.json`が存在しない場合: `.claude/skills/go-project/templates/vscode/extensions.json`の内容を`<配置先>/.vscode/extensions.json`にマージする（既存の`recommendations`があれば重複を除いて追記し、既存の非Go系の推奨拡張機能はそのまま残す）。
 
 6. **動作確認する**
-   `<配置先>` に移動し、`.claude/skills/go-project/references/verify.md` の手順に従って確認する。前述の通り、非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら各コマンドの前に `export GOROOT/GOPATH/PATH` を明示する。lintが本当に効いているかを反証で確かめる場合は `.claude/skills/go-project/references/counter-tests.md` を参照する（設定を書いただけで実は無効、という状態を防ぐため。確認後は必ず元に戻すこと）。
+   `<配置先>` に移動し、`.claude/skills/go-project/references/verify.md` の手順に従って確認する。前述の通り、非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら各コマンドの前に `export GOROOT/GOPATH/PATH` を明示する。lintが本当に効いているかの反証（`.claude/skills/go-project/references/counter-tests.md`）は、このスキルの`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。
 
 ## このスキルの対象外
 
