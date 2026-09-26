@@ -9,7 +9,9 @@ from rich.console import Console
 import main
 from main import (
     TurnUsage,
+    _cost_summary,
     _find_subagent_dirs,
+    _fmt_cost,
     _read_agent_type,
     _read_all_subagent_turns,
     _read_subagent_turns_from_dirs,
@@ -24,6 +26,7 @@ from main import (
     read_all_turns,
     read_turns,
     render_report,
+    resolve_model_pricing,
     resolve_session_file,
 )
 
@@ -350,6 +353,76 @@ def test_totals_sums_each_metric_across_turns() -> None:
     assert totals.total_tokens == 110
 
 
+def test_resolve_model_pricing_matches_exact_model_id() -> None:
+    pricing = resolve_model_pricing("claude-sonnet-5")
+
+    assert pricing is not None
+    assert pricing.input == pytest.approx(2 / 1_000_000)
+    assert pricing.output == pytest.approx(10 / 1_000_000)
+    assert pricing.cache_write_5m == pytest.approx(2.50 / 1_000_000)
+    assert pricing.cache_read == pytest.approx(0.20 / 1_000_000)
+
+
+def test_resolve_model_pricing_strips_date_suffix() -> None:
+    dated = resolve_model_pricing("claude-haiku-4-5-20251001")
+    undated = resolve_model_pricing("claude-haiku-4-5")
+
+    assert dated is not None
+    assert dated == undated
+
+
+def test_resolve_model_pricing_returns_none_for_unknown_model() -> None:
+    assert resolve_model_pricing("claude-does-not-exist") is None
+
+
+def test_turn_usage_cost_usd_computes_weighted_sum_for_known_model() -> None:
+    turn = TurnUsage(
+        "t1",
+        "claude-sonnet-5",
+        input_tokens=1_000_000,
+        output_tokens=1_000_000,
+        cache_creation_input_tokens=1_000_000,
+        cache_read_input_tokens=1_000_000,
+    )
+
+    assert turn.cost_usd == pytest.approx(2 + 10 + 2.50 + 0.20)
+
+
+def test_turn_usage_cost_usd_is_none_for_unknown_model() -> None:
+    turn = TurnUsage("t1", "claude-does-not-exist", 1, 1, 1, 1)
+
+    assert turn.cost_usd is None
+
+
+def test_cost_summary_sums_known_models_and_counts_unresolved() -> None:
+    turns = [
+        TurnUsage("t1", "claude-sonnet-5", 1_000_000, 0, 0, 0),
+        TurnUsage("t2", "claude-does-not-exist", 1_000_000, 0, 0, 0),
+    ]
+
+    total, unresolved = _cost_summary(turns)
+
+    assert total == pytest.approx(2.0)
+    assert unresolved == 1
+
+
+def test_fmt_cost_formats_known_and_unknown() -> None:
+    assert _fmt_cost(1.5) == "$1.5000"
+    assert _fmt_cost(None) == "-"
+
+
+def test_build_table_shows_cost_column_and_unresolved_note() -> None:
+    turns = [
+        TurnUsage("t1", "claude-sonnet-5", 1_000_000, 0, 0, 0),
+        TurnUsage("t2", "claude-does-not-exist", 1_000_000, 0, 0, 0),
+    ]
+
+    output = _render(build_table(turns, last_n=15))
+
+    assert "$2.0000" in output
+    assert "内1ターンは料金未対応モデル" in output
+
+
 def test_render_report_embeds_turn_data_and_title() -> None:
     turns = [TurnUsage("2026-09-17T00:00:00.000Z", "claude-sonnet-5", 1, 2, 3, 4)]
 
@@ -358,6 +431,29 @@ def test_render_report_embeds_turn_data_and_title() -> None:
     assert "my-session" in html
     assert "claude-sonnet-5" in html
     assert "<!doctype html>" in html
+
+
+def test_render_report_embeds_per_turn_cost_and_total() -> None:
+    turns = [
+        TurnUsage("2026-09-17T00:00:00.000Z", "claude-sonnet-5", 1_000_000, 0, 0, 0)
+    ]
+
+    html = render_report(turns, title="my-session")
+
+    assert '"cost": 2.0' in html
+    assert "$2.0000" in html
+
+
+def test_render_report_notes_unresolved_cost_models() -> None:
+    turns = [
+        TurnUsage(
+            "2026-09-17T00:00:00.000Z", "claude-does-not-exist", 1_000_000, 0, 0, 0
+        )
+    ]
+
+    html = render_report(turns, title="my-session")
+
+    assert "内1ターンは料金未対応モデルのため未集計" in html
 
 
 def test_render_report_handles_empty_turns() -> None:
