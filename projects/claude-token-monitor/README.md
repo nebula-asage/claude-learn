@@ -46,6 +46,26 @@ just report
 
 `just` を引数なしで実行するとレシピ一覧が確認できる。
 
+## bash-completion
+
+サブコマンド（`watch`/`report`）とオプション（`--file`/`--session`等）を [argcomplete](https://github.com/kislyuk/argcomplete) でTab補完できる。ただし`uv run main.py`のように「`uv run`」を先頭に付ける呼び方は、bashの補完登録がコマンド名の1単語目（この場合`uv`）にしか紐付かないため補完対象にできない。そのため補完を使うには、まず本ツールをコンソールスクリプトとして単体で呼べる形にする必要がある（初回のみ手動実行）。
+
+```bash
+# ~/.local/bin/claude-token-monitor を作成する（--editableなので、main.py編集後に再インストール不要）
+uv tool install --editable .
+```
+
+続けて、生成された`claude-token-monitor`コマンド向けの補完を`~/.bashrc`に登録する（永続化のため）。
+
+```bash
+echo 'eval "$(register-python-argcomplete claude-token-monitor)"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+以後は`claude-token-monitor watch`/`claude-token-monitor report`のようにコンソールスクリプト経由で実行すればTab補完が効く（`just watch`/`just report`や`uv run main.py ...`は従来どおり補完なしで使える。どちらの呼び方でも動作は同じ）。
+
+`register-python-argcomplete`が生成するのは自己完結したbash関数定義であり、システムの`bash-completion`パッケージ（`apt-get install bash-completion`等）は不要。このホスト環境（WSL2）は`sudo`がパスワード必須で非対話導入ができない制約があるため、この「システムパッケージ不要」という性質は都合が良い。
+
 ## 依存パッケージの追加
 
 ```bash

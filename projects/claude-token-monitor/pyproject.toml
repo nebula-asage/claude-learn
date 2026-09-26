@@ -5,7 +5,23 @@ description = "Claude Codeのセッショントランスクリプトからター
 requires-python = ">=3.12"
 dependencies = [
     "rich>=13.9.0",
+    "argcomplete>=3.5.0",
 ]
+
+# bash-completion対応のため`uv tool install --editable .`でインストール可能なコンソールスクリプトを公開する
+# （`register-python-argcomplete`はPATH上の実行可能コマンド名にしか登録できず、`uv run main.py`のように
+# 「uv run」を先頭に付ける呼び方には登録できないため）。詳細はREADMEの「bash-completion」節を参照。
+[project.scripts]
+claude-token-monitor = "main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# main.pyはパッケージ化していないフラットなモジュールなので、hatchlingの自動パッケージ検出に頼らず
+# ビルド対象を明示する
+[tool.hatch.build.targets.wheel]
+include = ["main.py"]
 
 [tool.uv]
 # サプライチェーン攻撃対策: 公開されたばかりのパッケージバージョンは
