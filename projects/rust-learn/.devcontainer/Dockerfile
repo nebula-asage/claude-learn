@@ -97,6 +97,13 @@ RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no
     && rustup completions bash rustup > /home/$USERNAME/.local/share/bash-completion/completions/rustup \
     && rustup completions bash cargo > /home/$USERNAME/.local/share/bash-completion/completions/cargo
 
+# カバレッジ計測用コンポーネントと追加ツール（cargo-llvm-cov・cargo-deny）の導入
+# rust-cargo-projectスキルの導入手順（.claude/skills/rust-cargo-project/references/install.md）に準拠。
+# llvm-tools-previewを入れ忘れると`cargo llvm-cov`が実行時エラーになる。
+# cargo installはソースからビルドするため数分かかる。--lockedはクレート側のCargo.lockを使わせる指定で、ビルドが壊れにくくなる
+RUN rustup component add llvm-tools-preview \
+    && cargo install cargo-llvm-cov cargo-deny --locked
+
 # pnpm（公式スタンドアロンインストーラで導入する。npm/nvm/corepackいずれにも依存しない。
 # $HOME配下にsudo不要で導入され、実行バイナリはnpmレジストリの署名とチェックサムで検証される）
 ARG PNPM_VERSION=12
