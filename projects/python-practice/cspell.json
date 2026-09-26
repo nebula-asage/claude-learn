@@ -41,6 +41,7 @@
   "words": [
     "gomarkdoc", // ignorePathsのコメント: GoのAPIドキュメント生成ツール名
     "htmlcov", // ignorePathsのパス・コメント: pytest-covが生成するカバレッジHTMLディレクトリ名
+    "mktemp", // justfileで使うUNIXコマンド名
     "mypy", // ignorePathsのパス・コメント: Pythonの型チェッカー名（.mypy_cache）
     "pdoc", // ignorePathsのコメント: PythonのAPIドキュメント生成ツール名
     "pycache", // ignorePathsのパス: Pythonのバイトコードキャッシュディレクトリ名（__pycache__）
