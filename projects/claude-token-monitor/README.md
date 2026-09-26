@@ -48,19 +48,13 @@ just report
 
 ## bash-completion
 
-サブコマンド（`watch`/`report`）とオプション（`--file`/`--session`等）を [argcomplete](https://github.com/kislyuk/argcomplete) でTab補完できる。ただし`uv run main.py`のように「`uv run`」を先頭に付ける呼び方は、bashの補完登録がコマンド名の1単語目（この場合`uv`）にしか紐付かないため補完対象にできない。そのため補完を使うには、まず本ツールをコンソールスクリプトとして単体で呼べる形にする必要がある（初回のみ手動実行）。
+サブコマンド（`watch`/`report`）とオプション（`--file`/`--session`等）を [argcomplete](https://github.com/kislyuk/argcomplete) でTab補完できる。ただし`uv run main.py`のように「`uv run`」を先頭に付ける呼び方は、bashの補完登録がコマンド名の1単語目（この場合`uv`）にしか紐付かないため補完対象にできない。そのため補完を使うには、まず本ツールをコンソールスクリプトとして単体で呼べる形にする必要がある（初回のみ実行）。
 
 ```bash
-# ~/.local/bin/claude-token-monitor を作成する（--editableなので、main.py編集後に再インストール不要）
-uv tool install --editable .
+just install-completion
 ```
 
-続けて、生成された`claude-token-monitor`コマンド向けの補完を`~/.bashrc`に登録する（永続化のため）。
-
-```bash
-echo 'eval "$(register-python-argcomplete claude-token-monitor)"' >> ~/.bashrc
-source ~/.bashrc
-```
+内部では `uv tool install --editable .`（`~/.local/bin/claude-token-monitor` を作成。`--editable`なので`main.py`編集後に再インストール不要）と、生成された`claude-token-monitor`コマンド向け補完の`~/.bashrc`への登録（`eval "$(register-python-argcomplete claude-token-monitor)"`の追記。既に追記済みなら重複させない）を行う。登録後は `source ~/.bashrc` するか、シェルを開き直せば補完が効くようになる。
 
 以後は`claude-token-monitor watch`/`claude-token-monitor report`のようにコンソールスクリプト経由で実行すればTab補完が効く（`just watch`/`just report`や`uv run main.py ...`は従来どおり補完なしで使える。どちらの呼び方でも動作は同じ）。
 

@@ -18,6 +18,11 @@ watch:
 report:
     uv run main.py report
 
+# コンソールスクリプト(claude-token-monitor)をeditableインストールし、bash-completionを~/.bashrcに永続化する（初回のみ実行。詳細はREADMEの「bash-completion」節を参照）
+install-completion:
+    uv tool install --editable .
+    grep -qxF 'eval "$(register-python-argcomplete claude-token-monitor)"' ~/.bashrc || echo 'eval "$(register-python-argcomplete claude-token-monitor)"' >> ~/.bashrc
+
 # ruffでフォーマットを適用する
 fmt:
     uv run ruff format .
