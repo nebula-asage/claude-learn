@@ -41,6 +41,36 @@ describe("preprocessElement", () => {
     expect(wrapper.querySelector(".hidden-aria")).toBeNull();
   });
 
+  it("visibility:hiddenとvisibility:collapseの要素をクローンから削除する", () => {
+    const el = render(`
+      <div>
+        <p class="visible">visible</p>
+        <p class="hidden-visibility" style="visibility:hidden">a</p>
+        <p class="hidden-collapse" style="visibility:collapse">b</p>
+      </div>
+    `);
+    const wrapper = preprocessElement(el);
+    expect(wrapper.querySelector(".visible")).not.toBeNull();
+    expect(wrapper.querySelector(".hidden-visibility")).toBeNull();
+    expect(wrapper.querySelector(".hidden-collapse")).toBeNull();
+  });
+
+  it("href属性の無いaタグはURL絶対化をスキップしそのまま残す", () => {
+    const el = render(`<div><a>no href</a></div>`);
+    const wrapper = preprocessElement(el);
+    const a = wrapper.querySelector("a");
+    expect(a).not.toBeNull();
+    expect(a?.hasAttribute("href")).toBe(false);
+  });
+
+  it("src属性の無いimgはURL正規化とdata URI除去をスキップする", () => {
+    const el = render(`<div><img alt="broken"></div>`);
+    const wrapper = preprocessElement(el);
+    const img = wrapper.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img?.hasAttribute("src")).toBe(false);
+  });
+
   it("巨大なdata URIの画像を削除する", () => {
     const hugeDataUri = "data:image/png;base64," + "A".repeat(600);
     const el = render(`<div><img src="${hugeDataUri}" alt="huge"></div>`);
@@ -75,5 +105,24 @@ describe("preprocessElement", () => {
     const td = el.querySelector("td");
     const wrapper = preprocessElement(td as Element);
     expect(wrapper.querySelector("table tbody tr td")?.textContent).toBe("cell");
+  });
+
+  it("start属性の無いol内でliを単体選択すると兄弟インデックスから連番が算出される", () => {
+    const el = render(`
+      <ol>
+        <li>a</li>
+        <li id="target">b</li>
+      </ol>
+    `);
+    const target = el.querySelector("#target");
+    const wrapper = preprocessElement(target as Element);
+    expect(wrapper.querySelector("ol")?.getAttribute("start")).toBe("2");
+  });
+
+  it("thead/tbody/tfootを単体選択するとtableで包まれる", () => {
+    const el = render(`<table><tbody id="target"><tr><td>cell</td></tr></tbody></table>`);
+    const target = el.querySelector("#target");
+    const wrapper = preprocessElement(target as Element);
+    expect(wrapper.querySelector("table > tbody > tr > td")?.textContent).toBe("cell");
   });
 });

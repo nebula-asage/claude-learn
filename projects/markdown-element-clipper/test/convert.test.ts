@@ -152,6 +152,49 @@ describe("elementToMarkdown", () => {
     expect(md).toBe("5.  c");
   });
 
+  it("href属性の無いリンクはテキストのみ残す(safeLinkルール)", () => {
+    const el = render(`<div><a>plain text</a></div>`);
+    const md = elementToMarkdown(el);
+    expect(md).toBe("plain text");
+    expect(md).not.toContain("[");
+  });
+
+  it("javascript:リンクは無害化してテキストのみ残す", () => {
+    const el = render(`<div><a href="javascript:alert(1)">bad</a></div>`);
+    const md = elementToMarkdown(el);
+    expect(md).toBe("bad");
+    expect(md).not.toContain("javascript:");
+  });
+
+  it("src属性の無い画像はMarkdown中に出力されない", () => {
+    const el = render(`<div><p>before</p><img alt="broken"><p>after</p></div>`);
+    const md = elementToMarkdown(el);
+    expect(md).not.toContain("![");
+    expect(md).toContain("before");
+    expect(md).toContain("after");
+  });
+
+  it("codeのクラス名が既知の言語パターンに一致しない場合は言語名無しのフェンスになる", () => {
+    const el = render(`<pre><code class="foo-bar">plain</code></pre>`);
+    const md = elementToMarkdown(el);
+    expect(md).toContain("```\nplain");
+    expect(md).not.toContain("```foo-bar");
+  });
+
+  it("<pre>にcode要素が無い場合はpre自身のtextContentを使う", () => {
+    const el = render(`<pre>raw text</pre>`);
+    const md = elementToMarkdown(el);
+    expect(md).toContain("```");
+    expect(md).toContain("raw text");
+  });
+
+  it("コードの中に```が含まれる場合はフェンス文字数を伸ばす", () => {
+    const el = render("<pre><code>outer\n```inner```\nend</code></pre>");
+    const md = elementToMarkdown(el);
+    expect(md).toContain("````");
+    expect(md).toContain("```inner```");
+  });
+
   it("<tr>を単体選択してもテーブル書式が保たれる", () => {
     const el = render(`
       <table>
