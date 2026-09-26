@@ -56,6 +56,7 @@
     "Fsub", // test/gitlab/client.test.ts: URLエンコードされたダミーのサブグループ名フィクスチャ
     "Gitaly", // GitLabのGitリポジトリストレージコンポーネント名
     "ghij", // test/gitlab/client.test.ts: truncateUtf8のテストで使うダミー文字列("abcdefghij")の一部
+    "gitdir", // git worktreeの.gitファイルが指すポインタ先（gitdirファイル）を指す用語
     "glpat", // GitLabパーソナルアクセストークンのプレフィックス（例: glpat-xxxx）
     "healthcheck", // Docker Composeのhealthcheck設定で使う語
     "healthz", // ヘルスチェック用エンドポイント（/healthz）

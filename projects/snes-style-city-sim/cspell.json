@@ -40,6 +40,7 @@
   // 配置先で実際に `npx cspell --no-progress .` を実行して検出された未知語のうち、
   // 誤字ではなく正当な語だけを1件ずつ追記する（由来がわかるようインラインコメントを添える）
   "words": [
+    "gitdir", // scripts/install-husky.mjs: git worktreeの.gitファイルが指すポインタ先（gitdirファイル）を指す用語
     "gomarkdoc", // ignorePathsのコメント: GoのAPIドキュメント生成ツール名
     "htmlcov", // ignorePathsのパス・コメント: pytest-covが生成するカバレッジHTMLディレクトリ名
     "mypy", // ignorePathsのパス・コメント: Pythonの型チェッカー名（.mypy_cache）
