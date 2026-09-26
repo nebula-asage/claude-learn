@@ -9,6 +9,7 @@
   "lang": "ja",
   "excludePrivate": true,
   "excludeInternal": true,
+  "disableSources": true,
   "navigation": {
     "includeFolders": true
   },
