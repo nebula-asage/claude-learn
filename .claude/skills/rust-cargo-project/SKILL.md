@@ -48,6 +48,7 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 - **`just lint` は `--all-targets` と `-D warnings` を付ける**。`--all-targets` が無いと `tests/` 配下がlint対象から外れる。`-D warnings` が無いと `[lints]` で `warn` にしたルールが警告止まりになり、実質的な強制にならない
 - **ドキュメンテーションコメントの例（doctest）を書く**。`` ``` `` で囲んだコード例は `cargo test --doc` で実際にコンパイル・実行されるため、例が古くなった時点で落ちる。テンプレートの `greet` / `try_greet` には `# Examples` セクションを入れてある
 - **`cargo doc` は `--no-deps --document-private-items` で実行する**。依存クレートのドキュメントまで生成すると無駄に重く、privateなアイテムも含めた方が練習用途では読み物として有用なため
+- **`src/lib.rs` に `#![doc(html_no_source)]` を付け、生成物にソースコードの埋め込み（各アイテムの`[src]`リンクと`target/doc/src/`配下の実体ページ）を含めない**。この属性は安定版のrustdocでも使える（rustdocの不安定機能ではなく`#[doc]`属性そのものは安定機能）。似た効果を持つCLIフラグ`rustdoc --html-no-source`はnightly限定で、実際に検証したところstableのコンパイラでは`the option \`html-no-source\` is only accepted on the nightly compiler`で拒否される。このリポジトリの方針（stableのみ、nightly不要）に合わせ、属性側の方法を採用している。lib/binでクレート名が同じ場合`cargo doc`はlib側だけをドキュメント化するため、`src/main.rs`側には付けない
 
 ### 依存とサプライチェーン対策
 
