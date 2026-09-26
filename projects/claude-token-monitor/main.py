@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -53,6 +54,86 @@ def encode_project_dir(cwd: Path) -> str:
     return str(cwd).replace("/", "-").replace(".", "-")
 
 
+_MTOK = 1_000_000
+
+# 日付サフィックス付きモデルID(例: "claude-sonnet-4-5-20250929")の末尾を
+# 除去して料金テーブルの正規化キーに揃えるための正規表現。
+_MODEL_DATE_SUFFIX_RE = re.compile(r"-\d{8}$")
+
+
+@dataclass(frozen=True)
+class ModelPricing:
+    """1トークンあたりの料金レート(USD)。platform.claude.com/docs/en/about-claude/pricing 準拠。"""
+
+    input: float
+    output: float
+    cache_write_5m: float
+    cache_read: float
+
+
+def _pricing(
+    input_per_mtok: float,
+    output_per_mtok: float,
+    cache_write_5m_per_mtok: float,
+    cache_read_per_mtok: float,
+) -> ModelPricing:
+    """1M tokenあたりの公表レートを1トークンあたりのレートに変換する。
+
+    Args:
+        input_per_mtok: inputトークンの1M tokenあたりの価格(USD)。
+        output_per_mtok: outputトークンの1M tokenあたりの価格(USD)。
+        cache_write_5m_per_mtok: 5分キャッシュ書き込みの1M tokenあたりの価格(USD)。
+        cache_read_per_mtok: キャッシュ読み取り(ヒット)の1M tokenあたりの価格(USD)。
+
+    Returns:
+        1トークンあたりのレートに変換したModelPricing。
+    """
+    return ModelPricing(
+        input=input_per_mtok / _MTOK,
+        output=output_per_mtok / _MTOK,
+        cache_write_5m=cache_write_5m_per_mtok / _MTOK,
+        cache_read=cache_read_per_mtok / _MTOK,
+    )
+
+
+# キーは日付サフィックスを除いたモデルID。cache writeは既定の5分キャッシュの
+# レートを使う(Claude Codeのプロンプトキャッシュは5分TTLのため。1時間キャッシュ
+# は使われないので未対応)。
+MODEL_PRICING: dict[str, ModelPricing] = {
+    "claude-fable-5-1": _pricing(10, 50, 12.50, 0.25),
+    "claude-mythos-5-1": _pricing(10, 50, 12.50, 0.25),
+    "claude-fable-5": _pricing(10, 50, 12.50, 1),
+    "claude-mythos-5": _pricing(10, 50, 12.50, 1),
+    "claude-opus-5-5": _pricing(4, 20, 5, 0.20),
+    "claude-opus-5": _pricing(5, 25, 6.25, 0.50),
+    "claude-opus-4-8": _pricing(5, 25, 6.25, 0.50),
+    "claude-opus-4-7": _pricing(5, 25, 6.25, 0.50),
+    "claude-opus-4-6": _pricing(5, 25, 6.25, 0.50),
+    "claude-opus-4-5": _pricing(5, 25, 6.25, 0.50),
+    "claude-opus-4-1": _pricing(15, 75, 18.75, 1.50),
+    "claude-opus-4": _pricing(15, 75, 18.75, 1.50),
+    "claude-sonnet-5": _pricing(2, 10, 2.50, 0.20),
+    "claude-sonnet-4-6": _pricing(3, 15, 3.75, 0.30),
+    "claude-sonnet-4-5": _pricing(3, 15, 3.75, 0.30),
+    "claude-sonnet-4": _pricing(3, 15, 3.75, 0.30),
+    "claude-haiku-4-5": _pricing(1, 5, 1.25, 0.10),
+    "claude-3-5-haiku": _pricing(0.80, 4, 1, 0.08),
+}
+
+
+def resolve_model_pricing(model: str) -> ModelPricing | None:
+    """モデルIDから料金レートを引く。日付サフィックス付きのモデルIDにも対応する。
+
+    Args:
+        model: トランスクリプトの`message.model`(例: "claude-sonnet-5"、
+            "claude-haiku-4-5-20251001")。
+
+    Returns:
+        対応するModelPricing。料金テーブルに無いモデル(未知・廃止モデル等)はNone。
+    """
+    return MODEL_PRICING.get(_MODEL_DATE_SUFFIX_RE.sub("", model))
+
+
 @dataclass
 class TurnUsage:
     """1ターン(1回のassistant APIレスポンス)分のトークン使用量。"""
@@ -77,6 +158,23 @@ class TurnUsage:
             + self.output_tokens
             + self.cache_creation_input_tokens
             + self.cache_read_input_tokens
+        )
+
+    @property
+    def cost_usd(self) -> float | None:
+        """4指標を`model`の料金レートで換算したコスト(USD)を返す。
+
+        Returns:
+            換算したコスト。`model`が料金テーブルに無い場合はNone。
+        """
+        pricing = resolve_model_pricing(self.model)
+        if pricing is None:
+            return None
+        return (
+            self.input_tokens * pricing.input
+            + self.output_tokens * pricing.output
+            + self.cache_creation_input_tokens * pricing.cache_write_5m
+            + self.cache_read_input_tokens * pricing.cache_read
         )
 
 
@@ -447,6 +545,38 @@ def _totals(turns: list[TurnUsage]) -> TurnUsage:
     )
 
 
+def _cost_summary(turns: list[TurnUsage]) -> tuple[float, int]:
+    """料金レートが判明しているターンのコストを合計する。
+
+    Args:
+        turns: 合計対象のターン一覧。
+
+    Returns:
+        `(既知モデルのコスト合計(USD), 料金テーブルに無いモデルを持つターン数)`。
+    """
+    total = 0.0
+    unresolved = 0
+    for t in turns:
+        cost = t.cost_usd
+        if cost is None:
+            unresolved += 1
+        else:
+            total += cost
+    return total, unresolved
+
+
+def _fmt_cost(cost: float | None) -> str:
+    """コスト(USD)をUI表示用の文字列に整形する。
+
+    Args:
+        cost: USD金額。料金レートが不明なモデルの場合はNone。
+
+    Returns:
+        `$0.1234`形式の文字列。Noneの場合は`"-"`。
+    """
+    return "-" if cost is None else f"${cost:.4f}"
+
+
 def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
     """直近ターンの一覧と累計を1つのテーブルにまとめる。
 
@@ -457,8 +587,11 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
     Returns:
         rich表示用のTableオブジェクト。
     """
+    total_cost, unresolved = _cost_summary(turns)
+    unresolved_note = f"(内{unresolved}ターンは料金未対応モデル)" if unresolved else ""
     table = Table(
         title=f"Claude Code トークン使用量(ターン別) — 直近{last_n}件 / 累計{len(turns)}ターン"
+        f"{unresolved_note}"
     )
     table.add_column("#", justify="right")
     table.add_column("時刻", justify="left")
@@ -469,6 +602,7 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
     table.add_column("cache_create", justify="right")
     table.add_column("cache_read", justify="right")
     table.add_column("合計", justify="right", style="bold")
+    table.add_column("$", justify="right")
 
     visible = turns[-last_n:]
     offset = len(turns) - len(visible)
@@ -483,6 +617,7 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
             f"{t.cache_creation_input_tokens:,}",
             f"{t.cache_read_input_tokens:,}",
             f"{t.total_tokens:,}",
+            _fmt_cost(t.cost_usd),
         )
 
     totals = _totals(turns)
@@ -497,6 +632,7 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
         f"{totals.cache_creation_input_tokens:,}",
         f"{totals.cache_read_input_tokens:,}",
         f"{totals.total_tokens:,}",
+        _fmt_cost(total_cost),
         style="bold cyan",
     )
     return table
@@ -610,6 +746,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
         外部ネットワーク接続なしで開けるHTML文字列。
     """
     totals = _totals(turns)
+    total_cost, unresolved_cost_count = _cost_summary(turns)
     series_keys = list(SERIES_LABELS.keys())
     data = [
         {
@@ -620,6 +757,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
             **{k: getattr(t, k) for k in series_keys},
             "total": t.total_tokens,
             "cumulative": sum(getattr(x, "total_tokens") for x in turns[: i + 1]),
+            "cost": t.cost_usd,
         }
         for i, t in enumerate(turns)
     ]
@@ -627,6 +765,11 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     subagent_note = (
         f"(うちサブエージェント分 {subagent_turn_count} ターン)"
         if subagent_turn_count
+        else ""
+    )
+    cost_note = (
+        f"(内{unresolved_cost_count}ターンは料金未対応モデルのため未集計)"
+        if unresolved_cost_count
         else ""
     )
     data_json = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
@@ -754,6 +897,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     <div class="kpi"><div class="label">cache_creation(累計)</div><div class="value">{_fmt_int(totals.cache_creation_input_tokens)}</div></div>
     <div class="kpi"><div class="label">cache_read(累計)</div><div class="value">{_fmt_int(totals.cache_read_input_tokens)}</div></div>
     <div class="kpi"><div class="label">合計(累計)</div><div class="value">{_fmt_int(totals.total_tokens)}</div></div>
+    <div class="kpi"><div class="label">コスト($・累計){_escape(cost_note)}</div><div class="value">{_fmt_cost(total_cost)}</div></div>
   </div>
 
   <div class="card">
@@ -844,6 +988,10 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
 
   function fmt(n) {{
     return n.toLocaleString("ja-JP");
+  }}
+
+  function fmtCost(v) {{
+    return v === null || v === undefined ? "-" : "$" + v.toFixed(4);
   }}
 
   function drawStackChart() {{
@@ -945,6 +1093,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
           return {{label: s.label, value: fmt(d[s.key]), color: pal[s.key]}};
         }});
         rows.push({{label: "合計", value: fmt(d.total)}});
+        rows.push({{label: "コスト($)", value: fmtCost(d.cost)}});
         var header = "ターン#" + d.index + "  " + (d.timestamp || "");
         if (d.source && d.source !== "main") header += "  [" + d.source + "]";
         rows.unshift({{label: header, value: ""}});
@@ -1045,7 +1194,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     table.innerHTML = "";
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
-    ["#", "時刻", "エージェント", "モデル", "input", "output", "cache_creation", "cache_read", "合計", "累計"].forEach(function (h) {{
+    ["#", "時刻", "エージェント", "モデル", "input", "output", "cache_creation", "cache_read", "合計", "累計", "コスト($)"].forEach(function (h) {{
       var th = document.createElement("th");
       th.textContent = h;
       headRow.appendChild(th);
@@ -1056,7 +1205,8 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     DATA.forEach(function (d) {{
       var tr = document.createElement("tr");
       [d.index, d.timestamp, d.source, d.model, fmt(d.input_tokens), fmt(d.output_tokens),
-       fmt(d.cache_creation_input_tokens), fmt(d.cache_read_input_tokens), fmt(d.total), fmt(d.cumulative)]
+       fmt(d.cache_creation_input_tokens), fmt(d.cache_read_input_tokens), fmt(d.total), fmt(d.cumulative),
+       fmtCost(d.cost)]
         .forEach(function (v) {{
           var td = document.createElement("td");
           td.textContent = v;
