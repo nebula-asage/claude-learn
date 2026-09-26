@@ -22,7 +22,9 @@ const gitCommonDir = path.resolve(
   execSync("git rev-parse --git-common-dir", { cwd: projectDir }).toString().trim(),
 );
 if (gitDir !== gitCommonDir) {
-  console.warn("husky - git worktree内での実行を検知したため、core.hooksPathの設定をスキップしました");
+  console.warn(
+    "husky - git worktree内での実行を検知したため、core.hooksPathの設定をスキップしました",
+  );
   process.exit(0);
 }
 
