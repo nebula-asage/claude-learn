@@ -58,7 +58,7 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
    - `settings.json`/`extensions.json`（および `devcontainer.json`）はJSONC（コメント付きJSON）として解釈されるため、標準の `jq` に通す前にコメント行を取り除くか、目視でカンマ・かっこの対応を確認する。
 
 6. **依存関係を同期し、動作確認する**
-   `<配置先>` に移動し、`.claude/skills/python-uv-project/references/verify.md` の手順に従って確認する（正常動作の確認とlint/検査の実効性の反証が同じ手順の中に混在している。反証部分の確認後は必ず元に戻すこと）。確認後、テストで作った一時的な依存追加や `uv.lock` / `.venv` / `.pytest_cache` / `htmlcov` / `.coverage` / `coverage.lcov` / `apidocs` は元に戻す/削除すること。
+   `<配置先>` に移動し、`.claude/skills/python-uv-project/references/verify.md` の手順に従って確認する（正常動作の確認手順のみでよい。同ファイル末尾の反証部分は、このスキルの`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない）。確認後、テストで作った一時的な依存追加や `uv.lock` / `.venv` / `.pytest_cache` / `htmlcov` / `.coverage` / `coverage.lcov` / `apidocs` は元に戻す/削除すること。
 
 7. **（任意）bash補完を有効化する**
    - 手順は `.claude/skills/python-uv-project/references/install.md` を参照する。

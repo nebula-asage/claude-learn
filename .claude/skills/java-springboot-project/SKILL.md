@@ -250,8 +250,9 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
    `<配置先>` に移動し、`references/verify.md` の手順に従って確認する。`JAVA_HOME` と `PATH` は都度指定する
    （`~/.bashrc` は非対話シェルだと冒頭で早期 return するため、`source ~/.bashrc` は効かない）。
-   lint が本当に効いているかを反証で確かめる場合は `references/counter-tests.md` を参照する
-   （設定を書いただけで実は無効、という状態を防ぐため。確認後は必ず元に戻すこと）。
+   lint が本当に効いているかの反証（`references/counter-tests.md`）は、このスキルの`templates/`を
+   変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する
+   手順ではない。
 
 6. **配置先が VS Code プロジェクトの場合、Java 向けの VS Code 設定を追加する**
    - 判定は `<配置先>/.vscode/` ディレクトリ（`settings.json` または `extensions.json`）の有無で行う。

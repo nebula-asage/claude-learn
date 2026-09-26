@@ -71,7 +71,7 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（pnp
    - `settings.json`/`extensions.json`（および`devcontainer.json`）はJSONC（コメント付きJSON）として解釈されるため、標準の`jq`に通す前にコメント行を取り除くか、目視でカンマ・かっこの対応を確認する。
 
 5. **依存関係を同期し、動作確認する**
-   `<配置先>`に移動し、`.claude/skills/pnpm-project/references/verify.md`の手順に従って確認する。確認後、テストで作った一時的な依存追加や`pnpm-lock.yaml`/`node_modules`/`dist`/`coverage`/`docs`は元に戻す/削除すること。lint/JSDoc/カバレッジの実効性を反証で確かめる場合は`.claude/skills/pnpm-project/references/counter-tests.md`を参照する（設定を書いただけで実は無効、という状態を防ぐため。確認後は必ず元に戻すこと）。
+   `<配置先>`に移動し、`.claude/skills/pnpm-project/references/verify.md`の手順に従って確認する。確認後、テストで作った一時的な依存追加や`pnpm-lock.yaml`/`node_modules`/`dist`/`coverage`/`docs`は元に戻す/削除すること。lint/JSDoc/カバレッジの実効性の反証（`.claude/skills/pnpm-project/references/counter-tests.md`）は、このスキルの`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。
    - （任意）bash補完の有効化手順は`.claude/skills/pnpm-project/references/install.md`を参照する。
 
 ## このスキルの対象外

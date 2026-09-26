@@ -1,5 +1,7 @@
 # lintが本当に効いているかを反証で確かめる
 
+**この反証は`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。**
+
 設定を書いただけで実は無効、という状態を防ぐため。以下はいずれも検証済みで、確認後は必ず元に戻すこと。
 
 - `src/greeting.rs` の `///` コメントを削ると、`missing documentation for a struct` / `missing documentation for a function`（いずれも `pub` なアイテム）と `docs for function returning \`Result\` missing \`# Errors\` section` が `just lint` で検出される。private な `format_greeting` にはドキュメンテーションコメントを強制していないので、そちらのコメントを削っても `just lint` は落ちない。

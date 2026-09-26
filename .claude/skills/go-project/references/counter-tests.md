@@ -1,5 +1,7 @@
 # lintが本当に効いているかを反証で確かめる
 
+**この反証は`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。**
+
 設定を書いただけで実は無効、という状態を防ぐため。以下はいずれも検証済みで、確認後は必ず元に戻すこと。
 
 - `internal/greeting/greeting.go` の `Greet` 関数のコメントを削ると、`exported: exported function Greet should have comment or be unexported (revive)` が `just lint` で検出される。
