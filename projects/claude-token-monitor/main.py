@@ -68,6 +68,7 @@ class ModelPricing:
     input: float
     output: float
     cache_write_5m: float
+    cache_write_1h: float
     cache_read: float
 
 
@@ -75,6 +76,7 @@ def _pricing(
     input_per_mtok: float,
     output_per_mtok: float,
     cache_write_5m_per_mtok: float,
+    cache_write_1h_per_mtok: float,
     cache_read_per_mtok: float,
 ) -> ModelPricing:
     """1M tokenあたりの公表レートを1トークンあたりのレートに変換する。
@@ -83,6 +85,7 @@ def _pricing(
         input_per_mtok: inputトークンの1M tokenあたりの価格(USD)。
         output_per_mtok: outputトークンの1M tokenあたりの価格(USD)。
         cache_write_5m_per_mtok: 5分キャッシュ書き込みの1M tokenあたりの価格(USD)。
+        cache_write_1h_per_mtok: 1時間キャッシュ書き込みの1M tokenあたりの価格(USD)。
         cache_read_per_mtok: キャッシュ読み取り(ヒット)の1M tokenあたりの価格(USD)。
 
     Returns:
@@ -92,32 +95,35 @@ def _pricing(
         input=input_per_mtok / _MTOK,
         output=output_per_mtok / _MTOK,
         cache_write_5m=cache_write_5m_per_mtok / _MTOK,
+        cache_write_1h=cache_write_1h_per_mtok / _MTOK,
         cache_read=cache_read_per_mtok / _MTOK,
     )
 
 
-# キーは日付サフィックスを除いたモデルID。cache writeは既定の5分キャッシュの
-# レートを使う(Claude Codeのプロンプトキャッシュは5分TTLのため。1時間キャッシュ
-# は使われないので未対応)。
+# キーは日付サフィックスを除いたモデルID。Claude Codeのプロンプトキャッシュは
+# 5分TTLと1時間TTLの両方を使うため、cache writeは両方のレートを保持し、実際の
+# 内訳(usage.cache_creation.ephemeral_5m_input_tokens/ephemeral_1h_input_tokens)
+# に応じてTurnUsage.cost_usdで振り分ける(ccusageとの突き合わせで、全量を5分
+# レート扱いにすると1時間キャッシュ分を過小評価することが判明したため)。
 MODEL_PRICING: dict[str, ModelPricing] = {
-    "claude-fable-5-1": _pricing(10, 50, 12.50, 0.25),
-    "claude-mythos-5-1": _pricing(10, 50, 12.50, 0.25),
-    "claude-fable-5": _pricing(10, 50, 12.50, 1),
-    "claude-mythos-5": _pricing(10, 50, 12.50, 1),
-    "claude-opus-5-5": _pricing(4, 20, 5, 0.20),
-    "claude-opus-5": _pricing(5, 25, 6.25, 0.50),
-    "claude-opus-4-8": _pricing(5, 25, 6.25, 0.50),
-    "claude-opus-4-7": _pricing(5, 25, 6.25, 0.50),
-    "claude-opus-4-6": _pricing(5, 25, 6.25, 0.50),
-    "claude-opus-4-5": _pricing(5, 25, 6.25, 0.50),
-    "claude-opus-4-1": _pricing(15, 75, 18.75, 1.50),
-    "claude-opus-4": _pricing(15, 75, 18.75, 1.50),
-    "claude-sonnet-5": _pricing(2, 10, 2.50, 0.20),
-    "claude-sonnet-4-6": _pricing(3, 15, 3.75, 0.30),
-    "claude-sonnet-4-5": _pricing(3, 15, 3.75, 0.30),
-    "claude-sonnet-4": _pricing(3, 15, 3.75, 0.30),
-    "claude-haiku-4-5": _pricing(1, 5, 1.25, 0.10),
-    "claude-3-5-haiku": _pricing(0.80, 4, 1, 0.08),
+    "claude-fable-5-1": _pricing(10, 50, 12.50, 20, 0.25),
+    "claude-mythos-5-1": _pricing(10, 50, 12.50, 20, 0.25),
+    "claude-fable-5": _pricing(10, 50, 12.50, 20, 1),
+    "claude-mythos-5": _pricing(10, 50, 12.50, 20, 1),
+    "claude-opus-5-5": _pricing(4, 20, 5, 8, 0.20),
+    "claude-opus-5": _pricing(5, 25, 6.25, 10, 0.50),
+    "claude-opus-4-8": _pricing(5, 25, 6.25, 10, 0.50),
+    "claude-opus-4-7": _pricing(5, 25, 6.25, 10, 0.50),
+    "claude-opus-4-6": _pricing(5, 25, 6.25, 10, 0.50),
+    "claude-opus-4-5": _pricing(5, 25, 6.25, 10, 0.50),
+    "claude-opus-4-1": _pricing(15, 75, 18.75, 30, 1.50),
+    "claude-opus-4": _pricing(15, 75, 18.75, 30, 1.50),
+    "claude-sonnet-5": _pricing(2, 10, 2.50, 4, 0.20),
+    "claude-sonnet-4-6": _pricing(3, 15, 3.75, 6, 0.30),
+    "claude-sonnet-4-5": _pricing(3, 15, 3.75, 6, 0.30),
+    "claude-sonnet-4": _pricing(3, 15, 3.75, 6, 0.30),
+    "claude-haiku-4-5": _pricing(1, 5, 1.25, 2, 0.10),
+    "claude-3-5-haiku": _pricing(0.80, 4, 1, 1.60, 0.08),
 }
 
 
@@ -145,6 +151,8 @@ class TurnUsage:
     cache_creation_input_tokens: int
     cache_read_input_tokens: int
     source: str = "main"
+    # `cache_creation_input_tokens`のうち1時間キャッシュ書き込み分の内訳(残りは5分キャッシュ扱い)。
+    cache_creation_1h_input_tokens: int = 0
 
     @property
     def total_tokens(self) -> int:
@@ -164,16 +172,25 @@ class TurnUsage:
     def cost_usd(self) -> float | None:
         """4指標を`model`の料金レートで換算したコスト(USD)を返す。
 
+        `cache_creation_input_tokens`は`cache_creation_1h_input_tokens`で1時間
+        キャッシュ分を差し引いた残りを5分キャッシュのレートで計算する
+        (全量を5分キャッシュ扱いにすると、1時間キャッシュ利用時にccusageの
+        集計値より低いコストになる回帰につながる)。
+
         Returns:
             換算したコスト。`model`が料金テーブルに無い場合はNone。
         """
         pricing = resolve_model_pricing(self.model)
         if pricing is None:
             return None
+        cache_creation_5m = (
+            self.cache_creation_input_tokens - self.cache_creation_1h_input_tokens
+        )
         return (
             self.input_tokens * pricing.input
             + self.output_tokens * pricing.output
-            + self.cache_creation_input_tokens * pricing.cache_write_5m
+            + cache_creation_5m * pricing.cache_write_5m
+            + self.cache_creation_1h_input_tokens * pricing.cache_write_1h
             + self.cache_read_input_tokens * pricing.cache_read
         )
 
@@ -212,6 +229,12 @@ def _parse_assistant_line(line: str) -> tuple[str, TurnUsage] | None:
     usage = message.get("usage")
     if not isinstance(usage, dict):
         return None
+    cache_creation = usage.get("cache_creation")
+    cache_creation_1h = (
+        cache_creation.get("ephemeral_1h_input_tokens", 0) or 0
+        if isinstance(cache_creation, dict)
+        else 0
+    )
     turn = TurnUsage(
         timestamp=obj.get("timestamp", ""),
         model=message.get("model", ""),
@@ -219,6 +242,7 @@ def _parse_assistant_line(line: str) -> tuple[str, TurnUsage] | None:
         output_tokens=usage.get("output_tokens", 0) or 0,
         cache_creation_input_tokens=usage.get("cache_creation_input_tokens", 0) or 0,
         cache_read_input_tokens=usage.get("cache_read_input_tokens", 0) or 0,
+        cache_creation_1h_input_tokens=cache_creation_1h,
     )
     return message.get("id") or "", turn
 
@@ -542,6 +566,9 @@ def _totals(turns: list[TurnUsage]) -> TurnUsage:
         output_tokens=sum(t.output_tokens for t in turns),
         cache_creation_input_tokens=sum(t.cache_creation_input_tokens for t in turns),
         cache_read_input_tokens=sum(t.cache_read_input_tokens for t in turns),
+        cache_creation_1h_input_tokens=sum(
+            t.cache_creation_1h_input_tokens for t in turns
+        ),
     )
 
 

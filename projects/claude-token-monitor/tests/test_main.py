@@ -45,7 +45,20 @@ def _assistant_line(
     timestamp: str = "2026-09-17T00:00:00.000Z",
     model: str = "claude-sonnet-5",
     message_id: str = "",
+    cache_creation_1h_input_tokens: int | None = None,
 ) -> str:
+    usage = {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cache_creation_input_tokens": cache_creation_input_tokens,
+        "cache_read_input_tokens": cache_read_input_tokens,
+    }
+    if cache_creation_1h_input_tokens is not None:
+        usage["cache_creation"] = {
+            "ephemeral_5m_input_tokens": cache_creation_input_tokens
+            - cache_creation_1h_input_tokens,
+            "ephemeral_1h_input_tokens": cache_creation_1h_input_tokens,
+        }
     return json.dumps(
         {
             "type": "assistant",
@@ -53,12 +66,7 @@ def _assistant_line(
             "message": {
                 "id": message_id,
                 "model": model,
-                "usage": {
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "cache_creation_input_tokens": cache_creation_input_tokens,
-                    "cache_read_input_tokens": cache_read_input_tokens,
-                },
+                "usage": usage,
             },
         }
     )
@@ -386,6 +394,42 @@ def test_turn_usage_cost_usd_computes_weighted_sum_for_known_model() -> None:
     )
 
     assert turn.cost_usd == pytest.approx(2 + 10 + 2.50 + 0.20)
+
+
+def test_turn_usage_cost_usd_splits_cache_creation_between_5m_and_1h_rates() -> None:
+    """`cache_creation_input_tokens`の一部が1時間キャッシュの場合、その分は
+    5分キャッシュのレート(1.25倍)ではなく1時間キャッシュのレート(2倍)で
+    計算されることを確認する(ccusageとの突き合わせで発覚した回帰)。"""
+    turn = TurnUsage(
+        "t1",
+        "claude-sonnet-5",
+        input_tokens=0,
+        output_tokens=0,
+        cache_creation_input_tokens=1_000_000,
+        cache_read_input_tokens=0,
+        cache_creation_1h_input_tokens=1_000_000,
+    )
+
+    assert turn.cost_usd == pytest.approx(4.0)  # 1M token * $4/MTok(1hキャッシュ)
+
+
+def test_parse_turn_extracts_cache_creation_1h_breakdown() -> None:
+    turn = parse_turn(
+        _assistant_line(
+            cache_creation_input_tokens=100, cache_creation_1h_input_tokens=30
+        )
+    )
+
+    assert turn is not None
+    assert turn.cache_creation_input_tokens == 100
+    assert turn.cache_creation_1h_input_tokens == 30
+
+
+def test_parse_turn_defaults_cache_creation_1h_to_zero_when_absent() -> None:
+    turn = parse_turn(_assistant_line())
+
+    assert turn is not None
+    assert turn.cache_creation_1h_input_tokens == 0
 
 
 def test_turn_usage_cost_usd_is_none_for_unknown_model() -> None:
