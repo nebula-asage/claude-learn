@@ -10,7 +10,9 @@ import { FIXTURE_ORIGIN, FIXTURE_PORT, SAMPLE_URL } from "./e2e/constants";
 // 探させる(展開手順はREADMEの「e2eテスト」節を参照)。
 const localLibDir = path.join(os.homedir(), ".local/chromedeps/usr/lib/x86_64-linux-gnu");
 if (existsSync(localLibDir)) {
-  process.env.LD_LIBRARY_PATH = [localLibDir, process.env.LD_LIBRARY_PATH].filter(Boolean).join(":");
+  process.env.LD_LIBRARY_PATH = [localLibDir, process.env.LD_LIBRARY_PATH]
+    .filter(Boolean)
+    .join(":");
 }
 
 export default defineConfig({

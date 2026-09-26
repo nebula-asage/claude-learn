@@ -2,6 +2,42 @@
 default:
     @just --list
 
+# pnpxでcspellを取得し、スペルチェックを実行する（未知語が出た場合はcspell.jsonのwordsに追記して解消する）
+cspell:
+    pnpx cspell --no-progress .
+
 # pnpxでmarkdownlint-cli2を取得し、Markdownの構文・スタイルをlintする
 markdownlint:
     pnpx markdownlint-cli2 "**/*.md"
+
+# ESLintで静的解析する
+lint:
+    pnpm run lint
+
+# ESLintの自動修正を適用する
+lint-fix:
+    pnpm run lint:fix
+
+# Prettierでフォーマットを適用する
+fmt:
+    pnpm run format
+
+# フォーマット崩れが無いか確認する（適用はしない）
+fmt-check:
+    pnpm run format:check
+
+# カバレッジを計測し、coverage/にHTML・clover.xml・coverage-final.jsonを生成する
+cover:
+    pnpm run test:coverage
+
+# TypeDocでdocs/api/にAPIドキュメントを生成する
+doc:
+    pnpm run docs
+
+# HTMLを出さず、JSDoc記述漏れだけを検証する
+doc-check:
+    pnpm run docs:check
+
+# Git hooksを有効化する（pnpm installではignoreScriptsによりprepareが自動実行されないため初回のみ手動実行）
+prepare:
+    pnpm run prepare

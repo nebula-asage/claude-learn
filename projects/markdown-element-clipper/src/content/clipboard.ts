@@ -1,5 +1,8 @@
+/** コピー処理の結果。 */
 export interface CopyResult {
+  /** コピーに成功したかどうか。 */
   ok: boolean;
+  /** 成功/失敗した経路。 */
   method: "clipboard-api" | "exec-command" | "failed";
 }
 
@@ -9,6 +12,7 @@ export interface CopyResult {
  *    されている場合のみ)
  * 2. document.execCommand('copy') (textareaを介する)
  * 3. どちらも失敗したら呼び出し元でユーザーに手動コピーを促す
+ * @param text コピーするMarkdown文字列。
  */
 export async function copyToClipboard(text: string): Promise<CopyResult> {
   if (canUseClipboardApi()) {
@@ -32,7 +36,9 @@ function canUseClipboardApi(): boolean {
   // writeTextはdocumentがフォーカスされている必要があり、開発中にDevTools
   // にフォーカスがあると NotAllowedError: Document is not focused で失敗する。
   return (
-    typeof navigator.clipboard?.writeText === "function" && window.isSecureContext && document.hasFocus()
+    typeof navigator.clipboard?.writeText === "function" &&
+    window.isSecureContext &&
+    document.hasFocus()
   );
 }
 

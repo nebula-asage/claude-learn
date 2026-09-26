@@ -2,6 +2,7 @@ import TurndownService from "turndown";
 import { gfm } from "@joplin/turndown-plugin-gfm";
 import { LANGUAGE_CLASS_PATTERNS } from "./constants";
 
+/** GFM(テーブル・タスクリスト・打ち消し線)とカスタムルールを組み込んだTurndownServiceを生成する。 */
 export function createTurndownService(): TurndownService {
   const service = new TurndownService({
     headingStyle: "atx", // setextはh3以降を表現できない
@@ -23,7 +24,7 @@ export function createTurndownService(): TurndownService {
   // gfmのデフォルトルールより優先される。
   service.addRule("fencedCodeBlockWithLang", {
     filter: (node) => node.nodeName === "PRE",
-    replacement: (_content, node) => fencedCodeBlock(node as HTMLElement),
+    replacement: (_content, node) => fencedCodeBlock(node),
   });
 
   service.addRule("safeLink", {

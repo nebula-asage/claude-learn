@@ -42,7 +42,10 @@ test("Escでキャンセルするとコピーされない", async ({ page, servi
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("");
 });
 
-test("要素をクリックで確定するとMarkdownがクリップボードに入る", async ({ page, serviceWorker }) => {
+test("要素をクリックで確定するとMarkdownがクリップボードに入る", async ({
+  page,
+  serviceWorker,
+}) => {
   await clearClipboard(page);
   await togglePicker(serviceWorker, page);
   await hoverElement(page, "h1");
