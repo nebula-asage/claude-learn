@@ -48,7 +48,7 @@ cover-lcov:
 
 # pdocでdocstringからapidocs/にAPIドキュメントを生成する
 doc:
-    uv run pdoc main.py -d google -o apidocs
+    uv run pdoc main.py -d google -o apidocs --no-show-source
 
 # 依存の脆弱性をpip-audit（uvx経由の隔離実行。プロジェクトの依存には追加しない）でOSVの脆弱性DBと照合する
 audit:
