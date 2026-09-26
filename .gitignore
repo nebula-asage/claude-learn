@@ -2,6 +2,10 @@
 node_modules/
 npm-debug.log*
 
+# pnpm: /workspace-root がホームディレクトリと別ファイルシステムの場合、
+# pnpmがハードリンク用にリポジトリルート直下へ自動生成するローカルストア
+/.pnpm-store/
+
 # Python
 __pycache__/
 *.pyc
