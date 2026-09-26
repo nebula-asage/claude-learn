@@ -1,5 +1,7 @@
 import io
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -1074,6 +1076,61 @@ def test_build_arg_parser_requires_a_command() -> None:
 
     with pytest.raises(SystemExit):
         parser.parse_args([])
+
+
+def _run_argcomplete(comp_line: str) -> list[str]:
+    """`comp_line`をbash補完プロトコルで送り込み、候補一覧を返す。
+
+    argcomplete.autocomplete()はfd操作を伴うため、同一プロセス内(pytest実行プロセス自体)で
+    直接呼び出すとpytestのfaulthandlerが使うファイルディスクリプタを巻き込んで壊れる。
+    そのため必ず別プロセスで実行する。
+
+    Args:
+        comp_line: 補完対象のコマンドライン全体(末尾が補完位置)。
+
+    Returns:
+        argcompleteが返した補完候補のリスト。
+    """
+    project_root = Path(__file__).resolve().parent.parent
+    env = {
+        **os.environ,
+        "_ARGCOMPLETE": "1",
+        "COMP_LINE": comp_line,
+        "COMP_POINT": str(len(comp_line)),
+        "_ARGCOMPLETE_COMP_WORDBREAKS": " ",
+    }
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys, argcomplete, main\n"
+            "argcomplete.autocomplete(\n"
+            "    main.build_arg_parser(),\n"
+            "    output_stream=sys.stdout,\n"
+            "    exit_method=lambda code=0: None,\n"
+            ")\n",
+        ],
+        cwd=project_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return result.stdout.split("\x0b")
+
+
+def test_autocomplete_lists_subcommands() -> None:
+    candidates = _run_argcomplete("claude-token-monitor ")
+
+    assert "watch" in candidates
+    assert "report" in candidates
+
+
+def test_autocomplete_lists_report_options() -> None:
+    candidates = _run_argcomplete("claude-token-monitor report --")
+
+    assert "--output" in candidates
+    assert "--file" in candidates
 
 
 def test_main_dispatches_to_report(

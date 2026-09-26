@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+import argcomplete
 from rich.console import Console
 from rich.live import Live
 from rich.table import Table
@@ -1374,6 +1375,7 @@ def main() -> None:
         SystemExit: 対象セッションログが解決できない場合。
     """
     parser = build_arg_parser()
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
     try:
