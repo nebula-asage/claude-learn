@@ -138,20 +138,3 @@ RUN cd /tmp \
     && mkdir -p /home/$USERNAME/.local/bin \
     && mv just-lsp /home/$USERNAME/.local/bin/ \
     && rm -f "$ARCHIVE" SHA256SUMS
-
-# Rustツールチェーン（rustup）の導入
-# rust-cargo-projectスキルの導入手順（.claude/skills/rust-cargo-project/references/install.md）に準拠し、
-# 公式インストーラで$HOME配下にsudo不要で導入する（既定プロファイルにrustfmt/clippyも含まれる）。
-# DockerfileのRUNは非対話シェルのため、インストーラが~/.bashrcに追記する行は効かない。
-# PATHはこのENVで明示的に通す
-ENV PATH="/home/$USERNAME/.cargo/bin:$PATH"
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
-    && rustup completions bash rustup > /home/$USERNAME/.local/share/bash-completion/completions/rustup \
-    && rustup completions bash cargo > /home/$USERNAME/.local/share/bash-completion/completions/cargo
-
-# カバレッジ計測用コンポーネントと追加ツール（cargo-llvm-cov・cargo-deny）の導入
-# llvm-tools-previewを入れ忘れると`cargo llvm-cov`が実行時エラーになる。
-# cargo installはソースからビルドするため数分かかる。--lockedはクレート側のCargo.lockを使わせる指定で、ビルドが壊れにくくなる
-RUN rustup component add llvm-tools-preview \
-    && cargo install cargo-llvm-cov cargo-deny --locked
