@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -6,16 +6,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Chrome / Edge用のManifest V3拡張機能。ページ上の要素をDevTools風に選択し、その部分をMarkdownに変換してクリップボードへコピーする。TypeScript + esbuild製。Markdown変換は `turndown` + `@joplin/turndown-plugin-gfm`（GFMテーブル・タスクリスト・打ち消し線）を使う。
 
+## 開発環境
+
+devcontainerは使わず、ホスト環境に直接pnpm(公式スタンドアロンインストーラ導入、`PNPM_HOME`配下でNode.jsランタイムも管理)を前提にしている。`.vscode/`にVS Code共通設定・TypeScript向け設定を、`cspell.json`・`.markdownlint.jsonc`/`.markdownlint-cli2.jsonc`にスペルチェック/Markdown lint設定を配置済み。`justfile`はこれらとlint/format/docs系の`pnpm run`スクリプトを呼ぶ薄いラッパー（`just`を引数なしで実行するとレシピ一覧を確認できる）。
+
+`pnpm-workspace.yaml`の`ignoreScripts: true`（サプライチェーン攻撃対策）により、`pnpm install`では`prepare`スクリプト（Husky設定）が自動実行されない。`pnpm install`後、初回のみ`pnpm run prepare`を手動実行してGitのpre-commitフックを有効化すること（詳細は下記「Git hooks」）。
+
 ## コマンド
 
 ```bash
 pnpm install
-pnpm build       # esbuildでdist/へバンドル
-pnpm dev         # esbuildのwatchモード
-pnpm typecheck   # tsc --noEmit (本体とe2eで設定ファイルが分かれている)
-pnpm test        # vitest run (src/convert/ の単体テストのみ)
-pnpm test:e2e    # playwright test (実ブラウザに拡張を読み込む通しテスト)
+pnpm build           # esbuildでdist/へバンドル
+pnpm dev             # esbuildのwatchモード
+pnpm run typecheck   # tsc --noEmit (本体とe2eで設定ファイルが分かれている)
+pnpm test            # vitest run (src/convert/ の単体テストのみ)
+pnpm run test:coverage  # vitest run --coverage (coverage/にHTML・clover.xml・coverage-final.jsonを出力)
+pnpm test:e2e        # playwright test (実ブラウザに拡張を読み込む通しテスト)
+pnpm run lint        # eslint . (型情報を使った検査を含む)
+pnpm run lint:fix    # eslint . --fix
+pnpm run format      # prettier --write .
+pnpm run format:check   # prettier --check .
+pnpm run docs        # TypeDocでAPIドキュメント(HTML)をdocs/apiに生成 (生成物はgit管理外)
+pnpm run docs:check  # HTMLを出さずドキュメント記述漏れだけ検証する
 ```
+
+### Lint / Format / JSDoc
+
+ESLint(flat config, `eslint.config.js`)は`typescript-eslint`の`recommendedTypeChecked`をベースに、`tsconfig.json`と`tsconfig.e2e.json`の両方を型情報のソースとして使う。`e2e/**/*.ts`はPlaywrightのfixture定義が空オブジェクトパターン`({}, use) => {...}`を使う慣習のため`no-empty-pattern`を無効化している。フォーマットはPrettier(`.prettierrc.json`)。
+
+`src/**/*.ts`には`eslint-plugin-jsdoc`(`flat/recommended-typescript-error`)も適用しており、**exportしたシンボル(クラス・関数・interface・型エイリアス・定数、およびinterfaceの各フィールド・メソッド)にはJSDocが必須**(非exportの内部ヘルパーは対象外)。TypeScriptが型情報を持つため`@param`/`@returns`に型注記は書かない。ファイル先頭のモジュールコメントは`@module`ではなく`@packageDocumentation`を使うこと(TS環境では`@module`が冗長タグとしてESLintに拒否される)。ESLintの`jsdoc/require-jsdoc`はトップレベルのexportのみを対象にしており、interfaceのメソッドシグネチャや`.d.ts`のアンビエント宣言は検査対象外だが、TypeDoc側の`typedoc.json`の`validation`(`notExported`/`notDocumented`)はより広い範囲(interfaceのメソッド・`.d.ts`のグローバル拡張含む)を検証するため、`pnpm run docs:check`の方が記述漏れの検出範囲が広い。
+
+`cspell.json`・`.markdownlint.jsonc`・`.markdownlint-cli2.jsonc`はPrettierの対象外にしてある(vscode-settingsスキルのテンプレート書式・末尾カンマ無しに揃えるため。`.prettierignore`参照)。
+
+### Git hooks（Husky + lint-staged）
+
+コミット時、ステージされた`*.ts`に`eslint --fix` → `prettier --write`を、それ以外の対象拡張子(`js`/`mjs`/`cjs`/`json`/`md`/`yml`/`yaml`)には`prettier --write`のみを自動適用する(lint-staged。設定は`package.json`の`lint-staged`フィールド)。フック本体は`.husky/pre-commit`。
+
+このプロジェクトはmonorepo(`claude-learn`)のサブディレクトリにあり`.git`はリポジトリルートにしか存在しないため、Husky標準の`npx husky init`はそのままでは使えない。`scripts/install-husky.mjs`が`git rev-parse --show-toplevel`でリポジトリルートを求め、そこへ`chdir`した上でこのプロジェクト配下`.husky`を対象に`core.hooksPath`を設定する(`package.json`の`prepare`はこのスクリプトを指す)。`core.hooksPath`はGitのローカル設定でリポジトリには含まれないため、cloneした環境では毎回`pnpm run prepare`の実行が必要。
+
+`core.hooksPath`はリポジトリ全体で1つしか持てないため、このフックはリポジトリ内のどのコミットでも発火する。そのため`.husky/pre-commit`は先頭で2つのガードを行う。(1)ステージされたファイルに`projects/markdown-element-clipper/`配下が含まれなければ何もせず通す。(2)`node_modules/.bin/lint-staged`が無い作業ツリー(clone直後や`pnpm install`前のgit worktree)では警告を出してスキップする。どちらもコミットを失敗させない。
 
 ## アーキテクチャ
 

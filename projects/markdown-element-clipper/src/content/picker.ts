@@ -2,9 +2,13 @@ import { elementToMarkdown } from "../convert/index";
 import { copyToClipboard } from "./clipboard";
 import { createOverlay, type Overlay } from "./overlay";
 
+/** 要素選択の状態機械を操作するためのハンドル。 */
 export interface Picker {
+  /** 要素選択を開始する。既に開始済みなら何もしない。 */
   start(): void;
+  /** 要素選択を終了する。既に終了済みなら何もしない。 */
   stop(): void;
+  /** 開始/終了を切り替える。 */
   toggle(): void;
 }
 
@@ -30,6 +34,7 @@ const BLOCKED_EVENT_TYPES = [
   "touchstart",
 ] as const;
 
+/** DevTools風の要素選択ピッカーを生成する。 */
 export function createPicker(): Picker {
   let active = false;
   let overlay: Overlay | null = null;
@@ -50,7 +55,7 @@ export function createPicker(): Picker {
     document.addEventListener("visibilitychange", onVisibilityChange, { signal });
 
     for (const type of BLOCKED_EVENT_TYPES) {
-      window.addEventListener(type, onBlockableEvent as EventListener, {
+      window.addEventListener(type, onBlockableEvent, {
         capture: true,
         passive: false,
         signal,
@@ -180,7 +185,9 @@ export function createPicker(): Picker {
     // 失敗しうるため、ここまでは同期的に(clickハンドラと同一タスクで)実行している。
     void copyToClipboard(markdown).then((result) => {
       if (result.ok) {
-        activeOverlay?.showToast(`Markdownをコピーしました(${markdown.length.toLocaleString()}文字)`);
+        activeOverlay?.showToast(
+          `Markdownをコピーしました(${markdown.length.toLocaleString()}文字)`,
+        );
       } else {
         activeOverlay?.showToast("コピーに失敗しました。手動でコピーしてください", "error");
       }

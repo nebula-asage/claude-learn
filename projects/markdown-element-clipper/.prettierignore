@@ -1,0 +1,13 @@
+dist/
+dist-e2e/
+node_modules/
+pnpm-lock.yaml
+docs/api/
+coverage/
+playwright-report/
+test-results/
+# vscode-settingsスキルが管理する設定ファイル。末尾カンマ無し等その配置元テンプレートの
+# 書式に揃えるため、Prettierの対象外にする（対象にするとtemplate-drift-syncが誤検知する）
+cspell.json
+.markdownlint.jsonc
+.markdownlint-cli2.jsonc

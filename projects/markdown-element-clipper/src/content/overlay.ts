@@ -1,14 +1,19 @@
 import overlayCss from "./overlay.css";
 
+/** ハイライト枠・ラベル・トーストを描画するオーバーレイの操作用ハンドル。 */
 export interface Overlay {
+  /** ハイライト対象を切り替える。nullを渡すとハイライトを消す。 */
   setTarget(el: Element | null): void;
+  /** トーストメッセージを表示する。 */
   showToast(message: string, kind?: "success" | "error"): void;
+  /** オーバーレイのDOM・イベントリスナーをすべて破棄する。 */
   destroy(): void;
 }
 
 const CURSOR_STYLE_ID = "markdown-element-clipper-cursor-style";
 const TOAST_VISIBLE_MS = 1600;
 
+/** ページ最上位にShadow DOM製のオーバーレイを生成する。 */
 export function createOverlay(): Overlay {
   // documentElementに付ける(bodyはtransformを持つことがあり、その場合
   // position:fixedの基準がbody自身になってずれてしまうため)。

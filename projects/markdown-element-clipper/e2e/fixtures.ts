@@ -13,7 +13,13 @@
 // という形にしている。1.で足しているのはfixtureのオリジンに限定した権限で、
 // content script / background の実コードには一切手を入れない。
 
-import { test as base, chromium, type BrowserContext, type Page, type Worker } from "@playwright/test";
+import {
+  test as base,
+  chromium,
+  type BrowserContext,
+  type Page,
+  type Worker,
+} from "@playwright/test";
 import { existsSync } from "node:fs";
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -47,7 +53,9 @@ export const test = base.extend<ExtensionFixtures>({
     });
 
     // navigator.clipboard.writeText / readText の両方に必要。
-    await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin: FIXTURE_ORIGIN });
+    await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+      origin: FIXTURE_ORIGIN,
+    });
 
     await use(context);
 
@@ -125,7 +133,9 @@ export async function togglePicker(serviceWorker: Worker, page: Page): Promise<v
  * 挿入する唯一のページDOM(カーソル用style)の有無で判定する。
  */
 export async function isPickerActive(page: Page): Promise<boolean> {
-  return page.evaluate(() => document.getElementById("markdown-element-clipper-cursor-style") !== null);
+  return page.evaluate(
+    () => document.getElementById("markdown-element-clipper-cursor-style") !== null,
+  );
 }
 
 /**

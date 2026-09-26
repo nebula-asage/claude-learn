@@ -6,35 +6,28 @@ Chrome / Edge 用のManifest V3拡張機能。ページ上の要素をDevTools�
 
 ## セットアップ
 
-`nvm` が未導入の場合は公式インストーラーで導入する。
+pnpmが未導入の場合は[公式スタンドアロンインストーラー](https://pnpm.io/ja/installation#on-posix-systems)で導入する（npm・nvm・corepackには依存しない）。
 
 ```bash
-NVM_LATEST=$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest \
-  | grep -m1 '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_LATEST}/install.sh" | bash
+curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=12 sh -
 ```
 
-Node.jsランタイムはdistroのパッケージではなく `nvm` に導入・管理させる。
+Node.jsランタイムもdistroのパッケージやnvmではなく、pnpm自身の`runtime`機能で導入・管理する。
 
 ```bash
-nvm install --lts
-nvm alias default 'lts/*'
+pnpm runtime set node lts -g
 ```
 
-pnpmはcorepackを使わず、npm経由で10系に固定して導入する。
-
-```bash
-npm install -g pnpm@^10
-```
+タスクランナーとして[just](https://just.systems/)も使う（`package.json`の`scripts`を呼ぶ薄いラッパー。無くてもpnpmコマンドを直接呼べば動く。`just`を引数なしで実行するとレシピ一覧を確認できる）。
 
 ## 実行方法
 
 ```bash
-pnpm install
-pnpm build
+just install   # 中身は pnpm install
+just build     # 中身は pnpm build
 ```
 
-`pnpm build` で `dist/` にバンドルされた拡張機能一式が出力される。これをブラウザに読み込む。
+`just build` で `dist/` にバンドルされた拡張機能一式が出力される。これをブラウザに読み込む。
 
 **Chrome**: `chrome://extensions` を開く → 右上の「デベロッパー モード」をON → 「パッケージ化されていない拡張機能を読み込む」→ `dist/` を選択
 
@@ -51,14 +44,42 @@ pnpm build
 ## 開発
 
 ```bash
-pnpm dev         # esbuildのwatchモードでビルド(拡張は手動リロードが必要)
-pnpm typecheck   # 型チェックのみ(--noEmit)
-pnpm test        # vitestでMarkdown変換ロジックの単体テストを実行
-pnpm test:e2e    # Playwrightで実ブラウザに拡張を読み込んで通しテスト
-pnpm build       # 本番ビルド
+just dev       # esbuildのwatchモードでビルド(拡張は手動リロードが必要)
+just typecheck # 型チェックのみ(--noEmit)
+just test      # vitestでMarkdown変換ロジックの単体テストを実行
+just cover     # カバレッジを計測し、coverage/にHTML・clover.xml・coverage-final.jsonを出力
+just test-e2e  # Playwrightで実ブラウザに拡張を読み込んで通しテスト
+just build     # 本番ビルド
 ```
 
+いずれも中身は`package.json`の`scripts`を呼ぶ薄いラッパー（`just`のみ実行するとレシピ一覧を確認できる。`pnpm run <script>`のように直接pnpmで呼んでも同じ）。ビルド・カバレッジ・ドキュメント・e2eの生成物をまとめて削除する場合は `just clean`。
+
 コードを変更したら、`chrome://extensions` / `edge://extensions` の拡張のリロードボタンを押し、その後対象ページもリロードする（順序が逆だと古いcontent scriptが残る）。
+
+### Lint / Format / ドキュメント生成
+
+```bash
+just lint         # eslint . (型情報を使った検査を含む)
+just lint-fix      # eslint . --fix
+just fmt           # prettier --write .
+just fmt-check     # prettier --check .
+just doc           # TypeDocでAPIドキュメント(HTML)をdocs/apiに生成(生成物はgit管理外)
+just doc-check     # HTMLを出さずドキュメント記述漏れだけ検証する
+just cspell        # pnpxでcspellを取得しスペルチェック
+just markdownlint  # pnpxでmarkdownlint-cli2を取得しMarkdownをlint
+```
+
+`src/**/*.ts`のexportしたシンボルにはJSDocコメントが必須（ESLintの`eslint-plugin-jsdoc`とTypeDocの記述漏れ検証の両方でチェックされる）。
+
+### Git hooks（Husky + lint-staged）
+
+`pnpm-workspace.yaml`の`ignoreScripts: true`（サプライチェーン攻撃対策）により、`pnpm install`時に`prepare`スクリプトは自動実行されない。`pnpm install`の後、**初回のみ手動で以下を実行**してGitのpre-commitフックを有効化すること。
+
+```bash
+just prepare
+```
+
+これにより、コミット時にステージされた`.ts`ファイルへ`eslint --fix`と`prettier --write`が、それ以外の対象拡張子には`prettier --write`が自動適用される。このプロジェクトはmonorepo（`claude-learn`）のサブディレクトリにあり`.git`はリポジトリルート直下にしか無いため、clone後の環境では毎回`just prepare`の実行が必要。
 
 ビルド後、以下のコマンドでturndownがブラウザ向けビルド（Node専用の依存 `@mixmark-io/domino` を含まない版）で正しくバンドルされていることを確認できる。
 
@@ -71,7 +92,7 @@ background scriptのログは `chrome://extensions` の「Service Worker」リ�
 ### 手動での動作確認
 
 ```bash
-cd fixtures && python3 -m http.server 8000
+just serve
 # http://localhost:8000/sample.html を開く
 ```
 
@@ -82,10 +103,10 @@ cd fixtures && python3 -m http.server 8000
 実ブラウザ(Playwrightのchromium)に拡張を読み込み、`fixtures/sample.html` に対して「ピッカー起動 → ホバー → `↑`/`↓` → 確定 → クリップボード」までを通しで検証する。
 
 ```bash
-pnpm exec playwright install chromium   # 初回のみ(約115MB)
-pnpm test:e2e                           # 実行前に自動で pnpm build 相当が走る
-HEADED=1 pnpm test:e2e                  # ブラウザを表示して確認したいとき
-pnpm exec playwright test -g "Esc"      # テスト名で絞り込み
+just playwright-install       # 初回のみ(約115MB)
+just test-e2e                 # 実行前に自動で pnpm build 相当が走る
+just test-e2e-headed          # ブラウザを表示して確認したいとき
+just test-e2e-grep Esc        # テスト名(正規表現)で絞り込み
 ```
 
 fixtureは `python3 -m http.server` で `http://localhost:8123` に配信される（Playwrightが自動で起動・停止する）。`https` ではなく `localhost` を使うのは、secure contextになり `navigator.clipboard` が本番同様に使えるため。
@@ -100,17 +121,17 @@ for f in libnss3*.deb libnspr4*.deb; do dpkg -x "$f" ~/.local/chromedeps; done
 ## 依存パッケージの追加
 
 ```bash
-pnpm add <パッケージ名>
+just add <パッケージ名>
 ```
 
 `pnpm install` / `pnpm add` を実行すると `pnpm-lock.yaml` が生成・更新される。このファイルはコミットしてバージョンを固定する。
 
 ## サプライチェーン攻撃対策
 
-`.npmrc` に以下を設定している。
+`pnpm-workspace.yaml` に以下を設定している（pnpm 11以降、`.npmrc`はauth/registry設定専用になり非auth/registry設定は無視されるため、こちらに書く）。
 
-- `ignore-scripts=true`: postinstallなどのライフサイクルスクリプトを実行しない
-- `min-release-age=7` / `minimum-release-age=10080`: 公開から7日間は新しいバージョンのインストールをスキップする（npmとpnpmでキー名・単位が異なるため両方指定している）
+- `ignoreScripts: true`: postinstallなどのライフサイクルスクリプトを実行しない
+- `minimumReleaseAge: 10080`: 公開から7日間（10080分）は新しいバージョンのインストールをスキップする
 
 ## 既知の制限
 

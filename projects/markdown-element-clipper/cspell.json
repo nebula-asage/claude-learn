@@ -1,0 +1,70 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "version": "0.2",
+  // このモノレポはコメント・ドキュメントが日本語主体。英語辞書をベースにしつつ、
+  // 日本語部分はignoreRegExpListで検査対象から外し、コード識別子や英語コメントだけを検査する
+  "language": "en",
+  "ignorePaths": [
+    "node_modules/**", // Node.js依存パッケージ本体
+    "dist/**", // ビルド生成物（tsc等）
+    "build/**", // ビルド生成物（Gradle等）
+    "target/**", // ビルド生成物（Cargo/Rust）
+    "coverage/**", // カバレッジレポート生成物（vitest/pytest-cov等）
+    "htmlcov/**", // カバレッジHTMLレポート生成物（pytest-cov）
+    "docs/api/**", // APIドキュメント生成物（TypeDoc/pdoc/gomarkdoc/rustdoc/javadoc等）
+    ".venv/**", // Python仮想環境（uv）
+    "__pycache__/**", // Pythonのバイトコードキャッシュ
+    ".pytest_cache/**", // pytestのキャッシュ
+    ".mypy_cache/**", // mypyのキャッシュ
+    ".ruff_cache/**", // ruffのキャッシュ
+    ".gradle/**", // Gradleのキャッシュ・生成物
+    "pnpm-lock.yaml", // pnpmのロックファイル
+    "package-lock.json", // npmのロックファイル
+    "yarn.lock", // yarnのロックファイル
+    "uv.lock", // uvのロックファイル
+    "poetry.lock", // poetryのロックファイル
+    "Cargo.lock", // cargoのロックファイル
+    "go.sum", // goモジュールのチェックサムファイル
+    "gradle.lockfile", // Gradleの依存ロックファイル
+    "*.log", // 実行時ログ
+    ".devcontainer/**" // devcontainer構成ファイル（Dockerfile内のパッケージ名等で未知語が多いため除外）
+  ],
+  // ひらがな・カタカナ・漢字（CJK統合漢字）・半角カタカナの並びは検査対象から除外する。
+  // これにより日本語部分は素通りし、コード中の識別子や英語のコメント部分だけを検査できる
+  "ignoreRegExpList": [
+    "/[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff\\uff66-\\uff9f]+/gu"
+  ],
+  // 以下はこのcspell.json自身の`ignorePaths`コメント（ツール名・ディレクトリ名の断片）に
+  // 由来する未知語で、テンプレートをそのまま配置するとどのプロジェクトでも必ず検出されるため
+  // あらかじめ登録してある。プロジェクト固有の用語・識別子・略語はこれらの下に追加していく。
+  // 配置先で実際に `npx cspell --no-progress .` を実行して検出された未知語のうち、
+  // 誤字ではなく正当な語だけを1件ずつ追記する（由来がわかるようインラインコメントを添える）
+  "words": [
+    "gomarkdoc", // ignorePathsのコメント: GoのAPIドキュメント生成ツール名
+    "htmlcov", // ignorePathsのパス・コメント: pytest-covが生成するカバレッジHTMLディレクトリ名
+    "mypy", // ignorePathsのパス・コメント: Pythonの型チェッカー名（.mypy_cache）
+    "pdoc", // ignorePathsのコメント: PythonのAPIドキュメント生成ツール名
+    "pycache", // ignorePathsのパス: Pythonのバイトコードキャッシュディレクトリ名（__pycache__）
+    "pytest", // ignorePathsのコメント: Pythonのテストツール名
+    "rustdoc", // ignorePathsのコメント: RustのAPIドキュメント生成ツール名
+    "venv", // ignorePathsのパス: Python仮想環境ディレクトリ名（.venv）
+    // 以下はmarkdown-element-clipperプロジェクト固有の未知語
+    "Blockable", // src/content/picker.ts: onBlockableEvent等、独自命名の識別子
+    "chdir", // AGENTS.md: process.chdir()への言及
+    "chromedeps", // playwright.config.ts, README.md: Playwright用Chrome依存ライブラリの展開先ディレクトリ名（独自命名）
+    "dpkg", // README.md: Debianパッケージ管理コマンド名
+    "esbuild", // justfile: バンドラ名（拡張子の無いjustfileは言語別辞書が効かず未知語判定されるため明示的に登録）
+    "gitdir", // scripts/install-husky.mjs: git worktreeの.gitファイルが指すポインタのキー名（Git用語）
+    "libnspr", // playwright.config.ts, README.md: Playwright ChromiumがLinuxで要求する依存ライブラリ名（libnspr4）
+    "libnss", // playwright.config.ts, README.md: Playwright ChromiumがLinuxで要求する依存ライブラリ名（libnss3）
+    "mdclip", // e2e/fixtures.ts: 一時ディレクトリ名のプレフィックス（markdown-element-clipperの略、独自命名）
+    "mixmark", // AGENTS.md, README.md, scripts/build.mjs: Node専用依存パッケージ名（@mixmark-io/domino）
+    "pnpx", // justfile: pnpm付属のワンショット実行コマンド名
+    "serviceworker", // e2e/fixtures.ts: Playwrightのイベント名（context.waitForEvent("serviceworker")）
+    "setext", // src/convert/turndown.ts: Markdownの見出し記法の一種（setext形式）
+    "toplevel", // AGENTS.md: git rev-parse --show-toplevelへの言及
+    "unshift", // AGENTS.md: Array.prototype.unshiftへの言及
+    "visibilitychange", // AGENTS.md: DOMイベント名
+    "vitest" // justfile: テストランナー名（拡張子の無いjustfileは言語別辞書が効かず未知語判定されるため明示的に登録）
+  ]
+}

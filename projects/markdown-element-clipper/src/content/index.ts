@@ -5,7 +5,7 @@ import { createPicker, type Picker } from "./picker";
 // 都度注入 + 既存タブへの再度のショートカット操作等)。同一フレーム内の
 // isolated worldはグローバルを共有するため、globalThisでガードする。
 declare global {
-  // eslint-disable-next-line no-var
+  /** 二重注入ガード用に、このフレームで生成済みのPickerインスタンスを保持する。 */
   var __MD_CLIPPER__: Picker | undefined;
 }
 

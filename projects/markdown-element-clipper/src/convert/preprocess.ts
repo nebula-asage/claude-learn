@@ -10,6 +10,7 @@ const REMOVE_TAG_SET = new Set(REMOVE_TAGS.map((tag) => tag.toUpperCase()));
  * 不可視要素を判定する」のではなく、live(実DOM)側で判定しながらclone側を
  * 削っていく lockstep walk で実装する。cloneNode(true) 直後は両者の
  * childNodes が同順・同数であることを前提にしている。
+ * @param live 選択された、DOMツリーに接続されたままの実要素。
  */
 export function preprocessElement(live: Element): HTMLDivElement {
   const clone = live.cloneNode(true) as Element;
@@ -85,6 +86,8 @@ function isHiddenLive(el: Element): boolean {
 /**
  * a.href / img.src は IDL プロパティとして読むと(<base>タグも考慮された)
  * 常に絶対URLを返す。getAttribute('href')は相対のままなので使わない。
+ * @param liveEl 絶対URLを読み取る元となる、DOMツリーに接続されたままの実要素。
+ * @param cloneEl 絶対化したURLを書き戻すクローン側の要素。
  */
 function normalizeUrls(liveEl: Element, cloneEl: Element): void {
   if (liveEl.tagName === "A") {
@@ -119,6 +122,8 @@ function stripHugeDataUri(cloneEl: Element): void {
  * 直接の親要素(ol/ul, table)の有無で番号付け・ヘッダー行判定・GFMテーブル
  * 変換の可否を決めているため、そのままdivに包んでも書式が機能しない。
  * 最小限の親要素で包んでから返す。
+ * @param live 元の親子関係(ol/ulの種別や兄弟インデックス等)を読み取るための実要素。
+ * @param clone 親要素で包み直す対象のクローン側の要素。
  */
 function wrapWithRequiredAncestors(live: Element, clone: Element): Element {
   const tag = clone.tagName;

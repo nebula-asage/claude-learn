@@ -2,6 +2,90 @@
 default:
     @just --list
 
+# 依存関係をインストールする
+install:
+    pnpm install
+
+# esbuildでdist/へバンドルする(本番ビルド)
+build:
+    pnpm build
+
+# esbuildのwatchモードでビルドを追従させる(拡張は手動リロードが必要)
+dev:
+    pnpm dev
+
+# 型チェックのみ実行する(本体とe2eで設定ファイルが分かれている)
+typecheck:
+    pnpm run typecheck
+
+# ESLintで静的解析する
+lint:
+    pnpm run lint
+
+# ESLintの自動修正を適用する
+lint-fix:
+    pnpm run lint:fix
+
+# Prettierでフォーマットを適用する
+fmt:
+    pnpm run format
+
+# フォーマット崩れが無いか確認する（適用はしない）
+fmt-check:
+    pnpm run format:check
+
+# pnpxでcspellを取得し、スペルチェックを実行する（未知語が出た場合はcspell.jsonのwordsに追記して解消する）
+cspell:
+    pnpx cspell --no-progress .
+
 # pnpxでmarkdownlint-cli2を取得し、Markdownの構文・スタイルをlintする
 markdownlint:
     pnpx markdownlint-cli2 "**/*.md"
+
+# vitestでMarkdown変換ロジックの単体テストを実行する
+test:
+    pnpm test
+
+# カバレッジを計測し、coverage/にHTML・clover.xml・coverage-final.jsonを生成する
+cover:
+    pnpm run test:coverage
+
+# Playwright用Chromiumを導入する（e2eテストの初回のみ、約115MB）
+playwright-install:
+    pnpm exec playwright install chromium
+
+# Playwrightで実ブラウザに拡張を読み込んで通しテストを実行する（実行前に自動でビルドが走る）
+test-e2e:
+    pnpm test:e2e
+
+# ブラウザを表示してe2eテストを実行する（ヘッドレスではなく画面を見て確認したいとき）
+test-e2e-headed:
+    HEADED=1 pnpm test:e2e
+
+# テスト名(正規表現)で絞り込んでe2eテストを実行する。例: just test-e2e-grep Esc
+test-e2e-grep pattern:
+    pnpm exec playwright test -g "{{pattern}}"
+
+# fixtures/sample.htmlを手動確認用にローカルサーバーで配信する（http://localhost:8000/sample.html を開く）
+serve:
+    cd fixtures && python3 -m http.server 8000
+
+# TypeDocでdocs/api/にAPIドキュメントを生成する
+doc:
+    pnpm run docs
+
+# HTMLを出さず、JSDoc記述漏れだけを検証する
+doc-check:
+    pnpm run docs:check
+
+# Git hooksを有効化する（pnpm installではignoreScriptsによりprepareが自動実行されないため初回のみ手動実行）
+prepare:
+    pnpm run prepare
+
+# 依存パッケージを追加する。例: just add lodash
+add package:
+    pnpm add {{package}}
+
+# ビルド・カバレッジ・ドキュメント・e2eテストの生成物を削除する
+clean:
+    rm -rf dist dist-e2e coverage docs test-results playwright-report
