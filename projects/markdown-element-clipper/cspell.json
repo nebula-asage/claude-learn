@@ -52,6 +52,7 @@
     "Blockable", // src/content/picker.ts: onBlockableEvent等、独自命名の識別子
     "chromedeps", // playwright.config.ts, README.md: Playwright用Chrome依存ライブラリの展開先ディレクトリ名（独自命名）
     "dpkg", // README.md: Debianパッケージ管理コマンド名
+    "gitdir", // scripts/install-husky.mjs: git worktreeの.gitファイルが指すポインタのキー名（Git用語）
     "libnspr", // playwright.config.ts, README.md: Playwright ChromiumがLinuxで要求する依存ライブラリ名（libnspr4）
     "libnss", // playwright.config.ts, README.md: Playwright ChromiumがLinuxで要求する依存ライブラリ名（libnss3）
     "mdclip", // e2e/fixtures.ts: 一時ディレクトリ名のプレフィックス（markdown-element-clipperの略、独自命名）
