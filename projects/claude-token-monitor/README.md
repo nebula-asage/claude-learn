@@ -28,6 +28,16 @@ Claude Codeは1回のAPIレスポンス（thinking/text/tool_useなど複数のc
 
 対象セッション中に `Agent` ツールで起動したサブエージェント（`git-committer`・`workspace-auditor`等）がいる場合、その実行結果は完了後に `<セッションID>/subagents/agent-<hash>.jsonl` として永続化される。このツールは `watch`/`report` どちらもこれを自動的に検出して本体のトークン使用量に合算する（`watch`は起動時に既存分を取り込み、以後もポーリングで新規に完了したサブエージェント分を追いかける）。テーブル・HTMLレポートには「エージェント」列として `main` か、サブエージェントの `agentType`（`meta.json`から読み取る。取得できない場合は `subagent`）が表示される。ccusageも `~/.claude/projects/` 配下を再帰的に走査するため、このサブエージェント分もその集計対象に含まれている。
 
+### セッション一覧表示（sessions）
+
+```bash
+just sessions
+```
+
+内部では `uv run main.py sessions` を実行し、[ccusage](https://github.com/ryoppippi/ccusage)の`ccusage session`と同様に既定で`~/.claude/projects/`配下を横断して全プロジェクトのセッションを集計し、セッションID・プロジェクト・タイトル・開始/最終更新時刻・ターン数・合計トークン・コストの一覧を表示する（最終更新の新しい順）。`watch --session`/`report --session`に渡す`--session <セッションID>`を、JSONLファイル名から手動で探す代わりにこのコマンドで調べられる。特定のプロジェクトだけに絞りたい場合は`--project-dir <対象プロジェクトの実ディレクトリパス>`を指定する（この場合は全行で同じ値になる「プロジェクト」列は表示されない）。
+
+`--json`（JSON配列）/`--csv`（ヘッダー行付きCSV）のどちらかを付けると、richテーブルの代わりにその形式で標準出力に出す（両者は同時指定不可）。どちらも各行の`session_id`をそのまま`--session`に渡せ、開始/最終更新時刻はテーブル表示のみローカルタイムゾーンに変換し、JSON/CSV出力は機械可読性のためトランスクリプトと同じUTC ISO8601のまま保つ。
+
 ### リアルタイム監視（watch）
 
 ```bash
@@ -48,7 +58,7 @@ just report
 
 ## bash-completion
 
-サブコマンド（`watch`/`report`）とオプション（`--file`/`--session`等）を [argcomplete](https://github.com/kislyuk/argcomplete) でTab補完できる。ただし`uv run main.py`のように「`uv run`」を先頭に付ける呼び方は、bashの補完登録がコマンド名の1単語目（この場合`uv`）にしか紐付かないため補完対象にできない。そのため補完を使うには、まず本ツールをコンソールスクリプトとして単体で呼べる形にする必要がある（初回のみ実行）。
+サブコマンド（`watch`/`report`/`sessions`）とオプション（`--file`/`--session`等）を [argcomplete](https://github.com/kislyuk/argcomplete) でTab補完できる。ただし`uv run main.py`のように「`uv run`」を先頭に付ける呼び方は、bashの補完登録がコマンド名の1単語目（この場合`uv`）にしか紐付かないため補完対象にできない。そのため補完を使うには、まず本ツールをコンソールスクリプトとして単体で呼べる形にする必要がある（初回のみ実行）。
 
 ```bash
 just install-completion
