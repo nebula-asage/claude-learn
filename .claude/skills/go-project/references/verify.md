@@ -4,7 +4,8 @@
 
 ```bash
 set -e
-echo "=== just (list) ==="; just
+echo "=== just (usage) ==="; just
+echo "=== just --list ==="; just --list
 echo "=== run ==="; just run
 echo "=== fmt ==="; just fmt
 echo "=== lint ==="; just lint
@@ -21,7 +22,8 @@ echo "=== clean ==="; just clean
 
 出力から以下を確認する:
 
-- `just`: レシピ一覧（`just --list`相当）が表示される
+- `just`: 引数なし実行でレシピの実行順序（`usage`レシピ）が表示される
+- `just --list`: レシピ一覧が表示される
 - `run`（`go run .`）: 正常に動作する
 - `fmt`（`gofmt -l -w .`）: フォーマットが適用される
 - `lint`（`golangci-lint run ./...`）: `0 issues.` で終了する。`main.go`・`internal/greeting/greeting.go` にパッケージコメント／関数コメントが入っているかもここで再確認する

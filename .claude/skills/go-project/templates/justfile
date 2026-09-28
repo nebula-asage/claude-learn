@@ -1,6 +1,16 @@
-# 引数なしで実行された場合、レシピ一覧を表示する
-default:
-    @just --list
+# 引数なしで実行された場合、レシピの実行順序を表示する
+default: usage
+
+# このプロジェクトで最初に何をすべきか、レシピの実行順序を表示する
+usage:
+    @echo "1. fmt        - フォーマットを適用"
+    @echo "2. lint        - 静的解析"
+    @echo "3. test        - テスト実行"
+    @echo "4. cover       - カバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov）"
+    @echo "5. doc         - ドキュメンテーションコメントをターミナルに表示（ファイル生成は doc-report）"
+    @echo "6. run         - アプリケーションを実行"
+    @echo ""
+    @echo "レシピ一覧は 'just --list' を参照"
 
 # gofmtでフォーマットを適用する
 fmt:

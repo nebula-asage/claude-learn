@@ -12,7 +12,8 @@ just lock
 
 ```bash
 set -e
-echo "=== just (list) ==="; just
+echo "=== just (usage) ==="; just
+echo "=== just --list ==="; just --list
 echo "=== check ==="; just check
 echo "=== reports ==="
 test -f build/reports/jacoco/test/html/index.html && echo "jacoco html OK"
@@ -25,7 +26,8 @@ test -f build/docs/javadoc/index.html && echo "javadoc OK"
 
 出力から以下を確認する:
 
-- `just`: レシピ一覧（`just --list`相当）が表示される
+- `just`: 引数なし実行でレシピの実行順序（`usage`レシピ）が表示される
+- `just --list`: レシピ一覧が表示される
 - `check`（`./gradlew check`）: 成功する。テンプレートの状態でテストは合計 11 件（`GreetingServiceTest` 7件 = 通常3件 + パラメータ化1件が4パターンに展開、`GreetingControllerTest` 3件、`__APP_CLASS__Tests` 1件）が全て通り、行カバレッジ 100%（16/16）になる
 - `reports`: 6種類のレポートが全て `test -f` で存在確認できる。**`spotbugs OK` が出ない場合は `build.gradle.kts` の `tasks.withType<SpotBugsTask> { reports.create("html") { required = true } }` が消えていないか確認する。** SpotBugs プラグインは既定ではレポートファイルを一切出さず、コンソールに出すだけで終わる
 

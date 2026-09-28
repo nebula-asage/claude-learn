@@ -2,9 +2,17 @@
 # タスクの定義自体は持たない（すべて ./gradlew <タスク> を呼ぶだけ）。
 # ビルドの実行順序・依存関係はbuild.gradle.kts側が唯一の真実源のまま変わらない。
 
-# 引数なしで実行された場合、レシピ一覧を表示する
-default:
-    @just --list
+# 引数なしで実行された場合、レシピの実行順序を表示する
+default: usage
+
+# このプロジェクトで最初に何をすべきか、レシピの実行順序を表示する
+usage:
+    @echo "1. lock       - 初回のみ: 依存関係をgradle.lockfileに固定"
+    @echo "2. fmt        - フォーマットを適用"
+    @echo "3. check      - 整形チェック・静的解析・テスト・カバレッジ下限・Javadocをまとめて実行"
+    @echo "4. run        - アプリケーションを起動"
+    @echo ""
+    @echo "レシピ一覧は 'just --list' を参照"
 
 # 依存関係をgradle.lockfileに固定する（初回、または依存追加・更新後に実行）
 lock:
