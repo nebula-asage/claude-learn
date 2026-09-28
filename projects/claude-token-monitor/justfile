@@ -1,6 +1,17 @@
-# 引数なしで実行された場合、レシピ一覧を表示する
-default:
-    @just --list
+# 引数なしで実行された場合、レシピの実行順序を表示する
+default: usage
+
+# このプロジェクトで最初に何をすべきか、レシピの実行順序を表示する
+usage:
+    @echo "1. sync              - 初回・pyproject.toml変更後: 依存関係を同期"
+    @echo "2. install-completion - 初回のみ: コンソールスクリプトとbash-completionを登録"
+    @echo "3. watch / report    - セッションの監視・HTMLレポート生成（メイン機能）"
+    @echo "4. fmt / lint        - フォーマット・静的解析"
+    @echo "5. test / cover      - テストとカバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov）"
+    @echo "6. doc               - APIドキュメントを生成"
+    @echo "7. audit             - 依存の脆弱性を検査"
+    @echo ""
+    @echo "レシピ一覧は 'just --list' を参照"
 
 # 依存関係を同期する（pyproject.tomlを変更した後に実行）
 sync:

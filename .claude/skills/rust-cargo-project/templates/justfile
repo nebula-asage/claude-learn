@@ -4,9 +4,18 @@
 # 依存を更新したいときは `cargo add` / `cargo update` を明示的に実行する。
 cargo_flags := "--locked"
 
-# 引数なしで実行された場合、レシピ一覧を表示する
-default:
-    @just --list
+# 引数なしで実行された場合、レシピの実行順序を表示する
+default: usage
+
+# このプロジェクトで最初に何をすべきか、レシピの実行順序を表示する
+usage:
+    @echo "1. lock       - 初回のみ: Cargo.lockを生成"
+    @echo "2. check      - フォーマット確認・lint・テスト・doctest・依存検査をまとめて実行"
+    @echo "3. cover      - カバレッジ計測（HTML+lcovは cover-all）"
+    @echo "4. doc        - APIドキュメントを生成"
+    @echo "5. run        - アプリケーションを実行"
+    @echo ""
+    @echo "レシピ一覧は 'just --list' を参照"
 
 # Cargo.lock がまだ無い状態では --locked 付きのレシピが全て
 # 「cannot create the lock file ... because --locked was passed」で失敗する。

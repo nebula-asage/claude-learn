@@ -12,7 +12,8 @@ just lock
 
 ```bash
 set -e
-echo "=== just (list) ==="; just
+echo "=== just (usage) ==="; just
+echo "=== just --list ==="; just --list
 echo "=== fmt-check ==="; just fmt-check
 echo "=== lint ==="; just lint
 echo "=== run ==="; just run
@@ -27,7 +28,8 @@ echo "=== git status ==="; git status --short
 
 出力から以下を確認する:
 
-- `just`: レシピ一覧（`just --list`相当）が表示される
+- `just`: 引数なし実行でレシピの実行順序（`usage`レシピ）が表示される
+- `just --list`: レシピ一覧が表示される
 - `fmt-check`: 差分なしで終了する（テンプレートはrustfmt適用済みの状態にしてある）
 - `lint`: 警告ゼロで終了する
 - `run`: `Hello, world!` が出力される。引数付きの動作は別途 `cargo run --locked -- Rust` で確認できる

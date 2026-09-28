@@ -1,6 +1,17 @@
-# 引数なしで実行された場合、レシピ一覧を表示する
-default:
-    @just --list
+# 引数なしで実行された場合、レシピの実行順序を表示する
+default: usage
+
+# このプロジェクトで最初に何をすべきか、レシピの実行順序を表示する
+usage:
+    @echo "1. install           - 初回: 依存関係をインストール"
+    @echo "2. prepare           - 初回: Git hooksを有効化"
+    @echo "3. fmt / lint / typecheck - 日常的な整形・静的解析・型チェック"
+    @echo "4. test / cover      - テストとカバレッジ計測"
+    @echo "5. dev / tauri-dev   - ブラウザ、またはデスクトップアプリとして動作確認"
+    @echo "6. build / tauri-build - フロントエンド、またはデスクトップアプリをビルド"
+    @echo "7. doc               - APIドキュメントを生成"
+    @echo ""
+    @echo "レシピ一覧は 'just --list' を参照"
 
 # 依存関係をインストールする
 install:

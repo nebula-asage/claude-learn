@@ -32,7 +32,7 @@
 
 ## テスト・カバレッジ・ドキュメント
 
-- **タスクランナーは just で、`justfile` に入口をまとめる**。`default`（レシピ一覧表示） / `lock` / `run` / `build` / `fmt` / `fmt-check` / `lint` / `test` / `doctest` / `cover` / `cover-html` / `cover-lcov` / `cover-all` / `doc` / `doc-open` / `deny` / `check` / `clean` を用意する。`check` は `fmt-check` → `lint` → `test` → `doctest` → `deny` をまとめて回す
+- **タスクランナーは just で、`justfile` に入口をまとめる**。`default`（`usage`を呼び出す） / `usage`（レシピの実行順序表示） / `lock` / `run` / `build` / `fmt` / `fmt-check` / `lint` / `test` / `doctest` / `cover` / `cover-html` / `cover-lcov` / `cover-all` / `doc` / `doc-open` / `deny` / `check` / `clean` を用意する。`check` は `fmt-check` → `lint` → `test` → `doctest` → `deny` をまとめて回す
 - **`cargo llvm-cov` は起動のたびに `target/llvm-cov/` を作り直す**。そのため `cover-html` の後に `cover-lcov` を実行するとHTMLレポートが消える（逆も同様）。HTMLとlcovの両方が必要な場合のために、`--no-report` でテストを1回だけ実行してから `cargo llvm-cov report --lcov` / `report --html` で両形式を書き出す `cover-all` ターゲットを用意してある
 - **`just lint` は `--all-targets` と `-D warnings` を付ける**。`--all-targets` が無いと `tests/` 配下がlint対象から外れる。`-D warnings` が無いと `[lints]` で `warn` にしたルールが警告止まりになり、実質的な強制にならない
 - **ドキュメンテーションコメントの例（doctest）を書く**。`` ``` `` で囲んだコード例は `cargo test --doc` で実際にコンパイル・実行されるため、例が古くなった時点で落ちる。テンプレートの `greet` / `try_greet` には `# Examples` セクションを入れてある

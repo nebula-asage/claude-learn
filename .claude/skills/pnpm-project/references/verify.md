@@ -5,7 +5,8 @@
 ```bash
 set -e
 echo "=== install ==="; just install
-echo "=== just (list) ==="; just
+echo "=== just (usage) ==="; just
+echo "=== just --list ==="; just --list
 echo "=== build ==="; just build
 echo "=== start ==="; just start
 echo "=== typecheck ==="; just typecheck
@@ -24,7 +25,8 @@ echo "=== clean ==="; just clean
 出力から以下を確認する:
 
 - `install`（`pnpm install`）: `pnpm-lock.yaml`が生成される（これはコミット対象）
-- `just`: レシピ一覧（`just --list`相当）が表示される
+- `just`: 引数なし実行でレシピの実行順序（`usage`レシピ）が表示される
+- `just --list`: レシピ一覧が表示される
 - `build`/`start`: `tsc`ビルドと`dist/index.js`の実行がどちらも動く
 - `typecheck`・`lint`・`fmt-check`・`test`: いずれもエラーなく完了する（`test`はテンプレート同梱のサンプルテストが通る）
 - `cover`: `coverage/`配下にHTMLレポート（`coverage/index.html`）が生成される。手順4でVS Code向け設定を配置した場合は、同時に`coverage/clover.xml`・`coverage/coverage-final.json`も生成されていることを確認する（VS Codeで開いてCoverage Gutters拡張の「Watch」コマンドを実行すると、テストから呼ばれていない行があればエディタのガターに未被覆として表示されるはずだが、これはVS Code上での見た目の確認なので必須ではない）

@@ -5,7 +5,8 @@
 ```bash
 set -e
 echo "=== sync ==="; just sync
-echo "=== just (list) ==="; just
+echo "=== just (usage) ==="; just
+echo "=== just --list ==="; just --list
 echo "=== run ==="; just run
 echo "=== lint ==="; just lint
 echo "=== fmt-check ==="; just fmt-check
@@ -22,7 +23,8 @@ echo "=== clean ==="; just clean
 出力から以下を確認する:
 
 - `sync`（`uv sync`）: `pyproject.toml` に記載した `ruff`/`pytest`/`pytest-cov`/`pdoc` を含む依存が解決される（`uv.lock` が生成される。これはコミット対象）
-- `just`: レシピ一覧（`just --list`相当）が表示される
+- `just`: 引数なし実行でレシピの実行順序（`usage`レシピ）が表示される
+- `just --list`: レシピ一覧が表示される
 - `run`（`uv run main.py`）: `.venv` の自動生成込みで動く
 - `lint`（`uv run ruff check .`）: 警告なしで終了する（exit 0）。ruffは `.venv` をデフォルトで除外するため、flake8の頃のような除外設定は不要
 - `fmt-check`（`uv run ruff format --check .`）: `main.py`/`tests/test_main.py` がruffのフォーマットに沿っている

@@ -1,6 +1,18 @@
-# 引数なしで実行された場合、レシピ一覧を表示する
-default:
-    @just --list
+# 引数なしで実行された場合、レシピの実行順序を表示する
+default: usage
+
+# このプロジェクトで最初に何をすべきか、レシピの実行順序を表示する
+usage:
+    @echo "1. install           - 初回: 依存関係をインストール"
+    @echo "2. prepare           - 初回: Git hooksを有効化"
+    @echo "3. fmt / lint / typecheck - 日常的な整形・静的解析・型チェック"
+    @echo "4. test / cover      - 単体テストとカバレッジ計測"
+    @echo "5. playwright-install - 初回のみ: e2eテスト用ブラウザを導入"
+    @echo "6. test-e2e          - e2eテスト（headed版は test-e2e-headed、絞り込みは test-e2e-grep）"
+    @echo "7. build / dev       - ビルド（devはwatchモード）"
+    @echo "8. doc               - APIドキュメントを生成"
+    @echo ""
+    @echo "レシピ一覧は 'just --list' を参照"
 
 # 依存関係をインストールする
 install:
