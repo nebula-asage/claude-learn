@@ -5,11 +5,12 @@ default: usage
 usage:
     @echo "1. sync              - 初回・pyproject.toml変更後: 依存関係を同期"
     @echo "2. install-completion - 初回のみ: コンソールスクリプトとbash-completionを登録"
-    @echo "3. watch / report    - セッションの監視・HTMLレポート生成（メイン機能）"
-    @echo "4. fmt / lint        - フォーマット・静的解析"
-    @echo "5. test / cover      - テストとカバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov）"
-    @echo "6. doc               - APIドキュメントを生成"
-    @echo "7. audit             - 依存の脆弱性を検査"
+    @echo "3. sessions          - --sessionに渡すセッションIDを調べる一覧表示"
+    @echo "4. watch / report    - セッションの監視・HTMLレポート生成（メイン機能）"
+    @echo "5. fmt / lint        - フォーマット・静的解析"
+    @echo "6. test / cover      - テストとカバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov）"
+    @echo "7. doc               - APIドキュメントを生成"
+    @echo "8. audit             - 依存の脆弱性を検査"
     @echo ""
     @echo "レシピ一覧は 'just --list' を参照"
 
@@ -20,6 +21,10 @@ sync:
 # main.pyを実行する
 run:
     uv run main.py
+
+# 全プロジェクト横断のセッション一覧を表示する(--sessionに渡すセッションIDを調べる用途。オプション付き実行は `uv run main.py sessions --help` を参照)
+sessions:
+    uv run main.py sessions
 
 # 現在のプロジェクトの最新セッションをリアルタイム監視する(オプション付き実行は `uv run main.py watch --help` を参照)
 watch:

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import re
 import sys
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import argcomplete
@@ -464,6 +465,23 @@ def read_all_turns(session_path: Path) -> list[TurnUsage]:
     return turns
 
 
+def list_session_files(project_dir: Path) -> list[Path]:
+    """指定ディレクトリ内の全セッションJSONLファイルを、最終更新時刻が新しい順に返す。
+
+    Args:
+        project_dir: `~/.claude/projects/<encoded-cwd>/` のディレクトリパス。
+
+    Returns:
+        `.jsonl` ファイルパスの一覧(最終更新時刻降順)。`project_dir` が存在しない、
+        または `.jsonl` ファイルが1つも無い場合は空リスト。
+    """
+    if not project_dir.is_dir():
+        return []
+    return sorted(
+        project_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
+
+
 def find_latest_session_file(project_dir: Path) -> Path:
     """指定ディレクトリ内で最終更新時刻が最も新しいセッションのJSONLファイルを返す。
 
@@ -476,11 +494,7 @@ def find_latest_session_file(project_dir: Path) -> Path:
     Raises:
         FileNotFoundError: `project_dir` が存在しない、または `.jsonl` ファイルが1つも無い場合。
     """
-    if not project_dir.is_dir():
-        raise FileNotFoundError(f"{project_dir} が見つかりません")
-    candidates = sorted(
-        project_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True
-    )
+    candidates = list_session_files(project_dir)
     if not candidates:
         raise FileNotFoundError(
             f"{project_dir} にセッションログ(.jsonl)が見つかりません"
@@ -522,6 +536,45 @@ def find_session_file_by_id(session: str) -> Path:
     return matches[0]
 
 
+def list_all_session_files() -> list[Path]:
+    """`~/.claude/projects/` 配下の全プロジェクトのセッションJSONLファイルを横断して集める。
+
+    ccusageが`~/.claude/projects/`配下を再帰的に走査して集計するのに合わせ、
+    `sessions`サブコマンドで`--project-dir`省略時に使う(特定プロジェクトに
+    絞らず横断的に全セッションを対象にする)。`find_session_file_by_id`と同じ
+    `*/<name>.jsonl`パターンでプロジェクト直下のメインJSONLのみを対象にし、
+    `<session>/subagents/*.jsonl`は対象にしない。
+
+    Returns:
+        `.jsonl` ファイルパスの一覧(最終更新時刻降順)。1件も無ければ空リスト。
+    """
+    return sorted(
+        CLAUDE_PROJECTS_DIR.glob("*/*.jsonl"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+
+
+def resolve_project_dir(project_dir: str | None) -> Path:
+    """`--project-dir` 引数から `~/.claude/projects/<encoded-cwd>/` のパスを決定する。
+
+    Args:
+        project_dir: `--project-dir` で指定されたプロジェクトの実ディレクトリパス、
+            またはNone。Noneの場合はカレントディレクトリを使う。指定時は
+            `~/.claude/projects/<encoded>/` へエンコードした上で解決する
+            (既にエンコード済みのディレクトリ名ではない)。
+
+    Returns:
+        `~/.claude/projects/<encoded-cwd>/` のディレクトリパス。
+    """
+    target_dir = (
+        Path(project_dir).expanduser().resolve()
+        if project_dir is not None
+        else Path.cwd()
+    )
+    return CLAUDE_PROJECTS_DIR / encode_project_dir(target_dir)
+
+
 def resolve_session_file(
     file: str | None, session: str | None, project_dir: str | None
 ) -> Path:
@@ -541,12 +594,7 @@ def resolve_session_file(
         return Path(file)
     if session is not None and project_dir is None:
         return find_session_file_by_id(session)
-    target_dir = (
-        Path(project_dir).expanduser().resolve()
-        if project_dir is not None
-        else Path.cwd()
-    )
-    base_dir = CLAUDE_PROJECTS_DIR / encode_project_dir(target_dir)
+    base_dir = resolve_project_dir(project_dir)
     if session is not None:
         return base_dir / f"{session}.jsonl"
     return find_latest_session_file(base_dir)
@@ -1448,11 +1496,249 @@ def report(path: Path, output: Path | None = None) -> None:
     )
 
 
+@dataclass
+class SessionSummary:
+    """1セッション分の集計サマリ(`sessions` サブコマンド表示用)。"""
+
+    session_id: str
+    path: Path
+    project_dir_name: str
+    title: str | None
+    first_timestamp: str
+    last_timestamp: str
+    turn_count: int
+    totals: TurnUsage
+    cost_usd: float
+    unresolved_cost_turn_count: int
+
+
+def _fallback_timestamp(path: Path) -> str:
+    """ターンが1件も無いセッションの開始/終了時刻として、JSONLの更新日時を返す。
+
+    Args:
+        path: セッションJSONLファイルのパス。
+
+    Returns:
+        JSONLの更新日時をトランスクリプト中の`timestamp`と同じUTC ISO8601形式
+        (`Z`終端)に変換した文字列。
+    """
+    dt = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+def _to_local_display(timestamp: str) -> str:
+    """UTC ISO8601形式のタイムスタンプを、表示用にローカルタイムゾーンへ変換する。
+
+    JSON出力(`sessions --json`)は他ツールからの機械可読性を優先しUTCの
+    ISO8601のまま保つため、この変換は`build_sessions_table`でのrich表示にのみ使う。
+
+    Args:
+        timestamp: `_parse_assistant_line`または`_fallback_timestamp`が返す
+            `Z`終端のUTC ISO8601文字列。
+
+    Returns:
+        システムのローカルタイムゾーンに変換した `YYYY-MM-DD HH:MM:SS` 形式の
+        文字列。パースできない場合は`timestamp`をそのまま返す。
+    """
+    try:
+        dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return timestamp
+    return dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def summarize_session(path: Path) -> SessionSummary:
+    """1セッションのJSONLを読み込み、`sessions` サブコマンド表示用のサマリを作る。
+
+    メインセッションに加え、完了済みサブエージェントのトランスクリプトも
+    合わせて集計する(`read_all_turns`と同じ範囲)。
+
+    Args:
+        path: 対象セッションJSONLファイルのパス。
+
+    Returns:
+        集計済みのSessionSummary。ターンが1件も無いセッションは、開始/終了
+        時刻に`_fallback_timestamp`で得たJSONLの更新日時を使う。
+    """
+    turns = read_all_turns(path)
+    totals = _totals(turns)
+    cost_usd, unresolved = _cost_summary(turns)
+    fallback = _fallback_timestamp(path)
+    first_timestamp = turns[0].timestamp if turns and turns[0].timestamp else fallback
+    last_timestamp = turns[-1].timestamp if turns and turns[-1].timestamp else fallback
+    return SessionSummary(
+        session_id=path.stem,
+        path=path,
+        project_dir_name=path.parent.name,
+        title=_extract_session_title(path),
+        first_timestamp=first_timestamp,
+        last_timestamp=last_timestamp,
+        turn_count=len(turns),
+        totals=totals,
+        cost_usd=cost_usd,
+        unresolved_cost_turn_count=unresolved,
+    )
+
+
+def list_session_summaries(session_files: list[Path]) -> list[SessionSummary]:
+    """指定したセッションJSONLファイル群を集計し、最終更新時刻の新しい順に返す。
+
+    Args:
+        session_files: 集計対象のセッションJSONLファイルパスの一覧
+            (`list_session_files`または`list_all_session_files`の戻り値を渡す)。
+
+    Returns:
+        集計済みSessionSummaryの一覧(`last_timestamp`降順)。`session_files`が
+        空の場合は空リスト。
+    """
+    summaries = [summarize_session(p) for p in session_files]
+    summaries.sort(key=lambda s: s.last_timestamp, reverse=True)
+    return summaries
+
+
+def build_sessions_table(
+    summaries: list[SessionSummary], show_project: bool = False
+) -> Table:
+    """セッション一覧をrich表示用のテーブルにまとめる。
+
+    Args:
+        summaries: 表示対象のセッションサマリ一覧。
+        show_project: Trueの場合、`~/.claude/projects/<encoded>/`のディレクトリ名を
+            「プロジェクト」列として表示する(`--project-dir`を指定せず複数
+            プロジェクト横断で一覧するとき用。単一プロジェクトに絞った場合は
+            全行同じ値になり冗長なため省略できるようにしている)。
+
+    Returns:
+        rich表示用のTableオブジェクト。
+    """
+    unresolved_total = sum(s.unresolved_cost_turn_count for s in summaries)
+    note = (
+        "(一部セッションに料金未対応モデルを含むため、コストは過小評価の可能性があります)"
+        if unresolved_total
+        else ""
+    )
+    table = Table(title=f"セッション一覧 — {len(summaries)}件{note}")
+    table.add_column("セッションID", justify="left", no_wrap=True)
+    if show_project:
+        table.add_column("プロジェクト", justify="left")
+    table.add_column("タイトル", justify="left")
+    table.add_column("開始", justify="left")
+    table.add_column("最終更新", justify="left")
+    table.add_column("ターン数", justify="right")
+    table.add_column("合計トークン", justify="right")
+    table.add_column("コスト($)", justify="right")
+
+    for s in summaries:
+        row = [s.session_id]
+        if show_project:
+            row.append(s.project_dir_name)
+        row.extend(
+            [
+                s.title or "-",
+                _to_local_display(s.first_timestamp),
+                _to_local_display(s.last_timestamp),
+                str(s.turn_count),
+                f"{s.totals.total_tokens:,}",
+                _fmt_cost(s.cost_usd),
+            ]
+        )
+        table.add_row(*row)
+    return table
+
+
+_SESSION_SUMMARY_FIELDS = [
+    "session_id",
+    "path",
+    "project_dir_name",
+    "title",
+    "first_timestamp",
+    "last_timestamp",
+    "turn_count",
+    "input_tokens",
+    "output_tokens",
+    "cache_creation_input_tokens",
+    "cache_read_input_tokens",
+    "total_tokens",
+    "cost_usd",
+    "unresolved_cost_turn_count",
+]
+
+
+def _session_summary_to_dict(s: SessionSummary) -> dict[str, object]:
+    """SessionSummaryを`--json`/`--csv`出力用のフラットな辞書に変換する。
+
+    `first_timestamp`/`last_timestamp`はJSON/CSVどちらもトランスクリプトと
+    同じUTC ISO8601のまま出力する(ローカルタイムゾーンへの変換は
+    `_to_local_display`によるrichテーブル表示のみで行う)。
+
+    Args:
+        s: 変換対象のセッションサマリ。
+
+    Returns:
+        キーが`_SESSION_SUMMARY_FIELDS`と一致する辞書。
+    """
+    return {
+        "session_id": s.session_id,
+        "path": str(s.path),
+        "project_dir_name": s.project_dir_name,
+        "title": s.title,
+        "first_timestamp": s.first_timestamp,
+        "last_timestamp": s.last_timestamp,
+        "turn_count": s.turn_count,
+        "input_tokens": s.totals.input_tokens,
+        "output_tokens": s.totals.output_tokens,
+        "cache_creation_input_tokens": s.totals.cache_creation_input_tokens,
+        "cache_read_input_tokens": s.totals.cache_read_input_tokens,
+        "total_tokens": s.totals.total_tokens,
+        "cost_usd": s.cost_usd,
+        "unresolved_cost_turn_count": s.unresolved_cost_turn_count,
+    }
+
+
+def sessions_command(project_dir: Path | None, output_format: str = "table") -> None:
+    """`sessions` サブコマンド本体。対象セッションを集計して表示する。
+
+    Args:
+        project_dir: `~/.claude/projects/<encoded-cwd>/` のディレクトリパス。
+            Noneの場合はccusageと同様に`~/.claude/projects/`配下を横断して
+            全プロジェクトのセッションを対象にする。
+        output_format: `"table"`(既定。richテーブルで表示)/`"json"`(標準出力に
+            JSON配列を書き出す)/`"csv"`(標準出力にCSVを書き出す)のいずれか。
+            JSON/CSVどちらも各行の`session_id`をそのまま`watch --session`/
+            `report --session`に渡せる。
+
+    Raises:
+        SystemExit: 対象セッションが1つも見つからない場合。
+    """
+    console = Console()
+    session_files = (
+        list_all_session_files()
+        if project_dir is None
+        else list_session_files(project_dir)
+    )
+    summaries = list_session_summaries(session_files)
+    if not summaries:
+        target = CLAUDE_PROJECTS_DIR if project_dir is None else project_dir
+        console.print(f"[red]{target} にセッションログ(.jsonl)が見つかりません[/red]")
+        raise SystemExit(1)
+    if output_format == "json":
+        payload = [_session_summary_to_dict(s) for s in summaries]
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return
+    if output_format == "csv":
+        writer = csv.DictWriter(sys.stdout, fieldnames=_SESSION_SUMMARY_FIELDS)
+        writer.writeheader()
+        for s in summaries:
+            writer.writerow(_session_summary_to_dict(s))
+        return
+    console.print(build_sessions_table(summaries, show_project=project_dir is None))
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     """CLIの引数パーサを構築する。
 
     Returns:
-        `watch`/`report` サブコマンドを持つ ArgumentParser。
+        `watch`/`report`/`sessions` サブコマンドを持つ ArgumentParser。
     """
     parser = argparse.ArgumentParser(
         prog="claude-token-monitor",
@@ -1499,18 +1785,50 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "(既定: <日付タイムスタンプ>_<セッションID>[_<セッションタイトル>]_token-usage-report.html)",
     )
 
+    sessions_parser = subparsers.add_parser(
+        "sessions",
+        help="セッション一覧を表示する(`--session`に渡すセッションIDを調べる用途)",
+    )
+    sessions_parser.add_argument(
+        "--project-dir",
+        help="対象プロジェクトの実ディレクトリパスを指定し、そのプロジェクトのセッションのみに絞る"
+        "(`~/.claude/projects/<encoded>/` へのエンコードは自動で行う)。"
+        "省略した場合はccusageと同様に`~/.claude/projects/`配下を横断して全プロジェクトのセッションを対象にする",
+    )
+    sessions_output_group = sessions_parser.add_mutually_exclusive_group()
+    sessions_output_group.add_argument(
+        "--json",
+        action="store_true",
+        help="JSON配列で出力する(各要素の`session_id`をそのまま`--session`に渡せる)",
+    )
+    sessions_output_group.add_argument(
+        "--csv",
+        action="store_true",
+        help="CSV形式で出力する(各行の`session_id`をそのまま`--session`に渡せる)",
+    )
+
     return parser
 
 
 def main() -> None:
-    """エントリーポイント。サブコマンドを解釈してwatch/reportを実行する。
+    """エントリーポイント。サブコマンドを解釈してwatch/report/sessionsを実行する。
 
     Raises:
-        SystemExit: 対象セッションログが解決できない場合。
+        SystemExit: 対象セッションログ、またはセッション一覧が解決できない場合。
     """
     parser = build_arg_parser()
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
+
+    if args.command == "sessions":
+        project_dir = (
+            resolve_project_dir(args.project_dir)
+            if args.project_dir is not None
+            else None
+        )
+        output_format = "json" if args.json else "csv" if args.csv else "table"
+        sessions_command(project_dir, output_format=output_format)
+        return
 
     try:
         path = resolve_session_file(args.file, args.session, args.project_dir)

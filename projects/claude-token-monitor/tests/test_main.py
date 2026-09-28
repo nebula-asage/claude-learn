@@ -1,9 +1,11 @@
+import csv
 import io
 import json
 import os
 import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -13,24 +15,32 @@ import main
 from main import (
     TurnUsage,
     _cost_summary,
+    _fallback_timestamp,
     _find_subagent_dirs,
     _fmt_cost,
     _read_agent_type,
     _read_all_subagent_turns,
     _read_subagent_turns_from_dirs,
     _totals,
+    build_sessions_table,
     build_table,
     encode_project_dir,
     find_latest_session_file,
     find_session_file_by_id,
     find_subagent_dir,
     find_subagent_transcripts,
+    list_all_session_files,
+    list_session_files,
+    list_session_summaries,
     parse_turn,
     read_all_turns,
     read_turns,
     render_report,
     resolve_model_pricing,
+    resolve_project_dir,
     resolve_session_file,
+    sessions_command,
+    summarize_session,
 )
 
 
@@ -1315,3 +1325,285 @@ def test_main_exits_when_session_file_cannot_be_resolved(
 
     captured = capsys.readouterr()
     assert "エラー: boom" in captured.err
+
+
+def test_list_session_files_sorts_by_mtime_descending(tmp_path: Path) -> None:
+    import time
+
+    older = tmp_path / "aaa.jsonl"
+    newer = tmp_path / "bbb.jsonl"
+    older.write_text("{}", encoding="utf-8")
+    newer.write_text("{}", encoding="utf-8")
+    now = time.time()
+    os.utime(older, (now, now))
+    os.utime(newer, (now + 10, now + 10))
+
+    assert list_session_files(tmp_path) == [newer, older]
+
+
+def test_list_session_files_returns_empty_when_dir_missing(tmp_path: Path) -> None:
+    assert list_session_files(tmp_path / "missing") == []
+
+
+def test_resolve_project_dir_uses_cwd_when_omitted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", Path("/base"))
+    monkeypatch.setattr(Path, "cwd", lambda: Path("/home/user/repo"))
+
+    assert resolve_project_dir(None) == Path("/base/-home-user-repo")
+
+
+def test_resolve_project_dir_encodes_explicit_path(tmp_path: Path) -> None:
+    target = tmp_path / "actual-project"
+    target.mkdir()
+
+    result = resolve_project_dir(str(target))
+
+    assert result.name == encode_project_dir(target)
+
+
+def test_summarize_session_builds_summary_from_turns(tmp_path: Path) -> None:
+    log = tmp_path / "session.jsonl"
+    log.write_text(
+        "\n".join(
+            [
+                _assistant_line(input_tokens=10, timestamp="2026-09-17T00:00:00.000Z"),
+                _assistant_line(input_tokens=20, timestamp="2026-09-17T00:05:00.000Z"),
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    summary = summarize_session(log)
+
+    assert summary.session_id == "session"
+    assert summary.first_timestamp == "2026-09-17T00:00:00.000Z"
+    assert summary.last_timestamp == "2026-09-17T00:05:00.000Z"
+    assert summary.turn_count == 2
+    assert summary.totals.input_tokens == 30
+    assert summary.title is None
+    assert summary.unresolved_cost_turn_count == 0
+
+
+def test_summarize_session_falls_back_to_mtime_when_no_turns(tmp_path: Path) -> None:
+    log = tmp_path / "session.jsonl"
+    log.write_text("{}", encoding="utf-8")
+
+    summary = summarize_session(log)
+
+    assert summary.turn_count == 0
+    assert summary.first_timestamp == _fallback_timestamp(log)
+    assert summary.last_timestamp == _fallback_timestamp(log)
+
+
+def test_list_session_summaries_sorts_by_last_timestamp_descending(
+    tmp_path: Path,
+) -> None:
+    older = tmp_path / "older.jsonl"
+    newer = tmp_path / "newer.jsonl"
+    older.write_text(
+        _assistant_line(timestamp="2026-09-01T00:00:00.000Z") + "\n",
+        encoding="utf-8",
+    )
+    newer.write_text(
+        _assistant_line(timestamp="2026-09-20T00:00:00.000Z") + "\n",
+        encoding="utf-8",
+    )
+
+    summaries = list_session_summaries(list_session_files(tmp_path))
+
+    assert [s.session_id for s in summaries] == ["newer", "older"]
+
+
+def test_list_all_session_files_searches_across_all_project_dirs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    dir_a = tmp_path / "project-a"
+    dir_b = tmp_path / "project-b"
+    dir_a.mkdir()
+    dir_b.mkdir()
+    (dir_a / "sess1.jsonl").write_text("{}", encoding="utf-8")
+    (dir_b / "sess2.jsonl").write_text("{}", encoding="utf-8")
+    # サブエージェント分は対象に含めない(<session>/subagents/配下は3階層目)
+    (dir_a / "sess1" / "subagents").mkdir(parents=True)
+    (dir_a / "sess1" / "subagents" / "agent-x.jsonl").write_text("{}", encoding="utf-8")
+
+    found = list_all_session_files()
+
+    assert sorted(found) == sorted([dir_a / "sess1.jsonl", dir_b / "sess2.jsonl"])
+
+
+def test_to_local_display_converts_utc_to_local_timezone() -> None:
+    displayed = main._to_local_display("2026-09-17T00:00:00.000Z")
+
+    parsed_utc = datetime.fromisoformat("2026-09-17T00:00:00+00:00")
+    expected = parsed_utc.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    assert displayed == expected
+
+
+def test_to_local_display_returns_input_unchanged_when_unparseable() -> None:
+    assert main._to_local_display("not-a-timestamp") == "not-a-timestamp"
+
+
+def test_build_sessions_table_renders_session_id_and_title(tmp_path: Path) -> None:
+    log = tmp_path / "abc123.jsonl"
+    log.write_text(_assistant_line(input_tokens=5) + "\n", encoding="utf-8")
+    summary = summarize_session(log)
+
+    rendered = _render(build_sessions_table([summary]))
+
+    assert "abc123" in rendered
+    assert "1" in rendered  # ターン数
+
+
+def test_build_sessions_table_shows_project_column_when_requested(
+    tmp_path: Path,
+) -> None:
+    log = tmp_path / "abc123.jsonl"
+    log.write_text(_assistant_line(input_tokens=5) + "\n", encoding="utf-8")
+    summary = summarize_session(log)
+
+    rendered = _render(build_sessions_table([summary], show_project=True))
+
+    assert "プロジェクト" in rendered
+    assert tmp_path.name in rendered
+
+
+def test_sessions_command_exits_when_no_sessions(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit):
+        sessions_command(tmp_path / "missing", output_format="table")
+
+
+def test_sessions_command_exits_when_project_dir_none_and_no_sessions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+
+    with pytest.raises(SystemExit):
+        sessions_command(None, output_format="table")
+
+
+def test_sessions_command_prints_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    log = tmp_path / "abc123.jsonl"
+    log.write_text(_assistant_line(input_tokens=5) + "\n", encoding="utf-8")
+
+    sessions_command(tmp_path, output_format="json")
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload[0]["session_id"] == "abc123"
+    assert payload[0]["input_tokens"] == 5
+
+
+def test_sessions_command_prints_table(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    log = tmp_path / "abc123.jsonl"
+    log.write_text(_assistant_line(input_tokens=5) + "\n", encoding="utf-8")
+
+    sessions_command(tmp_path, output_format="table")
+
+    captured = capsys.readouterr()
+    assert "abc123" in captured.out
+
+
+def test_sessions_command_prints_csv(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    log = tmp_path / "abc123.jsonl"
+    log.write_text(_assistant_line(input_tokens=5) + "\n", encoding="utf-8")
+
+    sessions_command(tmp_path, output_format="csv")
+
+    captured = capsys.readouterr()
+    rows = list(csv.DictReader(io.StringIO(captured.out)))
+    assert rows[0]["session_id"] == "abc123"
+    assert rows[0]["input_tokens"] == "5"
+
+
+def test_sessions_command_searches_all_projects_when_project_dir_none(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(main, "CLAUDE_PROJECTS_DIR", tmp_path)
+    project_dir = tmp_path / "some-project"
+    project_dir.mkdir()
+    (project_dir / "abc123.jsonl").write_text(
+        _assistant_line(input_tokens=5) + "\n", encoding="utf-8"
+    )
+
+    sessions_command(None, output_format="json")
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload[0]["session_id"] == "abc123"
+    assert payload[0]["project_dir_name"] == "some-project"
+
+
+def test_main_dispatches_to_sessions_with_explicit_project_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    called: dict[str, object] = {}
+
+    def fake_sessions_command(project_dir: Path | None, output_format: str) -> None:
+        called.update(project_dir=project_dir, output_format=output_format)
+
+    monkeypatch.setattr(main, "sessions_command", fake_sessions_command)
+    monkeypatch.setattr(main, "resolve_project_dir", lambda project_dir: tmp_path)
+    monkeypatch.setattr(
+        sys, "argv", ["prog", "sessions", "--project-dir", "/some/dir", "--json"]
+    )
+
+    main.main()
+
+    assert called == {"project_dir": tmp_path, "output_format": "json"}
+
+
+def test_main_dispatches_to_sessions_with_none_when_project_dir_omitted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called: dict[str, object] = {}
+
+    def fake_sessions_command(project_dir: Path | None, output_format: str) -> None:
+        called.update(project_dir=project_dir, output_format=output_format)
+
+    monkeypatch.setattr(main, "sessions_command", fake_sessions_command)
+    monkeypatch.setattr(sys, "argv", ["prog", "sessions"])
+
+    main.main()
+
+    assert called == {"project_dir": None, "output_format": "table"}
+
+
+def test_main_dispatches_to_sessions_with_csv(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called: dict[str, object] = {}
+
+    def fake_sessions_command(project_dir: Path | None, output_format: str) -> None:
+        called.update(project_dir=project_dir, output_format=output_format)
+
+    monkeypatch.setattr(main, "sessions_command", fake_sessions_command)
+    monkeypatch.setattr(sys, "argv", ["prog", "sessions", "--csv"])
+
+    main.main()
+
+    assert called == {"project_dir": None, "output_format": "csv"}
+
+
+def test_sessions_json_and_csv_are_mutually_exclusive(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["prog", "sessions", "--json", "--csv"])
+
+    with pytest.raises(SystemExit):
+        main.main()
+
+    captured = capsys.readouterr()
+    assert "not allowed with argument" in captured.err
