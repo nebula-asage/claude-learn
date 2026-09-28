@@ -13,15 +13,17 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
 
 ## このスキルが前提とする条件（変更しない）
 
-- **Go本体・golangci-lint・gomarkdocはユーザーローカルに導入する**。sudoやシステム全体へのインストールには依存しない（`apt install golang` 等は使わない）。これは、このリポジトリのホストがsudoにパスワードを要求する構成であり、「システムに触れずユーザー権限だけで開発環境を完結させる」というこのリポジトリ全体の固定方針に揃えるため
-- **golangci-lintは公式インストールスクリプト（`install.sh`）を使わない**。導入手順の節で詳しく説明するが、`install.sh` はGitHub Releasesの資産選択ロジックに既知のバグがあり、tarball本体ではなく `.sbom.json` を誤ってダウンロードしてsha256検証に失敗することを確認済み。GitHub Releasesから直接tarballとchecksumsファイルを取得し、自分でsha256sumを照合してから展開する
-- **golangci-lintの設定はv2形式**（`version: "2"` をトップに書く新スキーマ）を使う。v1の `linters.enable` フラット形式ではない
-- **テスト・カバレッジ計測も標準で組み込む**。`go test` はGo標準ツールチェーンに同梱されているため追加インストールは不要。タスクランナーは **just（`github.com/casey/just`）** で、`justfile` に `fmt`/`lint`/`test`/`cover`/`cover-html`/`cover-lcov`/`doc`/`doc-report`/`run`/`clean` の各レシピを用意し、`go tool cover -html` でHTMLレポート（`coverage.html`）を生成できるようにする
-- **ロジックは `main` パッケージに直接書かず、`internal/<パッケージ名>/` に分離する**。理由: golangci-lintのデフォルト有効リンター `revive` の `exported` ルール（exportされた関数・型にドキュメントコメントを必須にするルール）は、`main` パッケージには適用されない仕様になっている（`main` パッケージは外部からimportされる公開APIではないため）。ドキュメンテーションコメントの強制を実際に機能させるには、importable な非mainパッケージが最低1つ必要になる。テンプレートでは `internal/greeting/` にサンプルロジックを置いている
-- **ドキュメンテーションコメントは golangci-lint（revive）で強制する**。`.golangci.yml` の `linters.settings.revive.rules` に `package-comments`（パッケージコメント必須）と `exported`（exportされた識別子のコメント必須）を明示的に列挙する。revive は `rules` を指定すると指定したルールだけが有効になる（デフォルトルールセットを暗黙に維持しない）ため、`package-comments` を省略すると `main.go` のパッケージコメント欠落チェックが失われる点に注意する
-- **APIドキュメントの生成には `gomarkdoc`（`github.com/princjef/gomarkdoc`）を使う**。Go標準の `godoc` コマンド（`golang.org/x/tools/cmd/godoc`）は非推奨パッケージであり、実際に検証したところGoモジュール対応のパッケージ内容を正しくレンダリングできなかった（ページの外枠だけが返り、関数一覧が表示されない）。`pkgsite`（`golang.org/x/pkgsite/cmd/pkgsite`）もローカルモジュールを直接指定すると `This page is not supported by this datasource.` を返し、単体では動作しなかった。`gomarkdoc` はエクスポートされた識別子のドキュメンテーションコメントから直接Markdownを生成でき、`go install` で導入も容易なため、これを標準採用する
-- **VS CodeのCoverage Gutters拡張向けのカバレッジ変換には `gcov2lcov`（`github.com/jandelgado/gcov2lcov`）を使う**。Coverage Gutters拡張はlcov/cobertura/jacoco形式には対応するが、Goの `go test -coverprofile` が出力する独自形式（`coverage.out`）はネイティブ対応していないため、`gcov2lcov` でlcov形式（`coverage.lcov`）に変換してから読み込ませる
-- `main.go` には**パッケージコメントを必ず入れる**。`internal/greeting/greeting.go` にも**パッケージコメントとexportされた関数のコメントを必ず入れる**。どちらも上記のreviveルールに引っかかり、`lint` がエラーで落ちるため
+- Go本体・golangci-lint・gomarkdoc・gcov2lcov はユーザーローカルに導入する（sudo・`apt install golang` は使わない）
+- golangci-lint は公式 `install.sh` を使わず、GitHub Releases の tarball と checksums を自分で sha256 照合して展開する
+- golangci-lint の設定は v2 形式（`version: "2"`）
+- テスト・カバレッジは `go test` + `go tool cover`。タスクランナーは just で、`fmt`/`lint`/`test`/`cover`/`cover-html`/`cover-lcov`/`doc`/`doc-report`/`run`/`clean` を用意する
+- ロジックは `main` パッケージに書かず `internal/<パッケージ名>/` に分離する（revive の `exported` は `main` に効かないため）
+- ドキュメンテーションコメントは revive で強制する。`rules` には `package-comments` と `exported` の両方を明示する（片方を省くとそのチェックが消える）
+- `main.go` と `internal/greeting/greeting.go` にはパッケージコメントとexport識別子のコメントを必ず書く（無いと `lint` が落ちる）
+- APIドキュメントは gomarkdoc で生成する（`godoc`・`pkgsite` はローカルモジュールで動かなかった）
+- Coverage Gutters 向けに gcov2lcov で `coverage.out` を lcov に変換する
+
+各条件の理由・却下した代替案・検証で見つかった落とし穴は `.claude/skills/go-project/references/design-notes.md` にある。テンプレートを変更するときや、条件を見直すときに読む。
 
 ## 手順
 
@@ -43,14 +45,22 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
    - 既に同名のディレクトリが存在する場合は上書きしてよいか必ず確認する。
 
 4. **テンプレートをコピーし、プレースホルダを置換する**
-   - `.claude/skills/go-project/templates/go.mod` → `<配置先>/go.mod`（`__PROJECT_NAME__` をGoのモジュール名として妥当な形式に置換。特にホスト先の指定がなければリポジトリ名やディレクトリ名そのままでよい）
-   - `.claude/skills/go-project/templates/main.go` → `<配置先>/main.go`（`__PROJECT_NAME__` を置換。importパス `__PROJECT_NAME__/internal/greeting` も含めて置換すること）
-   - `.claude/skills/go-project/templates/internal/greeting/greeting.go` → `<配置先>/internal/greeting/greeting.go`
-   - `.claude/skills/go-project/templates/internal/greeting/greeting_test.go` → `<配置先>/internal/greeting/greeting_test.go`
-   - `.claude/skills/go-project/templates/README.md` → `<配置先>/README.md`（`__PROJECT_NAME__` を置換）
-   - `.claude/skills/go-project/templates/.golangci.yml` → `<配置先>/.golangci.yml`（置換不要）
-   - `.claude/skills/go-project/templates/justfile` → `<配置先>/justfile`（置換不要）
-   - `.claude/skills/go-project/templates/.gitignore` → `<配置先>/.gitignore`（置換不要。リポジトリルートの `.gitignore` には既に `# Go` セクションと `/bin/` の除外があるため、ルート側は変更しない）
+   `templates/` 配下は `vscode/` を除きそのまま `<配置先>` へ1階層でコピーできる構成になっているため、
+   ファイルを1つずつ Read/Write するのではなく `cp -a` で一括コピーし、そのうえでプレースホルダを含む
+   ファイルだけを Edit系ツールで置換する2段構成にする。
+
+   ```bash
+   mkdir -p "<配置先>"
+   cp -a .claude/skills/go-project/templates/. "<配置先>/"
+   rm -rf "<配置先>/vscode"
+   ```
+
+   （`.claude/skills/go-project/templates/vscode/` はここではコピーしない。VS Code設定の手順で扱う。）
+
+   コピー後、`grep -rl "__PROJECT_NAME__" "<配置先>"` でプレースホルダを含むファイルを洗い出し、その結果に対してだけ
+   Edit系ツールで置換する。テンプレートが変わった場合は下の一覧ではなく grep の結果を優先すること。
+   - `go.mod`・`main.go`・`README.md` の `__PROJECT_NAME__` を置換する。Goのモジュール名として妥当な形式にする（特にホスト先の指定がなければリポジトリ名やディレクトリ名そのままでよい）。`main.go` のimportパス `__PROJECT_NAME__/internal/greeting` も含めて置換すること
+   - `.gitignore` はそのままでよい（リポジトリルートの `.gitignore` には既に `# Go` セクションと `/bin/` の除外があるため、ルート側は変更しない）
 
 5. **VS Code向けのGo設定を追加する（`.vscode/` が既にある場合のみ）**
    - 判定は `<配置先>/.vscode/`ディレクトリ（`settings.json`または`extensions.json`）の有無で行う。存在しなければVS Code向けの設定は持たないプロジェクトとみなし、この手順はスキップする（`.vscode/`を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、`.vscode/`を新規作成したうえで以下と同じ内容を配置してよい）。
@@ -61,11 +71,11 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
      - `devcontainer.json`が存在しない場合: `.claude/skills/go-project/templates/vscode/extensions.json`の内容を`<配置先>/.vscode/extensions.json`にマージする（既存の`recommendations`があれば重複を除いて追記し、既存の非Go系の推奨拡張機能はそのまま残す）。
 
 6. **動作確認する**
-   `<配置先>` に移動し、`.claude/skills/go-project/references/verify.md` の手順に従って確認する。前述の通り、非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら各コマンドの前に `export GOROOT/GOPATH/PATH` を明示する。lintが本当に効いているかの反証（`.claude/skills/go-project/references/counter-tests.md`）は、このスキルの`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。
+   `<配置先>` に移動し、`.claude/skills/go-project/references/verify.md` の手順に従って確認する。`.claude/skills/go-project/references/install.md` の注意のとおり、非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら各コマンドの前に `export GOROOT/GOPATH/PATH` を明示する。lintが本当に効いているかの反証（`.claude/skills/go-project/references/counter-tests.md`）は、このスキルの`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。
 
 ## このスキルの対象外
 
 - Docker/devcontainer環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
-- Go本体・golangci-lint・gomarkdocのユーザーローカル導入方針、`install.sh` を使わない導入手順、golangci-lint v2設定形式、`go test` + `go tool cover` によるテスト・カバレッジ計測環境、`internal/` パッケージ分離とreviveによるドキュメンテーションコメント強制、gomarkdocによるAPIリファレンス生成は、このリポジトリで検証済みの固定条件として扱い、単なる「Go環境を作って」的な依頼でも省略しない。
+- 「前提とする条件」に並べた項目は、単なる「Go環境を作って」的な依頼でも省略しない。
 - `.vscode/` ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはGo固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/` を新規作成したうえでGo向け設定を配置してよい。
 - Git hooks（コミット時の自動lint/format）の設定はこのスキルの対象外。このリポジトリでは `core.hooksPath` がリポジトリ全体で1つしか持てず、プロジェクトごとにフックを設定すると互いに上書きし合う問題があるため、Goプロジェクト側では設定しない。
