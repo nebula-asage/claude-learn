@@ -19,6 +19,7 @@ just cover-html   # カバレッジ計測し、coverage.html にHTMLレポート
 just cover-lcov   # カバレッジ計測し、coverage.lcov（Coverage Gutters拡張向け）を生成
 just doc          # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力
 just doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
+just generate     # go:generateディレクティブに従ってモック等の生成コードを再生成
 just clean        # カバレッジ・ドキュメント生成物を削除
 just cspell       # pnpxでcspellを取得し、スペルチェックを実行
 just markdownlint # pnpxでmarkdownlint-cli2を取得し、Markdownをlint
@@ -61,3 +62,12 @@ go run . list
 ## Lint設定
 
 `.golangci.yml` で `revive` の `package-comments` と `exported` ルールを有効化しており、パッケージコメントおよびexportされた識別子のドキュメンテーションコメントが必須。新しいexport識別子を追加する際はコメントを忘れないこと。
+
+## モック（go.uber.org/mock）
+
+`internal/service` の単体テストでは、`UserRepository` インターフェースのモックに `go.uber.org/mock`（gomock）を使う。`go.mod` の `tool` ディレクティブでバージョンを固定しており、`go install` 等でのグローバル導入は不要（`go tool mockgen` で実行される）。
+
+- モックの実体は `internal/service/user_service.go` の `//go:generate` ディレクティブから生成される `internal/service/mock_user_repository_test.go`（`_test.go` のため本番ビルドには含まれない）
+- `UserRepository` にメソッドを追加・変更した場合は `just generate` で再生成すること。生成後のファイルは手編集しない（`DO NOT EDIT` ヘッダ付き）
+- テストでは `NewMockUserRepository(gomock.NewController(t))` でモックを作り、`repo.EXPECT().FindByEmail(...).Return(...)` のように呼び出しごとの戻り値を設定する。設定していないメソッドが呼ばれた場合はテストが失敗する
+- 他のパッケージ（`internal/repository` など）は具象実装のテストであり、インターフェースに対するモックは使わない

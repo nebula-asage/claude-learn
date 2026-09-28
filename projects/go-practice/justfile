@@ -24,6 +24,10 @@ lint:
 test:
     go test ./... -v
 
+# go:generateディレクティブに従ってモック等の生成コードを再生成する
+generate:
+    go generate ./...
+
 # カバレッジを計測し、関数ごとの被覆率をターミナルに表示する
 cover:
     go test ./... -coverprofile=coverage.out
