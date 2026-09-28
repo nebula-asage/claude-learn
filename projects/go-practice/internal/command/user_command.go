@@ -2,23 +2,25 @@
 package command
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"strconv"
+	"strings"
 
 	"go-practice/internal/model"
-	"go-practice/internal/repository"
 	"go-practice/internal/service"
 )
 
 // UserCommand はコマンドライン操作を処理するコマンドハンドラ。
 type UserCommand struct {
-	service *service.UserService
+	svc *service.UserService
+	out io.Writer
 }
 
-// NewUserCommand は新しいUserCommandを作成する。
-func NewUserCommand() *UserCommand {
-	repo := repository.NewJSONUserRepository()
-	return &UserCommand{service: service.NewUserService(repo)}
+// NewUserCommand は svc を使って処理し、結果を out に書き出す新しいUserCommandを作成する。
+func NewUserCommand(svc *service.UserService, out io.Writer) *UserCommand {
+	return &UserCommand{svc: svc, out: out}
 }
 
 // Create は新しいユーザーを作成する。
@@ -29,13 +31,11 @@ func (c *UserCommand) Create(args []string) error {
 		return err
 	}
 
-	user, err := c.service.CreateUser(email, username, phone, age)
+	user, err := c.svc.CreateUser(email, username, phone, age)
 	if err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
+		return fmt.Errorf("create user: %w", err)
 	}
-	fmt.Println("User created successfully:")
-	printUser(user)
-	return nil
+	return c.write("User created successfully:\n" + formatUser(user))
 }
 
 // Update は既存のユーザー情報を更新する。
@@ -46,55 +46,52 @@ func (c *UserCommand) Update(args []string) error {
 		return err
 	}
 
-	user, err := c.service.UpdateUser(email, username, phone, age)
+	user, err := c.svc.UpdateUser(email, username, phone, age)
 	if err != nil {
-		return fmt.Errorf("failed to update user: %w", err)
+		return fmt.Errorf("update user: %w", err)
 	}
-	fmt.Println("User updated successfully:")
-	printUser(user)
-	return nil
+	return c.write("User updated successfully:\n" + formatUser(user))
 }
 
 // List は全てのユーザーの一覧を表示する。
 func (c *UserCommand) List() error {
-	users, err := c.service.ListUsers()
+	users, err := c.svc.ListUsers()
 	if err != nil {
-		return fmt.Errorf("failed to list users: %w", err)
+		return fmt.Errorf("list users: %w", err)
 	}
-	fmt.Println("User list:")
-	fmt.Println("Email\t\tUsername")
-	fmt.Println("------------------------")
+	var b strings.Builder
+	b.WriteString("User list:\n")
+	b.WriteString("Email\t\tUsername\n")
+	b.WriteString("------------------------\n")
 	for _, user := range users {
-		fmt.Printf("%s\t%s\n", user.Email, user.Username)
+		fmt.Fprintf(&b, "%s\t%s\n", user.Email, user.Username)
 	}
-	return nil
+	return c.write(b.String())
 }
 
 // Get は指定されたメールアドレスのユーザー情報を表示する。
 // argsは[email]の1要素が必要。
 func (c *UserCommand) Get(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("usage: get <email>")
+		return errors.New("usage: get <email>")
 	}
-	user, err := c.service.GetUser(args[0])
+	user, err := c.svc.GetUser(args[0])
 	if err != nil {
-		return fmt.Errorf("failed to get user: %w", err)
+		return fmt.Errorf("get user: %w", err)
 	}
-	printUser(user)
-	return nil
+	return c.write(formatUser(user))
 }
 
 // Delete は指定されたメールアドレスのユーザーを削除する。
 // argsは[email]の1要素が必要。
 func (c *UserCommand) Delete(args []string) error {
 	if len(args) != 1 {
-		return fmt.Errorf("usage: delete <email>")
+		return errors.New("usage: delete <email>")
 	}
-	if err := c.service.DeleteUser(args[0]); err != nil {
-		return fmt.Errorf("failed to delete user: %w", err)
+	if err := c.svc.DeleteUser(args[0]); err != nil {
+		return fmt.Errorf("delete user: %w", err)
 	}
-	fmt.Println("User deleted successfully")
-	return nil
+	return c.write("User deleted successfully\n")
 }
 
 func parseUserArgs(args []string, subcommand string) (email, username, phone string, age int, err error) {
@@ -103,14 +100,20 @@ func parseUserArgs(args []string, subcommand string) (email, username, phone str
 	}
 	age, err = strconv.Atoi(args[3])
 	if err != nil {
-		return "", "", "", 0, fmt.Errorf("invalid age format")
+		return "", "", "", 0, fmt.Errorf("invalid age %q: %w", args[3], err)
 	}
 	return args[0], args[1], args[2], age, nil
 }
 
-func printUser(user model.User) {
-	fmt.Printf("Email: %s\n", user.Email)
-	fmt.Printf("Username: %s\n", user.Username)
-	fmt.Printf("Phone: %s\n", user.Phone)
-	fmt.Printf("Age: %d\n", user.Age)
+// write は組み立て済みの出力をまとめて書き出す。書き込みの失敗はコマンドの失敗として返す。
+func (c *UserCommand) write(s string) error {
+	if _, err := io.WriteString(c.out, s); err != nil {
+		return fmt.Errorf("write output: %w", err)
+	}
+	return nil
+}
+
+func formatUser(user model.User) string {
+	return fmt.Sprintf("Email: %s\nUsername: %s\nPhone: %s\nAge: %d\n",
+		user.Email, user.Username, user.Phone, user.Age)
 }

@@ -42,14 +42,14 @@ go run . list
 
 ## アーキテクチャ
 
-`main.go` がエントリーポイントで、サブコマンド（`create`/`update`/`list`/`get`/`delete`）を `internal/command` にディスパッチするだけの薄い層になっている。処理は以下の4層構造。
+`main.go` がエントリーポイントで、環境変数からデータファイルのパスを決めて各層を組み立て（依存の注入）、サブコマンド（`create`/`update`/`list`/`get`/`delete`）を `internal/command` にディスパッチするだけの薄い層になっている。環境変数の読み取りや `os.Stdout` への依存は `main.go` に集め、`internal/` 配下のパッケージはパスや `io.Writer` を引数で受け取る。処理は以下の4層構造。
 
 - `internal/model` — ドメインモデル（`User`）
-- `internal/repository` — データ永続化。`UserRepository` インターフェースと、その実装である `JSONUserRepository`（JSONファイルへの読み書き）
-- `internal/service` — 入力値のバリデーションとビジネスロジック。`UserRepository` インターフェースに依存し、具象の `JSONUserRepository` には依存しない。エラーは `UserError`（`Kind` によって種別を区別: `ErrInvalidEmail`・`ErrUserNotFound` など）に統一して返す
-- `internal/command` — コマンドライン引数のパースと `UserService` の呼び出し、結果の標準出力への整形
+- `internal/repository` — データ永続化。`JSONUserRepository`（JSONファイルへの読み書き）
+- `internal/service` — 入力値のバリデーションとビジネスロジック。必要な永続化操作を `UserRepository` インターフェースとして**利用側であるこのパッケージに**定義し（Goの「インターフェースは使う側で定義する」慣習）、具象の `JSONUserRepository` には依存しない。エラーは `ErrInvalidEmail`・`ErrUserNotFound` などのセンチネルエラーを `%w` でラップして返し、呼び出し側は `errors.Is` で種別を判定する
+- `internal/command` — コマンドライン引数のパースと `UserService` の呼び出し、結果の `io.Writer` への整形出力
 
-依存の向きは `command → service → repository`（インターフェース経由）。`internal/greeting` は上記のユーザー管理ロジックとは独立した挨拶メッセージ生成のみを行うパッケージで、`main` パッケージには `revive` の `exported` ルール（exportされた識別子へのコメント必須）が適用されないため、コメント強制を意味あるものにする目的で分離されている。
+依存の向きは `command → service`、`repository` は `service.UserRepository` を満たすだけで、両者を結び付けるのは `main.go`。`internal/greeting` は上記のユーザー管理ロジックとは独立した挨拶メッセージ生成のみを行うパッケージで、`main` パッケージには `revive` の `exported` ルール（exportされた識別子へのコメント必須）が適用されないため、コメント強制を意味あるものにする目的で分離されている。
 
 ### 入力値の制約
 

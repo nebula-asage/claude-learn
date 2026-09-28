@@ -61,9 +61,8 @@ func TestCreateUserInvalidEmail(t *testing.T) {
 
 	_, err := svc.CreateUser("invalid-email", "testuser", "1234567890", 25)
 
-	var userErr *UserError
-	if !errors.As(err, &userErr) || userErr.Kind != ErrInvalidEmail {
-		t.Errorf("err = %v, want UserError with kind %s", err, ErrInvalidEmail)
+	if !errors.Is(err, ErrInvalidEmail) {
+		t.Errorf("err = %v, want wrapped %v", err, ErrInvalidEmail)
 	}
 }
 
@@ -75,9 +74,8 @@ func TestUpdateUserNotFound(t *testing.T) {
 
 	_, err := svc.UpdateUser("test@example.com", "testuser", "1234567890", 25)
 
-	var userErr *UserError
-	if !errors.As(err, &userErr) || userErr.Kind != ErrUserNotFound {
-		t.Errorf("err = %v, want UserError with kind %s", err, ErrUserNotFound)
+	if !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("err = %v, want wrapped %v", err, ErrUserNotFound)
 	}
 }
 
@@ -116,9 +114,8 @@ func TestGetUserNotFound(t *testing.T) {
 
 	_, err := svc.GetUser("test@example.com")
 
-	var userErr *UserError
-	if !errors.As(err, &userErr) || userErr.Kind != ErrUserNotFound {
-		t.Errorf("err = %v, want UserError with kind %s", err, ErrUserNotFound)
+	if !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("err = %v, want wrapped %v", err, ErrUserNotFound)
 	}
 }
 
@@ -138,14 +135,6 @@ func TestListUsersSuccess(t *testing.T) {
 	}
 }
 
-func TestUserErrorMessage(t *testing.T) {
-	err := newUserError(ErrInvalidEmail, "Invalid email format: bad")
-	want := `InvalidEmail("Invalid email format: bad")`
-	if err.Error() != want {
-		t.Errorf("Error() = %q, want %q", err.Error(), want)
-	}
-}
-
 func TestDeleteUserNotFound(t *testing.T) {
 	repo := &fakeUserRepository{
 		deleteFunc: func(string) (bool, error) { return false, nil },
@@ -154,8 +143,43 @@ func TestDeleteUserNotFound(t *testing.T) {
 
 	err := svc.DeleteUser("test@example.com")
 
-	var userErr *UserError
-	if !errors.As(err, &userErr) || userErr.Kind != ErrUserNotFound {
-		t.Errorf("err = %v, want UserError with kind %s", err, ErrUserNotFound)
+	if !errors.Is(err, ErrUserNotFound) {
+		t.Errorf("err = %v, want wrapped %v", err, ErrUserNotFound)
+	}
+}
+
+func TestCreateUserRepositoryError(t *testing.T) {
+	repoErr := errors.New("disk failure")
+	repo := &fakeUserRepository{
+		findByEmailFunc: func(string) (model.User, bool, error) { return model.User{}, false, repoErr },
+	}
+	svc := NewUserService(repo)
+
+	_, err := svc.CreateUser("test@example.com", "testuser", "1234567890", 25)
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("err = %v, want wrapped %v", err, repoErr)
+	}
+}
+
+func TestValidateUsername(t *testing.T) {
+	tests := []struct {
+		name     string
+		username string
+		wantErr  error
+	}{
+		{"3文字のASCII", "abc", nil},
+		{"2文字のASCII", "ab", ErrInvalidUsername},
+		{"3文字のマルチバイト", "山田太", nil},
+		{"2文字のマルチバイト（6バイト）", "山田", ErrInvalidUsername},
+		{"前後の空白は数えない", "  ab  ", ErrInvalidUsername},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateUsername(tt.username); !errors.Is(err, tt.wantErr) {
+				t.Errorf("validateUsername(%q) = %v, want %v", tt.username, err, tt.wantErr)
+			}
+		})
 	}
 }

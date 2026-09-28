@@ -2,51 +2,35 @@
 package repository
 
 import (
+	"cmp"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
+	"slices"
 
 	"go-practice/internal/model"
 )
-
-// UserRepository はユーザーデータの永続化操作を定義する。
-type UserRepository interface {
-	// Save はユーザーを保存する。
-	Save(user model.User) error
-	// FindByEmail は指定されたメールアドレスのユーザーを検索する。
-	// 見つからなかった場合は ok が false になる。
-	FindByEmail(email string) (user model.User, ok bool, err error)
-	// FindAll は全てのユーザーを取得する。
-	FindAll() ([]model.User, error)
-	// Delete は指定されたメールアドレスのユーザーを削除する。
-	// ユーザーが存在しなかった場合は existed が false になる。
-	Delete(email string) (existed bool, err error)
-}
 
 // JSONUserRepository はJSONファイルベースのユーザーリポジトリ実装。
 type JSONUserRepository struct {
 	filePath string
 }
 
-// NewJSONUserRepository は新しいJSONUserRepositoryを作成する。
-//
-// 環境変数USER_DATA_FILEが設定されている場合はその値を、
-// 設定されていない場合は"userdata.json"をファイルパスとして使用する。
-func NewJSONUserRepository() *JSONUserRepository {
-	filePath := os.Getenv("USER_DATA_FILE")
-	if filePath == "" {
-		filePath = "userdata.json"
-	}
+// NewJSONUserRepository は filePath のJSONファイルを読み書きする新しいJSONUserRepositoryを作成する。
+// ファイルが存在しない場合は、ユーザーが0件の状態として扱う。
+func NewJSONUserRepository(filePath string) *JSONUserRepository {
 	return &JSONUserRepository{filePath: filePath}
 }
 
 func (r *JSONUserRepository) readUsers() (map[string]model.User, error) {
 	content, err := os.ReadFile(r.filePath)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return map[string]model.User{}, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
+		return nil, fmt.Errorf("read user data: %w", err)
 	}
 	if len(content) == 0 {
 		return map[string]model.User{}, nil
@@ -54,7 +38,7 @@ func (r *JSONUserRepository) readUsers() (map[string]model.User, error) {
 
 	var users map[string]model.User
 	if err := json.Unmarshal(content, &users); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON: %w", err)
+		return nil, fmt.Errorf("parse user data: %w", err)
 	}
 	return users, nil
 }
@@ -62,15 +46,15 @@ func (r *JSONUserRepository) readUsers() (map[string]model.User, error) {
 func (r *JSONUserRepository) writeUsers(users map[string]model.User) error {
 	content, err := json.MarshalIndent(users, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to serialize JSON: %w", err)
+		return fmt.Errorf("serialize user data: %w", err)
 	}
 	if err := os.WriteFile(r.filePath, content, 0o600); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+		return fmt.Errorf("write user data: %w", err)
 	}
 	return nil
 }
 
-// Save はユーザーを保存する。
+// Save はユーザーを保存する。同じメールアドレスのユーザーが既にいる場合は上書きする。
 func (r *JSONUserRepository) Save(user model.User) error {
 	users, err := r.readUsers()
 	if err != nil {
@@ -81,6 +65,7 @@ func (r *JSONUserRepository) Save(user model.User) error {
 }
 
 // FindByEmail は指定されたメールアドレスのユーザーを検索する。
+// 見つからなかった場合は2番目の戻り値が false になる。
 func (r *JSONUserRepository) FindByEmail(email string) (model.User, bool, error) {
 	users, err := r.readUsers()
 	if err != nil {
@@ -90,7 +75,7 @@ func (r *JSONUserRepository) FindByEmail(email string) (model.User, bool, error)
 	return user, ok, nil
 }
 
-// FindAll は全てのユーザーを取得する。
+// FindAll は全てのユーザーをメールアドレスの昇順で取得する。
 func (r *JSONUserRepository) FindAll() ([]model.User, error) {
 	users, err := r.readUsers()
 	if err != nil {
@@ -100,19 +85,24 @@ func (r *JSONUserRepository) FindAll() ([]model.User, error) {
 	for _, user := range users {
 		result = append(result, user)
 	}
+	// mapの反復順は不定なので、呼び出しごとに表示順が変わらないよう並べ替える
+	slices.SortFunc(result, func(a, b model.User) int { return cmp.Compare(a.Email, b.Email) })
 	return result, nil
 }
 
 // Delete は指定されたメールアドレスのユーザーを削除する。
+// ユーザーが存在しなかった場合は1番目の戻り値が false になる。
 func (r *JSONUserRepository) Delete(email string) (bool, error) {
 	users, err := r.readUsers()
 	if err != nil {
 		return false, err
 	}
-	_, existed := users[email]
+	if _, ok := users[email]; !ok {
+		return false, nil
+	}
 	delete(users, email)
 	if err := r.writeUsers(users); err != nil {
 		return false, err
 	}
-	return existed, nil
+	return true, nil
 }

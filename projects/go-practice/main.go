@@ -13,27 +13,39 @@ import (
 	"os"
 
 	"go-practice/internal/command"
+	"go-practice/internal/repository"
+	"go-practice/internal/service"
 )
 
-func printUsage() {
-	fmt.Println("Usage:")
-	fmt.Println("  create <email> <username> <phone> <age>")
-	fmt.Println("  update <email> <username> <phone> <age>")
-	fmt.Println("  list")
-	fmt.Println("  get <email>")
-	fmt.Println("  delete <email>")
+// defaultDataFile は環境変数 USER_DATA_FILE が未設定のときに使うデータファイルのパス。
+const defaultDataFile = "userdata.json"
+
+const usage = `Usage:
+  create <email> <username> <phone> <age>
+  update <email> <username> <phone> <age>
+  list
+  get <email>
+  delete <email>
+`
+
+func dataFilePath() string {
+	if path := os.Getenv("USER_DATA_FILE"); path != "" {
+		return path
+	}
+	return defaultDataFile
 }
 
 func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
-		printUsage()
+		fmt.Print(usage)
 		return
 	}
 
-	subcommand, rest := args[0], args[1:]
-	cmd := command.NewUserCommand()
+	repo := repository.NewJSONUserRepository(dataFilePath())
+	cmd := command.NewUserCommand(service.NewUserService(repo), os.Stdout)
 
+	subcommand, rest := args[0], args[1:]
 	var err error
 	switch subcommand {
 	case "create":
@@ -47,8 +59,8 @@ func main() {
 	case "delete":
 		err = cmd.Delete(rest)
 	default:
-		printUsage()
-		return
+		fmt.Fprintf(os.Stderr, "unknown subcommand: %s\n%s", subcommand, usage)
+		os.Exit(2)
 	}
 
 	if err != nil {
