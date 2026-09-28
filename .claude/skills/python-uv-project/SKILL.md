@@ -11,18 +11,18 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
 
 ## このスキルが前提とする条件（変更しない）
 
-- **パッケージ管理・実行はuv一本**。`pip install` / `python -m venv` は使わず、依存追加は必ず `uv add`、実行は `uv run` を使う
-- **Pythonランタイム自体もuvに管理させる**（`uv python install`）。distroやシステムに入っている `python3` には依存しない
-- **サプライチェーン攻撃対策として `pyproject.toml` の `[tool.uv]` に `exclude-newer = "7 days"` を設定する**。公開から7日未満のパッケージバージョンは依存解決の対象から除外され、悪意あるバージョンが検知・撤回される猶予を確保できる（7日という値もこのスキルの固定条件。ユーザーから別の期間指定があれば従う）
-- **依存の脆弱性検査には `pip-audit`（`https://pypi.org/project/pip-audit/`）を `uvx` 経由で使う**。`exclude-newer` は「まだ誰も気づいていない攻撃を待ち時間でやり過ごす」対策であるのに対し、`pip-audit` は既知の脆弱性（PyPA Advisory Database/OSV）と照合する対策で、両者は目的が異なり片方がもう片方の代替にはならない。**`uv add --dev pip-audit` でプロジェクトの依存には加えない**。`pip-audit` 自身が `requests`/`packaging` 等の依存を持ち、プロジェクト本体の依存解決に巻き込まれてバージョン競合を起こしうることを実際に確認した（検証で `urllib3` を意図的に古いバージョンへ下げたところ、`pip-audit` 自身が依存する `requests` が動かなくなった）。そのため `uv export --no-hashes --no-dev` で一時ファイルにロック済み依存を書き出し、`uvx pip-audit -r <一時ファイル>` という隔離実行（`pip-audit` 専用の使い捨て環境に依存を再インストールして照合するだけで、プロジェクトの `.venv` には一切触れない）で検査する。ネットワークアクセスが必要（PyPI JSON APIへ問い合わせる）
-- `requirements.txt` は作らない。依存関係は `pyproject.toml` + `uv.lock`（`uv add`/`uv sync`で生成、コミット対象）で管理する
-- **開発用依存として `ruff` を `[dependency-groups] dev` に標準で入れる**。lintは `uv run ruff check .`、フォーマットは `uv run ruff format .` とruff一本に統一する（別途blackを入れない）。`ruff` は `pyproject.toml` を直接読むため `flake8` のような別設定ファイルは不要で、lintの設定は `[tool.ruff.lint]` にまとめる。デフォルトの選択ルール（`E4`/`E7`/`E9`/`F`）には行長や空白まわりのスタイル系ルール（`E2xx`/`E5xx`）が含まれないが、これらは `ruff format` が担当するため競合しない
-- **テスト・カバレッジ計測も標準で組み込む**。開発用依存として `pytest`・`pytest-cov` を追加し、テストは `tests/` 配下に置く。`main.py` はパッケージ化していないプロジェクト直下のモジュールなので、pytestのデフォルトのimportモードのままでは `tests/` から見えない。そのため `pyproject.toml` の `[tool.pytest.ini_options]` で `testpaths = ["tests"]` と `pythonpath = ["."]` を設定し、プロジェクトルートをsys.pathに加えて `from main import ...` を可能にする。カバレッジは `[tool.coverage.run]`（`source`/`omit` で `.venv/`・`tests/` を対象外にする）と `[tool.coverage.report]`（`show_missing = true`）で設定し、`uv run pytest --cov --cov-report=term-missing` でターミナルに未カバー行を表示、`uv run pytest --cov --cov-report=html` で `htmlcov/index.html` にHTMLレポートを生成できるようにする
-- **ドキュメンテーションコメント（docstring）は `ruff` の `D`（pydocstyle由来）ルールで強制する**。新しいツールを増やさず、既に導入済みの `ruff` の `[tool.ruff.lint] select` に `"D"` を加えるだけで、公開モジュール・公開関数へのdocstring欠落を `D1xx` 系のエラーとして検出できる。`[tool.ruff.lint.pydocstyle]` の `convention = "google"` を設定する（`Args:`/`Returns:` の完全な構造化までは強制しない。存在チェックと簡単な書式チェックに留める）。ただし `D400`（1行目はピリオドで終える）・`D401`（1行目は命令形にする）・`D415`（1行目は句読点で終える）は英語の文章作法を前提にしたルールで、日本語のdocstring（例: 「〜を返す。」）では全角句点や敬体を誤検知するため `[tool.ruff.lint] ignore` で無効化する。`tests/` 配下のテスト関数はpytestの慣習としてdocstring不要なので、`[tool.ruff.lint.per-file-ignores]` で `"tests/*" = ["D", "DOC"]` を指定して除外する
-- **docstringの `Args:` に書かれた引数名と実際の関数シグネチャの引数名が食い違っていないかは `ruff` の `DOC`（pydoclint由来）ルールで検証する**。`D`（pydocstyle）系のルールはdocstringの「有無・書式」しか見ておらず、`Args:` の中身をASTと突き合わせる機能を持たないため、たとえば引数 `name` に対してdocstringで `nam` と書き間違えても検出できない。`select` に `"DOC"` を加えると、docstringをパースして関数シグネチャと比較し、シグネチャに存在しない引数の記述を `docstring-extraneous-parameter`、記述漏れの引数を `undocumented-param`（`D417`、`D`側のルール）として検出できる。名前を書き間違えた場合は「シグネチャ側の正しい名前が記述漏れ」「docstring側の誤った名前が余分な記述」の両方として検出されるため、結果的にpydoclintの引数名不一致チェック（`DOC103`相当）と同じ効果が得られる。**注意点として、ruffの `DOC` ルール群はまだpreview（不安定）扱いのため、`[tool.ruff.lint]` に `preview = true` を明示しないと有効化されない**。将来のruffのアップデートでルール内容や番号が変わる可能性がある。型注釈まで一致させる追加チェックはruffの `DOC` ルールには存在しない（pydoclintにあった `arg-type-hints-in-docstring` 相当の無効化設定も不要）。`tests/` 配下は `D` と同様の理由でdocstring自体を書かせないので、`per-file-ignores` の `"tests/*"` に `"DOC"` もまとめて含める
-- **docstringは [Google スタイル](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)（`Args:`/`Returns:` セクション）で書く**。厳密な構造は強制していないが、書式を統一しておくと後述の `pdoc` でのAPIドキュメント生成時に整形されたセクションとして描画される
-- **タスクランナーには `Makefile` ではなく just（`github.com/casey/just`）を使う**。`justfile` に `sync`/`run`/`fmt`/`fmt-check`/`lint`/`test`/`cover`/`cover-html`/`cover-lcov`/`doc`/`clean` の各レシピを用意し、`uv run ...` の長いコマンドを覚えなくても済むようにする。justは単体バイナリでGitHub Releasesのtarball（`SHA256SUMS`検証込み）からユーザーローカルに導入できるためこのリポジトリのsudo不要方針に合致する（go-project・rust-cargo-projectと同じ導入方法）
-- **APIドキュメントの生成には `pdoc`（`https://pdoc.dev/`）を使う**。Python標準の `pydoc` はdocstringをほぼ生テキストのまま表示するだけでMarkdown/reST的な整形をしないため、実用的なAPIリファレンスにはならない。`pdoc` はdocstringから直接HTMLを生成でき、`go install` 相当の `uv add --dev` で導入も容易なため、これを標準採用する。**`pdoc <モジュール名>` という呼び出しは失敗する**（`uv run pdoc` はコンソールスクリプト経由で起動するため、カレントディレクトリが自動では `sys.path` に乗らず `ModuleNotFoundError` になる）。ファイルパスを直接渡す `uv run pdoc main.py -o apidocs` の形式を使うこと。また `-d google` を付けてGoogleスタイルのdocstringだと明示すると、`Args:`/`Returns:` が見出し付きの整形されたセクションとして描画される（付けないとreStructuredText前提で解釈され、素のテキストのまま表示される）。**デフォルトでは各関数・クラスの実装ソースコードが展開可能な形でHTML内に埋め込まれる**（`<>`アイコンをクリックすると表示される）。APIリファレンスとしてはdocstringの整形表示だけで十分でソースの埋め込みは冗長なため、`--no-show-source` を付けて無効化する
+- パッケージ管理・実行は uv 一本（`uv add`・`uv run`。`pip install`・`python -m venv`・`requirements.txt` は使わない）。依存は `pyproject.toml` + `uv.lock`（コミット対象）で管理する
+- Python ランタイムも `uv python install` で uv に管理させる（システムの `python3` に依存しない）
+- サプライチェーン対策として `[tool.uv] exclude-newer = "7 days"`（別の期間を指定されたら従う）
+- 依存の脆弱性検査は `pip-audit` を `uvx` で隔離実行する（`uv export --no-hashes --no-dev` の結果を渡す）。dev 依存には入れない
+- lint・フォーマットは ruff 一本（black 等は入れない）。設定は `pyproject.toml` の `[tool.ruff.lint]`
+- テストは pytest + pytest-cov で `tests/` 配下。`[tool.pytest.ini_options]` に `testpaths = ["tests"]`・`pythonpath = ["."]` を設定する
+- docstring は ruff の `D`（`convention = "google"`、`D400`/`D401`/`D415` は無視）で強制し、引数名の不一致は `DOC`（`preview = true` が必須）で検出する。`tests/*` は `D`・`DOC` とも除外
+- docstring は Google スタイル（`Args:`/`Returns:`）で書く
+- APIドキュメントは pdoc で、`uv run pdoc main.py -d google --no-show-source -o apidocs` の形で生成する（モジュール名指定は失敗する）
+- タスクランナーは just で、`sync`/`run`/`fmt`/`fmt-check`/`lint`/`test`/`cover`/`cover-html`/`cover-lcov`/`doc`/`clean` を用意する
+
+各条件の理由・却下した代替案・検証で見つかった落とし穴は `.claude/skills/python-uv-project/references/design-notes.md` にある。テンプレートを変更するときや、条件を見直すときに読む。
 
 ## 手順
 
@@ -41,12 +41,21 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
    - 既に同名のディレクトリが存在する場合は上書きしてよいか必ず確認する。
 
 4. **テンプレートをコピーし、プレースホルダを置換する**
-   - `.claude/skills/python-uv-project/templates/pyproject.toml` → `<配置先>/pyproject.toml`（`__PROJECT_NAME__` を置換。目的に応じて `description` も調整してよい）
-   - `.claude/skills/python-uv-project/templates/main.py` → `<配置先>/main.py`
-   - `.claude/skills/python-uv-project/templates/tests/test_main.py` → `<配置先>/tests/test_main.py`
-   - `.claude/skills/python-uv-project/templates/README.md` → `<配置先>/README.md`（`__PROJECT_NAME__` を置換）
-   - `.claude/skills/python-uv-project/templates/.gitignore` → `<配置先>/.gitignore`（置換不要）
-   - `.claude/skills/python-uv-project/templates/justfile` → `<配置先>/justfile`（置換不要）
+   `templates/` 配下は `vscode/` を除きそのまま `<配置先>` へ1階層でコピーできる構成になっているため、
+   ファイルを1つずつ Read/Write するのではなく `cp -a` で一括コピーし、そのうえでプレースホルダを含む
+   ファイルだけを Edit系ツールで置換する2段構成にする。
+
+   ```bash
+   mkdir -p "<配置先>"
+   cp -a .claude/skills/python-uv-project/templates/. "<配置先>/"
+   rm -rf "<配置先>/vscode"
+   ```
+
+   （`.claude/skills/python-uv-project/templates/vscode/` はここではコピーしない。VS Code設定の手順で扱う。）
+
+   コピー後、`grep -rl "__PROJECT_NAME__" "<配置先>"` でプレースホルダを含むファイルを洗い出し、その結果に対してだけ
+   Edit系ツールで置換する。テンプレートが変わった場合は下の一覧ではなく grep の結果を優先すること。
+   - `pyproject.toml`・`README.md` の `__PROJECT_NAME__` を置換する（`pyproject.toml` の `description` は目的に応じて調整してよい）
 
 5. **配置先がVS Codeプロジェクトの場合、Python向けのVS Code設定を追加する**
    - 判定は `<配置先>/.vscode/` ディレクトリ（`settings.json` または `extensions.json`）の有無で行う。存在しなければVS Code向けの設定は持たないプロジェクトとみなし、この手順はスキップする（`.vscode/` を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、`.vscode/` を新規作成したうえで以下と同じ内容を配置してよい）。
@@ -67,15 +76,5 @@ description: Pythonの練習・開発プロジェクト一式（uv前提+pytest/
 
 - Docker/devcontainer環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
 - `.vscode/` ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはPython固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/` を新規作成したうえでPython向け設定を配置してよい。
-- `exclude-newer` の7日という値やuv前提の方針、ruff（lint・フォーマット一本化）、pytest/pytest-covによるテスト・カバレッジ計測環境一式、ruffの`D`ルール（`D400`/`D401`/`D415`無視・`tests/`除外込み）・`DOC`ルール（`preview = true`・`tests/`除外込み）とpdoc（`-d google`）によるドキュメンテーションコメント環境一式、pip-audit（`uvx`経由の隔離実行）による依存の脆弱性検査、justによるタスクランナーは、このリポジトリで検証済みの固定条件として扱い、単なる「Python環境を作って」的な依頼でも省略しない。
+- 「前提とする条件」に並べた項目は、単なる「Python環境を作って」的な依頼でも省略しない。
 - Git hooks（コミット時の自動lint/format）の設定はこのスキルの対象外。このリポジトリでは `core.hooksPath` がリポジトリ全体で1つしか持てず、プロジェクトごとにフックを設定すると互いに上書きし合う問題があるため、Pythonプロジェクト側では設定しない。
-
-## このスキルの `templates/` を編集したとき
-
-`templates/` 配下を変更したら、コミット前に以下を実行し、既に配置済みのファイルへの反映漏れ（ドリフト）が無いか確認する。
-
-```bash
-python3 .claude/skills/template-drift-sync/scripts/check_drift.py --only-suspect --path-filter <変更したファイル名>
-```
-
-差分があれば `AGENTS.md`「スキルを作成・編集するとき」に従い、配置済みファイルへ反映するかどうかを判断し、その結果を必ず報告する（黙って伏せない）。このスクリプト（`template-drift-sync` スキル自体）が存在しない環境では、この手順は省略してよい。

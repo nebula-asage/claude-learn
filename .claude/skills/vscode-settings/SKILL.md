@@ -1,6 +1,6 @@
 ---
 name: vscode-settings
-description: リポジトリやprojects/<name>/配下にVS Code用の`.vscode/settings.json`（おすすめ設定）・`.vscode/extensions.json`（おすすめ拡張機能）・`cspell.json`（スペルチェック設定）・`.markdownlint.jsonc`/`.markdownlint-cli2.jsonc`（markdownlint-cli2によるMarkdownの構文・スタイルlint設定）・`justfile`の`cspell`/`markdownlint`実行レシピを配置・更新するときに使う。「VS Codeの環境を作って」「VS Codeのおすすめ設定を追加して」「.vscodeディレクトリを作って」「VS Code拡張のおすすめ設定をして」「settings.jsonにおすすめ設定を入れて」「cspellの設定ファイル作って」「スペルチェックの設定を入れて」「markdownlintを導入して」「markdownlintのCLIを入れて」「Markdownのlint設定を入れて」など、このリポジトリでVS Code向けのsettings.json/extensions.json/cspell.json/markdownlint設定を新規作成・更新したい場合は必ずこのスキルを使うこと。配置先に`.devcontainer/devcontainer.json`が存在するdevcontainer環境の場合、おすすめ拡張機能は`.vscode/extensions.json`ではなく`devcontainer.json`の`customizations.vscode.extensions`に書く点が通常のVS Code設定と異なるので注意すること。`cspell.json`・`.markdownlint.jsonc`・`.markdownlint-cli2.jsonc`は`.vscode/`配下ではなく配置先の直下（package.json等と同じ階層）に置く点にも注意すること。`justfile`は既に他スキルが配置済みの場合は上書きせず`cspell`/`markdownlint`レシピのみを追記マージする点にも注意すること。
+description: リポジトリやprojects/<name>/配下に、VS Code用の`.vscode/settings.json`（おすすめ設定）・`.vscode/extensions.json`（おすすめ拡張機能）、`cspell.json`（スペルチェック設定）、markdownlint-cli2の設定（`.markdownlint.jsonc`/`.markdownlint-cli2.jsonc`）、`justfile`の`cspell`/`markdownlint`レシピを配置・更新するときに使う。「VS Codeの環境を作って」「VS Codeのおすすめ設定/拡張機能を追加して」「.vscodeディレクトリを作って」「cspellの設定ファイル作って」「スペルチェックの設定を入れて」「markdownlintを導入して」など、これらの設定を新規作成・更新したい場合は必ずこのスキルを使うこと。devcontainer環境での拡張機能の書き先、設定ファイルの置き場所、既存justfileへの追記マージといった注意点は本文の手順に従う。
 ---
 
 # vscode-settings
@@ -50,8 +50,8 @@ description: リポジトリやprojects/<name>/配下にVS Code用の`.vscode/se
 
 7. **`justfile`を配置する**
    - `<配置先>/justfile`が存在しない場合: `.claude/skills/vscode-settings/templates/justfile` → `<配置先>/justfile`（置換不要）。
-   - `<配置先>/justfile`が既に存在する場合（go-project等の言語別スキルが配置済みの場合を含む）: 上書きせず、テンプレートの`cspell`・`markdownlint`レシピだけを既存ファイルに追記マージする。追記前に既存ファイルに同名のレシピが無いことを確認し、あれば上書きせずユーザーに確認する。
-   - このスキルが配置する`justfile`のレシピは`cspell`（スペルチェック実行）・`markdownlint`（Markdown lint実行）のみに限定する。`fmt`/`lint`/`test`等のタスクランナーとしての用途は各言語別スキル（go-project等）の対象であり、このスキルの対象外。
+   - `<配置先>/justfile`が既に存在する場合（言語別のプロジェクトスキルが配置済みの場合を含む）: 上書きせず、テンプレートの`cspell`・`markdownlint`レシピだけを既存ファイルに追記マージする。追記前に既存ファイルに同名のレシピが無いことを確認し、あれば上書きせずユーザーに確認する。
+   - このスキルが配置する`justfile`のレシピは`cspell`（スペルチェック実行）・`markdownlint`（Markdown lint実行）のみに限定する。`fmt`/`lint`/`test`等のタスクランナーとしての用途は言語別のプロジェクトスキルの対象であり、このスキルの対象外。
 
 8. **内容を確認する**
    - `settings.json`/`extensions.json`/`cspell.json`/`.markdownlint.jsonc`/`.markdownlint-cli2.jsonc`はいずれもJSONC（コメント付きJSON）として解釈されるファイルで、標準の`jq`ではコメント行があると構文エラーになる。値部分に`//`を含む文字列が無いことを確認したうえで、`sed 's|//.*||' <ファイル> | jq .`のようにコメントを取り除いてから`jq`にかける、または目視でカンマ・かっこの対応を確認する。
@@ -75,13 +75,3 @@ description: リポジトリやprojects/<name>/配下にVS Code用の`.vscode/se
 - devcontainer環境そのものの構築（`Dockerfile`・`devcontainer.json`の新規作成）は対象外。既に存在する`devcontainer.json`への追記のみを行う。
 - 言語ごとのプロジェクト一式（lint/test/ドキュメンテーション環境）の構築は対象外。特定言語のフォーマッタ・リンター設定が必要な場合は、各プロジェクト側の設定で対応する。このスキルが配置する`justfile`も`cspell`/`markdownlint`レシピ限定で、`fmt`/`lint`/`test`等のタスクランナー機能を追加することは対象外。
 - `cspell.json`・`.markdownlint.jsonc`・`.markdownlint-cli2.jsonc`をプロジェクトのpackage.json（や同等のビルド設定）に恒久的に組み込むこと（devDependency化・専用スクリプトの追加・Git hooksでの強制等）は対象外。このスキルは設定ファイルの配置とVS Code拡張機能上での動作確認までを担当し、CIやコミット時に強制する仕組みが要る場合は各プロジェクト側で対応する。
-
-## このスキルの `templates/` を編集したとき
-
-`templates/` 配下を変更したら、コミット前に以下を実行し、既に配置済みのファイルへの反映漏れ（ドリフト）が無いか確認する。
-
-```bash
-python3 .claude/skills/template-drift-sync/scripts/check_drift.py --only-suspect --path-filter <変更したファイル名>
-```
-
-差分があれば `AGENTS.md`「スキルを作成・編集するとき」に従い、配置済みファイルへ反映するかどうかを判断し、その結果を必ず報告する（黙って伏せない）。このスクリプト（`template-drift-sync` スキル自体）が存在しない環境では、この手順は省略してよい。

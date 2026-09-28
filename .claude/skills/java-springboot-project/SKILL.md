@@ -22,151 +22,21 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
 ## このスキルが前提とする条件（変更しない）
 
-以下はすべて 2026-08-31 時点で実際に検証して確認した結果に基づく。単なる「Javaの環境を作って」的な
-依頼でも省略しない。
+以下は 2026-08-31 時点の検証に基づく。単なる「Javaの環境を作って」的な依頼でも省略しない。
 
-### バージョンの選定
+- Spring Boot 4.1 系・Java 21 LTS・Gradle wrapper 9.7.1（Kotlin DSL）。3.x はユーザーが明示した場合のみ使い、その場合はサポート終了済みであることを伝える
+- JDK は Eclipse Temurin の tar.gz を `~/sdk/` に展開する（`apt`・SDKMAN! は使わない）。Gradle 本体は入れず wrapper に任せる。`~/.bashrc` は書き換えず、`JAVA_HOME`/`PATH` は都度指定する
+- ロジックは Controller に書かず Service に分離する。テストは素の JUnit・`@WebMvcTest`・`@SpringBootTest` の3層を置き、`@RestControllerAdvice` で `ProblemDetail`（400）を返す
+- **起動クラス名は必ず `Application` で終わらせる**（カバレッジ・SpotBugs・Checkstyle の除外設定がこの命名に依存している）
+- Spring Boot 4 は 3 系と starter 名・テスト用アノテーションのパッケージが違い、`@MockBean` は無い（`@MockitoBean`・`MockMvcTester` を使う）。3 系向けのサンプルを写さない
+- 役割分担を崩さない: 整形は Spotless + google-java-format、Javadoc の有無は Checkstyle（`MissingJavadocMethod` の `minLineCount = -1`）、中身の正しさは doclint（`-Xdoclint:all,-missing`、`-Werror`）、バグ検出は SpotBugs、javac は `-Xlint:all -Werror`。Checkstyle 14 に `JavadocStyle` は無い
+- `./gradlew check` に全検査を集約する。just のレシピは `./gradlew <タスク>` を呼ぶだけの薄いラッパーにする
+- カバレッジの下限は行 80%（`jacocoTestCoverageVerification`）。起動クラスは計測から除外し、レポートは XML と HTML の両方を出す。`./gradlew test` で出る `Sharing is only supported for boot loader classes` の警告は異常ではない
+- `gradle.lockfile` をコミットする（テンプレートには含めず、展開直後に `./gradlew dependencies --write-locks` で生成する）
+- 取得元は `settings.gradle.kts` の `FAIL_ON_PROJECT_REPOS` で固定する（`build.gradle.kts` に `repositories {}` を足さない）。`gradle-wrapper.properties` の `distributionSha256Sum` は `distributionUrl` と一緒に更新する
+- **サプライチェーン方針との差分（必ずユーザーに報告する）**: Gradle には「公開後N日未満を除外する」機能も「ビルド時の任意コード実行の抑制」も無い。代わりに lockfile・取得元の固定・wrapper のチェックサム・バージョンの直書きを入れていて、それぞれが何を守り何を守らないかも伝える。猶予7日は人手で担保し、バージョンを上げるときは Maven Central で公開日を確認して7日未満のものは選ばない。この差分はテンプレートの `README.md` にも書いてある
 
-- **Spring Boot は 4.1 系を使う（3.x は使わない）**。Spring Boot 3.5 の OSS サポートは
-  2026-06-30 に終了しており、start.spring.io からも既に選べない。3.4 以前はさらに前に終了している。
-  4.0 系はまだサポート中だが 2026-12-31 で切れるため、2027-07-31 まで持つ 4.1 系を選ぶ。
-  ユーザーが明示的に「3系で」と言った場合のみそれに従う（その場合はサポート終了済みであることを伝える）。
-- **Java は 21 LTS**。Spring Boot 4.x の下限は Java 17 だが、レコードパターン・仮想スレッドが
-  使え、かつ Checkstyle / JaCoCo / google-java-format のどれもが確実に対応している 21 を選ぶ。
-- **Gradle は wrapper で 9.7.1 を使う**。Maven ではなく Gradle にしているのは、Spotless・
-  SpotBugs・JaCoCo・カバレッジ下限・依存ロックの設定を Kotlin DSL の 1 ファイルにまとめられるため。
-
-### ツールチェーンの導入方針
-
-- **JDK はユーザーローカルに導入する**。sudo やシステム全体へのインストールには依存しない
-  （`apt install openjdk-21-jdk` 等は使わない）。これは、このリポジトリのホストが sudo に
-  パスワードを要求する構成であり、かつ他の言語向けスキルと同じ「システムに触れずユーザー権限だけで
-  開発環境を完結させる」方針に揃えるため。Eclipse Temurin の tar.gz を `~/sdk/` に展開する。
-- **SDKMAN! は使わない**。SDKMAN! は `zip` / `unzip` コマンドを必要とするが、このリポジトリの
-  ホストにはどちらも入っておらず、導入には sudo が要る。tar.gz を直接展開する方式ならこの制約に
-  引っかからない。
-- **Gradle 本体はインストールしない**。テンプレートに Gradle wrapper（`gradlew` +
-  `gradle/wrapper/gradle-wrapper.jar`）を同梱してあり、初回の `./gradlew` 実行時に Gradle 9.7.1 が
-  `~/.gradle/wrapper/dists/` へ自動でダウンロードされる。**wrapper の展開は Java 内蔵の zip 処理で
-  行われるため、`unzip` コマンドが無い環境でも動く**（検証済み）。
-- `~/.bashrc` は書き換えない。`JAVA_HOME` / `PATH` はコマンド実行時に都度指定するか、
-  ユーザーの判断で恒久設定してもらう（ホスト環境に残る変更なので勝手に行わない）。
-
-### プロジェクトの構造
-
-- **ロジックは Controller に直接書かず Service に分離する**。理由は 2 つ。(1) HTTP に依存しない
-  ロジックは Spring のコンテキストを起動しない素の JUnit テストで検証でき、実行が数ミリ秒で済む。
-  (2) `@WebMvcTest` で Service をモックに差し替えられるので、Web 層のテストが「URL・ステータス
-  コード・JSON の形」だけを見る純粋なものになる。
-- **テストは 3 層すべてをテンプレートに入れる**。素の JUnit（`GreetingServiceTest`）、
-  `@WebMvcTest` のスライステスト（`GreetingControllerTest`）、`@SpringBootTest` の起動テスト
-  （`__APP_CLASS__Tests`）。片方だけだと「どのテストをどの層で書くべきか」が身につかない。
-  特に `@SpringBootTest` を何にでも使ってしまう失敗が起きやすいので、3 つ並べて速さの差を
-  見せることに意味がある。
-- **例外ハンドラ（`@RestControllerAdvice`）をテンプレートに入れる**。これが無いと
-  `IllegalArgumentException` が 500 になる。入力が悪いのはクライアント側なので 400 を返すのが
-  正しく、テンプレートは RFC 9457 の `ProblemDetail` 形式で返す。
-- **起動クラス名は必ず `Application` で終わらせる**。`build.gradle.kts` のカバレッジ除外
-  (`**/*Application.class`)、`config/spotbugs/exclude.xml` (`~.*Application`)、
-  `config/checkstyle/suppressions.xml` (`files="Application\.java$"`) の 3 箇所がこの命名に
-  依存している。別の名前にすると、これらの除外が黙って効かなくなる。
-
-### Spring Boot 4 で 3 系から変わっている点（テンプレートはすべて 4 系に対応済み）
-
-3 系向けの記事やサンプルを写すと動かないので、書き換えるときは特に注意する。
-
-- **starter 名**: `spring-boot-starter-web` → **`spring-boot-starter-webmvc`**。
-  `spring-boot-starter-test` は用途別に分割され、Web 層のテストには
-  **`spring-boot-starter-webmvc-test`** を使う（AssertJ・JUnit 5・Mockito はここから入る）。
-- **テスト用アノテーションのパッケージ**: `@WebMvcTest` は
-  **`org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest`**
-  （3 系は `org.springframework.boot.test.autoconfigure.web.servlet`）。
-  `@SpringBootTest` は `org.springframework.boot.test.context` のまま変わっていない。
-- **`@MockBean` は削除されている**。Spring Boot 4.1.1 の依存ツリー上に存在しない（検証済み）。
-  代わりに **`org.springframework.test.context.bean.override.mockito.MockitoBean`** を使う。
-- **MockMvc は `MockMvcTester`（AssertJ スタイル）を使う**
-  (`org.springframework.test.web.servlet.assertj.MockMvcTester`)。`@WebMvcTest` で自動設定される
-  ので `@Autowired` で受け取るだけでよい。
-
-### 整形・静的解析の役割分担
-
-同じことを 2 つのツールに見せると、片方を直したらもう片方が落ちる状態になりやすい。
-役割が重ならないように次のとおり分けてある。**この分担を崩さないこと。**
-
-- **整形は Spotless + google-java-format に一本化する**。Checkstyle 側にはインデントや行長の
-  ルールを一切入れない。`./gradlew spotlessApply` で自動的に直る。
-- **「Javadoc が書かれているか」は Checkstyle が見る**（`MissingJavadocType` /
-  `MissingJavadocMethod` / `MissingJavadocPackage` / `JavadocMethod`）。`MissingJavadocMethod` の
-  `minLineCount` は **`-1`** にしてある。既定値のままだと 2 行以下のメソッドが免除され、getter や
-  1 行メソッドが無コメントで通ってしまう。
-- **「Javadoc の中身が正しいか」は javadoc の doclint が見る**。`{@link}` のリンク切れ、実際の
-  引数名とずれた `@param`、閉じ忘れた HTML タグを検出する（いずれも検証済み）。
-  **doclint 側は `-Xdoclint:all,-missing` にしてある**。`missing` を有効にすると、Spring の
-  `@Service` や `@RestControllerAdvice` のようにコンストラクタを明示しないクラスがすべて
-  「暗黙のデフォルトコンストラクタにコメントが無い」として落ちる。空のコンストラクタを Javadoc
-  付きで書かせるのは Spring の書き方として不自然なので、有無の判定は Checkstyle に任せている。
-- **`javadoc` タスクには `-Werror` を付ける**。警告のままだと誰も直さず溜まるため。
-- **`JavadocStyle` は Checkstyle 14 で削除されている**。設定に残すと
-  `cannot initialize module JavadocStyle` で Checkstyle 自体が起動しない（この失敗は
-  「Unable to create Root Module」という分かりにくいメッセージで出る）。代替の `SummaryJavadoc` /
-  `JavadocParagraph` は「要約文がピリオドで終わること」を見るもので、句点が「。」の日本語コメントとは
-  相性が悪いため入れていない。
-- **バグ検出は SpotBugs が担当する**。Checkstyle はソースを、SpotBugs はバイトコードを見るので、
-  NullPointerException の疑いのような実行時の問題は SpotBugs 側でしか出ない。
-- **`-Xlint:all -Werror` を javac に付ける**。Spring Boot 4.1 + Java 21 のテンプレートは
-  この設定で警告ゼロで通ることを確認済み。
-
-### テスト・カバレッジ・ドキュメント
-
-- **`./gradlew check` に整形チェック・Checkstyle・SpotBugs・テスト・カバレッジ下限・Javadoc を集約する**。
-  `check` に `jacocoTestReport` / `jacocoTestCoverageVerification` / `javadoc` を追加してあり、
-  これ 1 つで全部回る。
-- **タスクランナーには他言語スキルと同様に just を使うが、レシピは全て `./gradlew <タスク>` を呼ぶだけの
-  薄いラッパーに留める**（Gradle のタスク定義自体を `justfile` 側に持たせず、ロジックの二重管理はしない）。
-  狙いは go-project・rust-cargo-project・python-uv-project・pnpm-project など他言語スキルと
-  `just test` / `just lint` のような呼び方を揃えることであり、ビルドの実行順序や各タスクの中身は
-  `build.gradle.kts` 側が唯一の真実源のまま変わらない。justは単体バイナリでGitHub Releasesのtarball
-  （`SHA256SUMS`検証込み）からユーザーローカルに導入できるためこのリポジトリのsudo不要方針に合致する。
-- **カバレッジの下限は行 80%**。`jacocoTestCoverageVerification` で強制し、下回ると `check` が落ちる。
-  これは下限であって目標ではない（目標にすると 80% を超えた瞬間にテストを書かなくなる）。
-- **カバレッジ計測から起動クラスを除外する**。`main()` はテストから実行されないため、含めると
-  カバレッジが実態より低く出て数字を追う意味が薄れる。除外すると、テンプレートの状態で行カバレッジ
-  100%（16/16）になる。
-- **JaCoCo のレポートは XML と HTML の両方を出す**。XML は VS Code の Coverage Gutters 拡張が読み、
-  HTML は人が読む。Rust スキルの `cargo-llvm-cov` と違い、JaCoCo は 1 回の実行で両形式を同時に
-  出力できるので、形式ごとにタスクを分ける必要はない。
-- **`./gradlew test` を実行すると `OpenJDK 64-Bit Server VM warning: Sharing is only supported
-  for boot loader classes because bootstrap classpath has been appended` が必ず出る**。JaCoCo の
-  エージェントを `-javaagent` で差し込むことによる JVM の警告で、異常ではない。テンプレートの
-  README にも書いてあるが、動作確認時にこれを見て「失敗した」と誤認しないこと。
-
-### 依存とサプライチェーン対策
-
-- **`gradle.lockfile` をコミットする**。`dependencyLocking { lockAllConfigurations() }` を有効に
-  してあり、ロックファイルと実際の解決結果が食い違うとビルドが落ちる（検証済み）。
-- **テンプレートには `gradle.lockfile` を含めない**。展開直後に
-  `./gradlew dependencies --write-locks` を実行して生成する。Rust スキルの `Cargo.lock` と違い、
-  **ロックファイルが無い状態でもビルドは通る**（Gradle の依存ロックはロック情報が存在するときだけ
-  検証する）ので、生成を忘れても壊れはしないが、固定の効果が得られないので必ず実行する。
-- **`settings.gradle.kts` で取得元を固定する**。`RepositoriesMode.FAIL_ON_PROJECT_REPOS` に
-  してあるため、`build.gradle.kts` 側に `repositories {}` を書くとビルドが落ちる（検証済み）。
-  これは cargo-deny の `[sources]` に相当する対策で、「いつの間にか知らないリポジトリから依存を
-  引いていた」状態を防ぐ。**そのため、依存を追加するときに `build.gradle.kts` へ
-  `repositories {}` を足してはいけない。**
-- **`gradle-wrapper.properties` に `distributionSha256Sum` を書く**。wrapper がダウンロードする
-  Gradle 本体が公式配布物と同一かを検証する。`distributionUrl` を変えるときはこの値も必ず差し替える
-  （古いままだと起動できない）。
-
-### このリポジトリ共通のサプライチェーン方針との差分（`AGENTS.md` の一般則参照。必ずユーザーに報告する）
-
-**Gradle には「公開後N日未満を除外する」（npm/pnpmの`minimum-release-age`やuvの`exclude-newer`相当）も「インストール時の任意コード実行の抑制」（npmの`ignore-scripts`相当）も存在しない。** Gradleプラグインはビルド時に任意のコードを実行するのが前提の設計。
-
-代わりに入れている `gradle.lockfile`、`FAIL_ON_PROJECT_REPOS`、`distributionSha256Sum`、バージョンの直書きが何を守り何を守らないのかも、あわせて伝えること。この差分はテンプレートの `README.md` にも表で書いてある。
-
-**猶予7日は人間の運用で担保する。** 依存やプラグインのバージョンを上げるとき（テンプレートの
-バージョンを更新するときも含む）は、Maven Central の
-`https://repo1.maven.org/maven2/<グループのパス>/<artifact>/<version>/` で公開日を確認し、
-公開から7日未満のものは選ばないこと。
+各条件の理由・却下した代替案・検証で見つかった落とし穴は `.claude/skills/java-springboot-project/references/design-notes.md` にある。テンプレートを変更するときや、条件を見直すときに読む。
 
 ## 手順
 
@@ -182,7 +52,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
    - **これはホスト環境に実際にソフトウェアを導入する操作である。** ユーザーが今回の依頼で
      明示的にこの方法を指定していない場合は、実行前に「JDK/just が入っていないのでユーザーローカルに
      導入してよいか（sudo は使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
-   - 具体的な導入コマンド（Eclipse Temurin JDK・just）は `references/install.md` を参照する。
+   - 具体的な導入コマンド（Eclipse Temurin JDK・just）は `.claude/skills/java-springboot-project/references/install.md` を参照する。
 
 3. **配置先とプロジェクト名を確認する**
    - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に
@@ -207,7 +77,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
    `templates/` の大半（`build.gradle.kts`・`gradle.properties`・`gradlew`・`gradlew.bat`・
    `gradle/wrapper/`・`config/`・`.gitignore`・`justfile`・`README.md` など）は `<配置先>` へそのまま
-   1階層でコピーできる。一方 `templates/java/` 配下と `templates/application.yaml` だけは、最終的な配置先
+   1階層でコピーできる。一方 `.claude/skills/java-springboot-project/templates/java/` 配下と `.claude/skills/java-springboot-project/templates/application.yaml` だけは、最終的な配置先
    （`src/main/java/__BASE_PACKAGE_PATH__/...` や `src/main/resources/`）が `__BASE_PACKAGE_PATH__` の
    実際の値に依存するため、テンプレート側では平坦な仮置き構造になっている。そのため
    「一括コピー→パッケージ構造への再配置→プレースホルダ置換」の3段構成にする（`<配置先>` =
@@ -231,7 +101,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
    mv "<配置先>/application.yaml" "<配置先>/src/main/resources/application.yaml"
    ```
 
-   （`templates/vscode/` はここではコピーしない。手順6で扱う。`cp -a` は権限・タイムスタンプを保ったまま
+   （`.claude/skills/java-springboot-project/templates/vscode/` はここではコピーしない。手順6で扱う。`cp -a` は権限・タイムスタンプを保ったまま
    複製するため、`gradlew`・`gradle-wrapper.jar` を含め個別ファイルの権限調整や「バイナリなのでテキスト
    置換をかけない」といった配慮は不要——置換はこの後の grep で見つかったファイルにしか行わないため
    バイナリが誤って書き換わることもない。）
@@ -248,9 +118,9 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
 5. **依存をロックし、動作確認する**
 
-   `<配置先>` に移動し、`references/verify.md` の手順に従って確認する。`JAVA_HOME` と `PATH` は都度指定する
+   `<配置先>` に移動し、`.claude/skills/java-springboot-project/references/verify.md` の手順に従って確認する。`JAVA_HOME` と `PATH` は都度指定する
    （`~/.bashrc` は非対話シェルだと冒頭で早期 return するため、`source ~/.bashrc` は効かない）。
-   lint が本当に効いているかの反証（`references/counter-tests.md`）は、このスキルの`templates/`を
+   lint が本当に効いているかの反証（`.claude/skills/java-springboot-project/references/counter-tests.md`）は、このスキルの`templates/`を
    変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する
    手順ではない。
 
@@ -259,7 +129,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
      存在しなければ VS Code 向けの設定は持たないプロジェクトとみなし、この手順はスキップする
      （`.vscode/` を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、
      `.vscode/` を新規作成したうえで以下と同じ内容を配置してよい）。
-   - **`settings.json` を配置する**: `templates/vscode/settings.json` の内容を
+   - **`settings.json` を配置する**: `.claude/skills/java-springboot-project/templates/vscode/settings.json` の内容を
      `<配置先>/.vscode/settings.json` にマージする。既に存在する場合は Edit 系ツールで直接編集し、
      既存のキー（言語非依存の共通設定など）を残したまま `java.*` / `coverage-gutters.*` 系のキーと
      `[java]` / `[yaml]` / `[xml]` ブロックを追加する（同じキーが既にあれば上書きせず、内容を
@@ -274,11 +144,11 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
      `<配置先>/.devcontainer/devcontainer.json` の有無で分岐する（この判定も「devcontainer を構築する
      スキルが動いたかどうか」ではなく、あくまでファイルの有無で行う）。
      - `devcontainer.json` が存在する場合: `.vscode/extensions.json` は使わず、
-       `templates/vscode/extensions.json` の `recommendations` 配列の中身（拡張機能 ID のみ。
+       `.claude/skills/java-springboot-project/templates/vscode/extensions.json` の `recommendations` 配列の中身（拡張機能 ID のみ。
        コメントは転記しなくてよい）を `<配置先>/.devcontainer/devcontainer.json` の
        `customizations.vscode.extensions` 配列に Edit 系ツールで直接マージする（重複を除いて追記。
        既存の `customizations.vscode.settings` 等は残す）。
-     - `devcontainer.json` が存在しない場合: `templates/vscode/extensions.json` の内容を
+     - `devcontainer.json` が存在しない場合: `.claude/skills/java-springboot-project/templates/vscode/extensions.json` の内容を
        `<配置先>/.vscode/extensions.json` にマージする（既存の `recommendations` があれば重複を
        除いて追記し、既存の非 Java 系の推奨拡張機能はそのまま残す）。
    - `settings.json` / `extensions.json`（および `devcontainer.json`）は JSONC（コメント付き JSON）
@@ -312,13 +182,3 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 - Git hooks（コミット時の自動 lint/format）の設定はこのスキルの対象外。このリポジトリでは
   `core.hooksPath` がリポジトリ全体で1つしか持てず、プロジェクトごとにフックを設定すると互いに
   上書きし合う問題があるため、Java プロジェクト側では設定しない。
-
-## このスキルの `templates/` を編集したとき
-
-`templates/` 配下を変更したら、コミット前に以下を実行し、既に配置済みのファイルへの反映漏れ（ドリフト）が無いか確認する。
-
-```bash
-python3 .claude/skills/template-drift-sync/scripts/check_drift.py --only-suspect --path-filter <変更したファイル名>
-```
-
-差分があれば `AGENTS.md`「スキルを作成・編集するとき」に従い、配置済みファイルへ反映するかどうかを判断し、その結果を必ず報告する（黙って伏せない）。このスクリプト（`template-drift-sync` スキル自体）が存在しない環境では、この手順は省略してよい。

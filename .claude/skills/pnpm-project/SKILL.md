@@ -13,22 +13,18 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（pnp
 
 ## このスキルが前提とする条件（変更しない）
 
-- **pnpm本体は公式スタンドアロンインストーラで導入する**（npm・nvm・corepackいずれにも依存しない）。理由:
-  1. npm経由の導入は「pnpmを入れるためにまずnode/npmが要る」という循環があった。スタンドアロンインストーラは実行可能バイナリを直接取得するため、Node.js自体が未導入のホストでも動く
-  2. corepackはNode.js本体から将来的に切り離される方針であり、長期的な前提にしにくい
-  3. pnpm 12はnpmレジストリの署名（npmの公開鍵）とチェックサムの両方を検証してからバイナリを展開する設計になっており、単体バイナリの検証をこのリポジトリの他ツール（`AGENTS.md`の「単体バイナリ・tarball配布」導入方針）で個別に用意する必要がない
-- **Node.jsランタイムもnvmではなくpnpm自身の`runtime`機能（`pnpm runtime set node <version> -g`。旧称`pnpm env use`、非推奨）で導入・管理する**。distro/システムに入っているnodeパッケージや、apt経由のNodeSourceリポジトリ、nvmには依存しない。この機能はpnpmをスタンドアロンインストーラで導入した場合のみ使える（npm経由で導入したpnpmでは動かない）
-- **パッケージマネージャはpnpm一本**。`npm install`（依存追加）や`yarn`は使わない
-- **サプライチェーン攻撃対策として、プロジェクト直下の`pnpm-workspace.yaml`に次を設定する（固定条件）**:
-  - `ignoreScripts: true` — postinstallなどのライフサイクルスクリプトを実行しない
-  - `minimumReleaseAge: 10080`（分単位で7日分） — 公開から7日間は新しいバージョンのインストールをスキップし、悪意あるバージョンが検知・撤回される猶予を確保する
-  - pnpm 11以降、`.npmrc`はauth/registry設定専用になり非auth/registry設定は無視される（検証済み）ため、これらのpnpm固有設定は`.npmrc`ではなく`pnpm-workspace.yaml`（YAML、キャメルケース）に書く。`.npmrc`は private registry の認証情報等が必要になった場合の置き場として残す
-- `package-lock.json`は作らない。依存関係は`package.json` + `pnpm-lock.yaml`（`pnpm install`で生成、コミット対象）で管理する
-- **言語はTypeScript一本**。プレーンなJavaScriptのテンプレートは提供しない（`src/`配下に`.ts`を置き、`tsc`で`dist/`にビルドする）
-- **Lint/Format/Test/カバレッジ計測は標準で組み込む**。ESLint(flat config, `typescript-eslint`の`recommendedTypeChecked`)・Prettier・Vitest・`@vitest/coverage-v8`（`pnpm run test:coverage`でカバレッジHTMLレポートを生成）は`projects/gitlab-mcp-server/`で検証済みの構成をそのままテンプレート化したものであり、単なる「pnpm環境作って」的な依頼でも省略しない
-- **JSDoc必須化とAPIドキュメント生成も標準で組み込む**。`src/**/*.ts`に`eslint-plugin-jsdoc`（`flat/recommended-typescript-error`）を適用し、exportした全シンボル（クラス・関数・interface・型エイリアス・定数、およびinterfaceの各フィールド）にJSDocを必須にする（非exportの内部ヘルパーは対象外）。TypeScriptが型情報を持つため`@param`/`@returns`に型注記は書かない。ファイル先頭のモジュールコメントは`@module`ではなく`@packageDocumentation`を使う（TS環境では`@module`が冗長タグとしてESLintに拒否される）。TypeDoc（`typedoc.json`）で`pnpm run docs`によりHTMLのAPIリファレンスを`docs/api`に生成でき、`pnpm run docs:check`はHTMLを出さずに記述漏れだけを検証する。これも`projects/gitlab-mcp-server/`で検証済みの構成であり、省略しない
-- **Git hooks（Husky + lint-staged）も標準で組み込む**。コミット時にステージされた`*.ts`へ`eslint --fix`→`prettier --write`を、それ以外の対象拡張子（`js`/`mjs`/`cjs`/`json`/`md`/`yml`/`yaml`）へ`prettier --write`のみを自動適用する（`package.json`の`lint-staged`フィールド）。フック本体は`.husky/pre-commit`から`pnpm exec lint-staged`を呼ぶ。このリポジトリはmonorepoでプロジェクトが`projects/<name>/`配下のサブディレクトリにあり`.git`はリポジトリルート直下にしか無いため、Husky標準の`npx husky init`（cwd直下の`.git`しか認識しない）はそのままでは使えない。`scripts/install-husky.mjs`が`git rev-parse --show-toplevel`でリポジトリルートを求めてそこへ`chdir`し、プロジェクト配下の`.husky`を対象に`core.hooksPath`を設定する（`package.json`の`prepare`スクリプトがこれを指す）。`pnpm-workspace.yaml`の`ignoreScripts: true`により`pnpm install`では`prepare`が自動実行されないため、`pnpm install`後は**初回のみ`pnpm run prepare`を手動実行**してフックを有効化する必要がある（`core.hooksPath`はGitのローカル設定でコミット対象外なので、clone後の環境では毎回必要）。なお`core.hooksPath`はリポジトリ全体で1つしか持てず、設定したフックはリポジトリ内のどのコミットでも発火するため、`.husky/pre-commit`の先頭に2つのガードを入れてある。(1)ステージされたファイルにこのプロジェクト配下が含まれなければ何もせず通す、(2)`node_modules/.bin/lint-staged`が無い作業ツリー（clone直後や`pnpm install`前のgit worktree）では警告を出してスキップする。どちらもコミットを失敗させない。このガードが無いと、無関係なプロジェクトの変更や別worktreeからのコミットが巻き添えで全て止まる。これも`projects/gitlab-mcp-server/`で検証済みの構成であり、省略しない
-- **タスクランナーには`Makefile`ではなくjust（`github.com/casey/just`）を使う**。`package.json`の`scripts`は残したまま、`justfile`はその薄いラッパーとして`build`/`start`/`dev`/`typecheck`/`lint`/`lint-fix`/`fmt`/`fmt-check`/`test`/`test-watch`/`cover`/`doc`/`doc-check`/`prepare`/`clean`の各レシピを用意する（中身は対応する`pnpm run <script>`を呼ぶだけで、ロジックの二重管理はしない）。狙いはgo-project・rust-cargo-project・python-uv-projectなど他言語スキルと`just test`/`just lint`のような呼び方を揃えること。justは単体バイナリでGitHub Releasesのtarball（`SHA256SUMS`検証込み）からユーザーローカルに導入できるためこのリポジトリのsudo不要方針に合致する
+- pnpm 本体は公式スタンドアロンインストーラで導入する（npm・nvm・corepack に依存しない）。12系を使う
+- Node.js ランタイムも `pnpm runtime set node <version> -g` で pnpm に管理させる（システムの node・nvm に依存しない）
+- パッケージマネージャは pnpm 一本（`npm install`・`yarn`・`package-lock.json` は使わない）。依存は `package.json` + `pnpm-lock.yaml`（コミット対象）で管理する
+- サプライチェーン対策として、プロジェクト直下の `pnpm-workspace.yaml` に `ignoreScripts: true` と `minimumReleaseAge: 10080`（7日）を書く。`.npmrc` には書かない（pnpm 11以降は無視される。auth/registry 設定の置き場としてのみ残す）
+- 言語は TypeScript 一本（`src/` の `.ts` を `tsc` で `dist/` にビルドする）
+- ESLint（flat config、`recommendedTypeChecked`）・Prettier・Vitest・`@vitest/coverage-v8` を標準で組み込む
+- exportしたシンボルの JSDoc を `eslint-plugin-jsdoc` で必須にし、TypeDoc で `docs/api` にAPIドキュメントを生成する（`@param`/`@returns` に型注記は書かない。ファイル先頭は `@packageDocumentation`）
+- Git hooks は Husky + lint-staged。`scripts/install-husky.mjs` がリポジトリルートの `core.hooksPath` を設定する。`.husky/pre-commit` の2つのガード（無関係なコミットは素通し・依存未導入の作業ツリーでは警告してスキップ）は省略しない
+- `ignoreScripts: true` のため `prepare` は自動実行されない。`pnpm install` 後に初回のみ `pnpm run prepare` を手動で実行する（README にも書く）
+- タスクランナーは just で、`package.json` の `scripts` を呼ぶだけの薄いラッパーにする（`build`/`start`/`dev`/`typecheck`/`lint`/`lint-fix`/`fmt`/`fmt-check`/`test`/`test-watch`/`cover`/`doc`/`doc-check`/`prepare`/`clean`）
+
+各条件の理由・却下した代替案・検証で見つかった落とし穴は `.claude/skills/pnpm-project/references/design-notes.md` にある。テンプレートを変更するときや、条件を見直すときに読む。
 
 ## 手順
 
@@ -43,23 +39,23 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（pnp
    - 既に同名のディレクトリが存在する場合は上書きしてよいか必ず確認する。
 
 3. **テンプレートをコピーし、プレースホルダを置換する**
-   - `.claude/skills/pnpm-project/templates/package.json` → `<配置先>/package.json`（`__PROJECT_NAME__`を置換）
-   - `.claude/skills/pnpm-project/templates/.npmrc` → `<配置先>/.npmrc`（置換不要。auth/registry設定の置き場としてのみ残す）
-   - `.claude/skills/pnpm-project/templates/pnpm-workspace.yaml` → `<配置先>/pnpm-workspace.yaml`（置換不要。サプライチェーン攻撃対策本体）
-   - `.claude/skills/pnpm-project/templates/.gitignore` → `<配置先>/.gitignore`（置換不要）
-   - `.claude/skills/pnpm-project/templates/tsconfig.json` → `<配置先>/tsconfig.json`（置換不要）
-   - `.claude/skills/pnpm-project/templates/tsconfig.test.json` → `<配置先>/tsconfig.test.json`（置換不要）
-   - `.claude/skills/pnpm-project/templates/eslint.config.js` → `<配置先>/eslint.config.js`（置換不要）
-   - `.claude/skills/pnpm-project/templates/.prettierrc.json` → `<配置先>/.prettierrc.json`（置換不要）
-   - `.claude/skills/pnpm-project/templates/.prettierignore` → `<配置先>/.prettierignore`（置換不要）
-   - `.claude/skills/pnpm-project/templates/vitest.config.ts` → `<配置先>/vitest.config.ts`（置換不要）
-   - `.claude/skills/pnpm-project/templates/typedoc.json` → `<配置先>/typedoc.json`（`__PROJECT_NAME__`を置換）
-   - `.claude/skills/pnpm-project/templates/src/index.ts` → `<配置先>/src/index.ts`
-   - `.claude/skills/pnpm-project/templates/test/index.test.ts` → `<配置先>/test/index.test.ts`
-   - `.claude/skills/pnpm-project/templates/README.md` → `<配置先>/README.md`（`__PROJECT_NAME__`を置換）
-   - `.claude/skills/pnpm-project/templates/scripts/install-husky.mjs` → `<配置先>/scripts/install-husky.mjs`（置換不要。パスはすべて実行時に動的に求めているため、どのプロジェクト名・配置先でもそのまま使える）
-   - `.claude/skills/pnpm-project/templates/.husky/pre-commit` → `<配置先>/.husky/pre-commit`（`__PROJECT_PATH__`を、リポジトリルートから見た配置先の相対パスに置換する。このリポジトリの通常の配置なら`projects/<project-name>`になる）
-   - `.claude/skills/pnpm-project/templates/justfile` → `<配置先>/justfile`（置換不要）
+   `templates/` 配下は `vscode/` を除きそのまま `<配置先>` へ1階層でコピーできる構成になっているため、
+   ファイルを1つずつ Read/Write するのではなく `cp -a` で一括コピーし、そのうえでプレースホルダを含む
+   ファイルだけを Edit系ツールで置換する2段構成にする。
+
+   ```bash
+   mkdir -p "<配置先>"
+   cp -a .claude/skills/pnpm-project/templates/. "<配置先>/"
+   rm -rf "<配置先>/vscode"
+   ```
+
+   （`.claude/skills/pnpm-project/templates/vscode/` はここではコピーしない。VS Code設定の手順で扱う。）
+
+   コピー後、`grep -rl "__PROJECT_NAME__\|__PROJECT_PATH__" "<配置先>"` でプレースホルダを含むファイルを洗い出し、その結果に対してだけ
+   Edit系ツールで置換する。テンプレートが変わった場合は下の一覧ではなく grep の結果を優先すること。
+   - `package.json`・`typedoc.json`・`README.md` の `__PROJECT_NAME__` を置換する
+   - `.husky/pre-commit` の `__PROJECT_PATH__` を、リポジトリルートから見た配置先の相対パスに置換する（このリポジトリの通常の配置なら `projects/<project-name>`）
+   - `.npmrc` は auth/registry 設定の置き場としてのみ残す。サプライチェーン攻撃対策の本体は `pnpm-workspace.yaml`。`scripts/install-husky.mjs` はパスを実行時に求めるため置換不要
 
 4. **配置先がVS Codeプロジェクトの場合、TypeScript向けのVS Code設定を追加する**
    - 判定は`<配置先>/.vscode/`ディレクトリ（`settings.json`または`extensions.json`）の有無で行う。存在しなければVS Code向けの設定は持たないプロジェクトとみなし、この手順はスキップする（`.vscode/`を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、`.vscode/`を新規作成したうえで以下と同じ内容を配置してよい）。
@@ -78,15 +74,5 @@ description: Node.js(TypeScript)の練習・開発プロジェクト一式（pnp
 
 - Docker/devcontainer環境の構築自体はこのスキルの対象外（このスキルと組み合わせる必要はなく、独立して使われることを想定している）。
 - `.vscode/`ディレクトリが存在しない配置先に、VS Code向けの設定一式をゼロから新規作成することはこのスキルの対象外（このスキルが行うのはTypeScript固有の追加設定のみ）。ユーザーから明示的に「VS Code環境ごと作って」等の依頼があった場合のみ、`.vscode/`を新規作成したうえでTypeScript向け設定を配置してよい。
-- npm/nvm/corepackを使わずpnpmスタンドアロン導入(Node.js管理含む)に一本化する方針、pnpmを12系に固定する方針、`pnpm-workspace.yaml`の2設定、TypeScript/ESLint/Prettier/Vitest+カバレッジ計測(`@vitest/coverage-v8`)+JSDoc必須化(`eslint-plugin-jsdoc`)/TypeDocによるAPIドキュメント生成+Git hooks(Husky/lint-staged)の開発環境一式、justによるタスクランナー（`package.json`の`scripts`を置き換えず薄いラッパーとして使う）はこのリポジトリで検証済みの固定条件として扱い、単なる「pnpm環境作って」的な依頼でも省略しない。
+- 「前提とする条件」に並べた項目は、単なる「pnpm環境作って」的な依頼でも省略しない。
 - ビルドバンドラ（Vite等）は含まない。`projects/gitlab-mcp-server/`はNode.js向けMCPサーバであり、ブラウザ向けバンドルを必要としないため`tsc`ビルドのみで完結している。ブラウザ向けアプリ等でバンドラが必要な場合は、テンプレートに`vite`等を追加導入すること。
-
-## このスキルの `templates/` を編集したとき
-
-`templates/` 配下を変更したら、コミット前に以下を実行し、既に配置済みのファイルへの反映漏れ（ドリフト）が無いか確認する。
-
-```bash
-python3 .claude/skills/template-drift-sync/scripts/check_drift.py --only-suspect --path-filter <変更したファイル名>
-```
-
-差分があれば `AGENTS.md`「スキルを作成・編集するとき」に従い、配置済みファイルへ反映するかどうかを判断し、その結果を必ず報告する（黙って伏せない）。このスクリプト（`template-drift-sync` スキル自体）が存在しない環境では、この手順は省略してよい。
