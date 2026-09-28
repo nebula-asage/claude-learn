@@ -1,6 +1,6 @@
 ---
 name: save-conversations
-description: Claude Codeとの会話セッションを、あとから読み返せるMarkdownファイルとして .claude/conversations/ 配下に保存するときに使う。「この会話を保存して」「今日のやり取りをログに残して」「会話ログ保存しておいて」「このセッションの内容をまとめて記録して」など、ユーザーが会話・セッション・やり取りの保存や記録を頼んだ場合は必ずこのスキルを使うこと。明示的に「/save-conversations」と言われた場合も同様。ファイル名は日付・時刻・テーマ名から自動生成し（YYYY-MM-DD_HHMMSS_テーマ名.md）、まとめ（要約）と ### User / ### Claude 形式の会話履歴を書き出す。git worktree内で実行している場合はworktree側ではなくメインの作業コピー側の .claude/conversations/ に保存する。保存先ディレクトリが無ければ自動で作成する。
+description: Claude Codeとの会話セッションを、あとから読み返せるMarkdownファイルとして .claude/conversations/ 配下に保存するときに使う。「この会話を保存して」「今日のやり取りをログに残して」「会話ログ保存しておいて」「このセッションの内容をまとめて記録して」など、ユーザーが会話・セッション・やり取りの保存や記録を頼んだ場合は必ずこのスキルを使うこと。明示的に「/save-conversations」と言われた場合も同様。ファイル名は日付・時刻・テーマ名から自動生成し（YYYY-MM-DD_HHMMSS_テーマ名.md）、まとめ（要約）と、発言者（User/Claude）ごとの見出しで区切った会話履歴を書き出す。git worktree内で実行している場合はworktree側ではなくメインの作業コピー側の .claude/conversations/ に保存する。保存先ディレクトリが無ければ自動で作成する。
 ---
 
 # save-conversations

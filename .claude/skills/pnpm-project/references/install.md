@@ -3,6 +3,7 @@
 ## pnpm本体
 
 - `command -v pnpm >/dev/null && [ -n "$PNPM_HOME" ] && echo "$PNPM_HOME"` で確認する。`PNPM_HOME`が空/未設定なら、`pnpm`があってもnpm経由や旧nvm環境に残った導入である可能性が高いので、スタンドアロン化されていないものとして扱う。
+- 上の確認が偽でも、`~/.local/share/pnpm/bin/pnpm` が実在する場合は**導入済みだがPATHが通っていないだけ**なので、再導入しない。公式インストーラは `PNPM_HOME`・PATH の設定を `~/.bashrc` の末尾に追記するが、Ubuntu 既定の `~/.bashrc` は冒頭で「非対話シェルなら即 return」するため、Claude Code の Bash ツールのような非対話シェルからは見えない。この場合は `~/.local/share/pnpm/bin/pnpm --version` でバージョンを確認し、ユーザーの了承を得たうえで、その設定ブロックを `~/.bashrc` の return 行より前へ移す（反映は次のセッションから）。
 - スタンドアロン導入済みならそのバージョンで進めてよい（`pnpm --version`で12系であることを確認する。11系以下なら`PNPM_VERSION=12`を指定して再導入し、12系に上げる）。
 - 未導入、またはnpm経由の旧導入が残っている場合は、[公式スタンドアロンインストーラ](https://pnpm.io/ja/installation#on-posix-systems)で導入する。
 
