@@ -480,6 +480,16 @@ def test_build_table_shows_cost_column_and_unresolved_note() -> None:
     assert "内1ターンは料金未対応モデル" in output
 
 
+def test_build_table_shows_local_time_instead_of_raw_utc_timestamp() -> None:
+    raw_timestamp = "2026-09-17T00:00:00.000Z"
+    turns = [TurnUsage(raw_timestamp, "claude-sonnet-5", 1, 1, 1, 1)]
+
+    output = _render(build_table(turns, last_n=15))
+
+    assert main._to_local_display(raw_timestamp) in output
+    assert raw_timestamp not in output
+
+
 def test_render_report_embeds_turn_data_and_title() -> None:
     turns = [TurnUsage("2026-09-17T00:00:00.000Z", "claude-sonnet-5", 1, 2, 3, 4)]
 
@@ -511,6 +521,16 @@ def test_render_report_notes_unresolved_cost_models() -> None:
     html = render_report(turns, title="my-session")
 
     assert "内1ターンは料金未対応モデルのため未集計" in html
+
+
+def test_render_report_localizes_timestamp_display_via_js() -> None:
+    turns = [TurnUsage("2026-09-17T00:00:00.000Z", "claude-sonnet-5", 1, 2, 3, 4)]
+
+    html = render_report(turns, title="my-session")
+
+    assert "function fmtTime(" in html
+    assert 'header = "ターン#" + d.index + "  " + fmtTime(d.timestamp);' in html
+    assert "[d.index, fmtTime(d.timestamp), d.source, d.model" in html
 
 
 def test_render_report_handles_empty_turns() -> None:
@@ -1124,7 +1144,11 @@ def test_default_report_filename_includes_timestamp_session_id_and_title(
 
     filename = main.default_report_filename(session, turns)
 
-    assert filename == "20260917_010203_abc-123_重要な調査_token-usage-report.html"
+    local = datetime.fromisoformat("2026-09-17T01:02:03+00:00").astimezone()
+    expected_timestamp = local.strftime("%Y%m%d_%H%M%S")
+    assert (
+        filename == f"{expected_timestamp}_abc-123_重要な調査_token-usage-report.html"
+    )
 
 
 def test_default_report_filename_omits_title_when_absent(tmp_path: Path) -> None:
@@ -1137,7 +1161,9 @@ def test_default_report_filename_omits_title_when_absent(tmp_path: Path) -> None
 
     filename = main.default_report_filename(session, turns)
 
-    assert filename == "20260917_010203_abc-123_token-usage-report.html"
+    local = datetime.fromisoformat("2026-09-17T01:02:03+00:00").astimezone()
+    expected_timestamp = local.strftime("%Y%m%d_%H%M%S")
+    assert filename == f"{expected_timestamp}_abc-123_token-usage-report.html"
 
 
 def test_default_report_filename_falls_back_to_mtime_when_no_turns(
@@ -1166,7 +1192,9 @@ def test_report_uses_default_filename_when_output_omitted(tmp_path: Path) -> Non
     finally:
         os.chdir(original_cwd)
 
-    expected = tmp_path / "20260917_010203_abc-123_token-usage-report.html"
+    local = datetime.fromisoformat("2026-09-17T01:02:03+00:00").astimezone()
+    expected_timestamp = local.strftime("%Y%m%d_%H%M%S")
+    expected = tmp_path / f"{expected_timestamp}_abc-123_token-usage-report.html"
     assert expected.exists()
 
 

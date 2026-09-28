@@ -654,6 +654,28 @@ def _fmt_cost(cost: float | None) -> str:
     return "-" if cost is None else f"${cost:.4f}"
 
 
+def _to_local_display(timestamp: str) -> str:
+    """UTC ISO8601形式のタイムスタンプを、表示用にローカルタイムゾーンへ変換する。
+
+    JSON出力(`sessions --json`)は他ツールからの機械可読性を優先しUTCの
+    ISO8601のまま保つため、この変換は`watch`のコンソール表示(`build_table`)と
+    `sessions`のrich表示(`build_sessions_table`)にのみ使う。
+
+    Args:
+        timestamp: `_parse_assistant_line`または`_fallback_timestamp`が返す
+            `Z`終端のUTC ISO8601文字列。
+
+    Returns:
+        システムのローカルタイムゾーンに変換した `YYYY-MM-DD HH:MM:SS` 形式の
+        文字列。パースできない場合は`timestamp`をそのまま返す。
+    """
+    try:
+        dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return timestamp
+    return dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
+
+
 def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
     """直近ターンの一覧と累計を1つのテーブルにまとめる。
 
@@ -686,7 +708,7 @@ def build_table(turns: list[TurnUsage], last_n: int = 15) -> Table:
     for i, t in enumerate(visible, start=offset + 1):
         table.add_row(
             str(i),
-            t.timestamp,
+            _to_local_display(t.timestamp),
             t.source,
             t.model,
             f"{t.input_tokens:,}",
@@ -1090,6 +1112,15 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     return v === null || v === undefined ? "-" : "$" + v.toFixed(4);
   }}
 
+  function fmtTime(iso) {{
+    if (!iso) return "";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    var pad = function (n) {{ return String(n).padStart(2, "0"); }};
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " "
+      + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  }}
+
   function drawStackChart() {{
     var svg = document.getElementById("stack-chart");
     svg.innerHTML = "";
@@ -1190,7 +1221,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
         }});
         rows.push({{label: "合計", value: fmt(d.total)}});
         rows.push({{label: "コスト($)", value: fmtCost(d.cost)}});
-        var header = "ターン#" + d.index + "  " + (d.timestamp || "");
+        var header = "ターン#" + d.index + "  " + fmtTime(d.timestamp);
         if (d.source && d.source !== "main") header += "  [" + d.source + "]";
         rows.unshift({{label: header, value: ""}});
         showTooltip(evt, rows);
@@ -1266,7 +1297,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
       var dot = el("circle", {{cx: p[0], cy: p[1], r: 4, fill: hue, stroke: "var(--surface-1)", "stroke-width": 2}});
       var hit = el("circle", {{cx: p[0], cy: p[1], r: 12, fill: "transparent", "class": "hit-target"}});
       hit.addEventListener("pointermove", function (evt) {{
-        var header = "ターン#" + d.index + "  " + (d.timestamp || "");
+        var header = "ターン#" + d.index + "  " + fmtTime(d.timestamp);
         if (d.source && d.source !== "main") header += "  [" + d.source + "]";
         showTooltip(evt, [
           {{label: header, value: ""}},
@@ -1300,7 +1331,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     var tbody = document.createElement("tbody");
     DATA.forEach(function (d) {{
       var tr = document.createElement("tr");
-      [d.index, d.timestamp, d.source, d.model, fmt(d.input_tokens), fmt(d.output_tokens),
+      [d.index, fmtTime(d.timestamp), d.source, d.model, fmt(d.input_tokens), fmt(d.output_tokens),
        fmt(d.cache_creation_input_tokens), fmt(d.cache_read_input_tokens), fmt(d.total), fmt(d.cumulative),
        fmtCost(d.cost)]
         .forEach(function (v) {{
@@ -1423,21 +1454,21 @@ def _extract_session_title(path: Path) -> str | None:
 def _session_start_timestamp(turns: list[TurnUsage], path: Path) -> str:
     """レポートファイル名に使う日付タイムスタンプを決定する。
 
-    セッション内最初のターンの日時を基準にする。ターンが1件も無い場合や
-    timestampがISO形式として解釈できない場合は、JSONLファイルの更新日時に
-    フォールバックする。
+    セッション内最初のターンの日時(システムのローカルタイムゾーンに変換した値)を
+    基準にする。ターンが1件も無い場合やtimestampがISO形式として解釈できない
+    場合は、JSONLファイルの更新日時(ローカルタイムゾーン)にフォールバックする。
 
     Args:
         turns: 集計済みターン一覧(timestamp昇順)。
         path: セッションJSONLファイルのパス(フォールバック用)。
 
     Returns:
-        `YYYYMMDD_HHMMSS`形式の文字列。
+        ローカルタイムゾーンでの`YYYYMMDD_HHMMSS`形式の文字列。
     """
     if turns and turns[0].timestamp:
         try:
             dt = datetime.fromisoformat(turns[0].timestamp.replace("Z", "+00:00"))
-            return dt.strftime("%Y%m%d_%H%M%S")
+            return dt.astimezone().strftime("%Y%m%d_%H%M%S")
         except ValueError:
             pass
     dt = datetime.fromtimestamp(path.stat().st_mtime)
@@ -1524,27 +1555,6 @@ def _fallback_timestamp(path: Path) -> str:
     """
     dt = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
     return dt.isoformat().replace("+00:00", "Z")
-
-
-def _to_local_display(timestamp: str) -> str:
-    """UTC ISO8601形式のタイムスタンプを、表示用にローカルタイムゾーンへ変換する。
-
-    JSON出力(`sessions --json`)は他ツールからの機械可読性を優先しUTCの
-    ISO8601のまま保つため、この変換は`build_sessions_table`でのrich表示にのみ使う。
-
-    Args:
-        timestamp: `_parse_assistant_line`または`_fallback_timestamp`が返す
-            `Z`終端のUTC ISO8601文字列。
-
-    Returns:
-        システムのローカルタイムゾーンに変換した `YYYY-MM-DD HH:MM:SS` 形式の
-        文字列。パースできない場合は`timestamp`をそのまま返す。
-    """
-    try:
-        dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-    except ValueError:
-        return timestamp
-    return dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
 
 
 def summarize_session(path: Path) -> SessionSummary:
