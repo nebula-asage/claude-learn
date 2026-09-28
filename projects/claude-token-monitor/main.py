@@ -777,19 +777,26 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     totals = _totals(turns)
     total_cost, unresolved_cost_count = _cost_summary(turns)
     series_keys = list(SERIES_LABELS.keys())
-    data = [
-        {
-            "index": i + 1,
-            "timestamp": t.timestamp,
-            "source": t.source,
-            "model": t.model,
-            **{k: getattr(t, k) for k in series_keys},
-            "total": t.total_tokens,
-            "cumulative": sum(getattr(x, "total_tokens") for x in turns[: i + 1]),
-            "cost": t.cost_usd,
-        }
-        for i, t in enumerate(turns)
-    ]
+    data = []
+    cumulative_tokens = 0
+    cumulative_cost = 0.0
+    for i, t in enumerate(turns):
+        cumulative_tokens += t.total_tokens
+        if t.cost_usd is not None:
+            cumulative_cost += t.cost_usd
+        data.append(
+            {
+                "index": i + 1,
+                "timestamp": t.timestamp,
+                "source": t.source,
+                "model": t.model,
+                **{k: getattr(t, k) for k in series_keys},
+                "total": t.total_tokens,
+                "cumulative": cumulative_tokens,
+                "cost": t.cost_usd,
+                "cumulative_cost": cumulative_cost,
+            }
+        )
     subagent_turn_count = sum(1 for t in turns if t.source != "main")
     subagent_note = (
         f"(うちサブエージェント分 {subagent_turn_count} ターン)"
@@ -942,6 +949,12 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     <svg id="line-chart"></svg>
   </div>
 
+  <div class="card">
+    <h2>累計コストの推移</h2>
+    <p class="desc">ターンを追うごとの累計コスト(USD){_escape(cost_note)}。</p>
+    <svg id="cost-line-chart"></svg>
+  </div>
+
   <div class="card" id="table-section">
     <h2>全ターン一覧(テーブル)</h2>
     <table class="data-table" id="data-table"></table>
@@ -958,6 +971,8 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
   var PALETTE_DARK = {palette_dark_json};
   var CUMULATIVE_LIGHT = "#2a78d6";
   var CUMULATIVE_DARK = "#3987e5";
+  var COST_LIGHT = "#eb6834";
+  var COST_DARK = "#d95926";
 
   function isDark() {{
     var stamp = document.documentElement.getAttribute("data-theme");
@@ -972,6 +987,10 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
 
   function cumulativeHue() {{
     return isDark() ? CUMULATIVE_DARK : CUMULATIVE_LIGHT;
+  }}
+
+  function costHue() {{
+    return isDark() ? COST_DARK : COST_LIGHT;
   }}
 
   var NS = "http://www.w3.org/2000/svg";
@@ -1142,8 +1161,8 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     }});
   }}
 
-  function drawLineChart() {{
-    var svg = document.getElementById("line-chart");
+  function drawLineChart(svgId, valueKey, formatFn, tooltipLabel, hue) {{
+    var svg = document.getElementById(svgId);
     svg.innerHTML = "";
 
     if (DATA.length === 0) {{
@@ -1160,11 +1179,12 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     // (ターンごとに横幅を伸ばす積み上げ棒グラフとは異なり、横スクロールにしない)
     var innerW = 900;
 
-    var maxCum = Math.max.apply(null, DATA.map(function (d) {{ return d.cumulative; }}));
+    var maxCum = Math.max.apply(null, DATA.map(function (d) {{ return d[valueKey]; }}));
     if (maxCum <= 0) maxCum = 1;
     // 目盛/終端直接ラベルの最大文字幅からleftPad/rightPadを算出する(固定値だと桁数の多い値が端で切れる)
-    var leftPad = Math.max(40, fmt(maxCum).length * 7 + 16);
-    var rightPad = Math.max(16, fmt(maxCum).length * 7 + 16);
+    var maxLabel = formatFn(maxCum);
+    var leftPad = Math.max(40, maxLabel.length * 7 + 16);
+    var rightPad = Math.max(16, maxLabel.length * 7 + 16);
     var width = leftPad + innerW + rightPad;
     svg.setAttribute("viewBox", "0 0 " + width + " " + chartH);
     svg.removeAttribute("width");
@@ -1175,20 +1195,19 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
 
     var stepX = DATA.length > 1 ? innerW / (DATA.length - 1) : 0;
 
-    var ticks = [0, 0.5, 1].map(function (r) {{ return Math.round(maxCum * r); }});
+    var ticks = [0, 0.5, 1].map(function (r) {{ return maxCum * r; }});
     ticks.forEach(function (v) {{
       var y = topPad + innerH - (v / maxCum) * innerH;
       svg.appendChild(el("line", {{x1: leftPad, x2: leftPad + innerW, y1: y, y2: y, "class": "grid"}}));
       var tx = el("text", {{x: leftPad - 8, y: y + 4, "text-anchor": "end"}});
-      tx.textContent = fmt(v);
+      tx.textContent = formatFn(v);
       svg.appendChild(tx);
     }});
     svg.appendChild(el("line", {{x1: leftPad, x2: leftPad + innerW, y1: topPad + innerH, y2: topPad + innerH, "class": "axis"}}));
 
-    var hue = cumulativeHue();
     var points = DATA.map(function (d, i) {{
       var x = leftPad + i * stepX;
-      var y = topPad + innerH - (d.cumulative / maxCum) * innerH;
+      var y = topPad + innerH - (d[valueKey] / maxCum) * innerH;
       return [x, y];
     }});
     var pathD = points.map(function (p, i) {{ return (i === 0 ? "M" : "L") + p[0] + " " + p[1]; }}).join(" ");
@@ -1203,7 +1222,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
         if (d.source && d.source !== "main") header += "  [" + d.source + "]";
         showTooltip(evt, [
           {{label: header, value: ""}},
-          {{label: "累計トークン", value: fmt(d.cumulative), color: hue}},
+          {{label: tooltipLabel, value: formatFn(d[valueKey]), color: hue}},
         ]);
       }});
       hit.addEventListener("pointerleave", hideTooltip);
@@ -1214,7 +1233,7 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     // 終端に直接ラベル(dataviz: lineはendに値をラベル)
     var last = points[points.length - 1];
     var lt = el("text", {{x: last[0] + 8, y: last[1] + 4}});
-    lt.textContent = fmt(DATA[DATA.length - 1].cumulative);
+    lt.textContent = formatFn(DATA[DATA.length - 1][valueKey]);
     svg.appendChild(lt);
   }}
 
@@ -1246,9 +1265,14 @@ def render_report(turns: list[TurnUsage], title: str) -> str:
     table.appendChild(tbody);
   }}
 
+  function fmtTokenTick(v) {{
+    return fmt(Math.round(v));
+  }}
+
   function renderAll() {{
     drawStackChart();
-    drawLineChart();
+    drawLineChart("line-chart", "cumulative", fmtTokenTick, "累計トークン", cumulativeHue());
+    drawLineChart("cost-line-chart", "cumulative_cost", fmtCost, "累計コスト", costHue());
     // 積み上げ棒グラフは横スクロールで詳細を追う設計のため、初期表示は最新ターン(右端)を見せる
     var stackScroller = document.getElementById("stack-chart").parentElement;
     if (stackScroller) stackScroller.scrollLeft = stackScroller.scrollWidth;
