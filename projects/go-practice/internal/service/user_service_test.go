@@ -5,50 +5,14 @@ import (
 	"testing"
 
 	"go-practice/internal/model"
+
+	"go.uber.org/mock/gomock"
 )
 
-// fakeUserRepository はUserRepositoryのテスト用スタブ実装。
-// 未設定のフィールドを呼び出した場合はテストの誤りとしてパニックする。
-type fakeUserRepository struct {
-	saveFunc        func(model.User) error
-	findByEmailFunc func(string) (model.User, bool, error)
-	findAllFunc     func() ([]model.User, error)
-	deleteFunc      func(string) (bool, error)
-}
-
-func (f *fakeUserRepository) Save(user model.User) error {
-	if f.saveFunc == nil {
-		panic("saveFunc not set")
-	}
-	return f.saveFunc(user)
-}
-
-func (f *fakeUserRepository) FindByEmail(email string) (model.User, bool, error) {
-	if f.findByEmailFunc == nil {
-		panic("findByEmailFunc not set")
-	}
-	return f.findByEmailFunc(email)
-}
-
-func (f *fakeUserRepository) FindAll() ([]model.User, error) {
-	if f.findAllFunc == nil {
-		panic("findAllFunc not set")
-	}
-	return f.findAllFunc()
-}
-
-func (f *fakeUserRepository) Delete(email string) (bool, error) {
-	if f.deleteFunc == nil {
-		panic("deleteFunc not set")
-	}
-	return f.deleteFunc(email)
-}
-
 func TestCreateUserSuccess(t *testing.T) {
-	repo := &fakeUserRepository{
-		findByEmailFunc: func(string) (model.User, bool, error) { return model.User{}, false, nil },
-		saveFunc:        func(model.User) error { return nil },
-	}
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, false, nil)
+	repo.EXPECT().Save(gomock.Any()).Return(nil)
 	svc := NewUserService(repo)
 
 	if _, err := svc.CreateUser("test@example.com", "testuser", "1234567890", 25); err != nil {
@@ -57,7 +21,8 @@ func TestCreateUserSuccess(t *testing.T) {
 }
 
 func TestCreateUserInvalidEmail(t *testing.T) {
-	svc := NewUserService(&fakeUserRepository{})
+	repo := NewMockUserRepository(gomock.NewController(t))
+	svc := NewUserService(repo)
 
 	_, err := svc.CreateUser("invalid-email", "testuser", "1234567890", 25)
 
@@ -67,9 +32,8 @@ func TestCreateUserInvalidEmail(t *testing.T) {
 }
 
 func TestUpdateUserNotFound(t *testing.T) {
-	repo := &fakeUserRepository{
-		findByEmailFunc: func(string) (model.User, bool, error) { return model.User{}, false, nil },
-	}
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, false, nil)
 	svc := NewUserService(repo)
 
 	_, err := svc.UpdateUser("test@example.com", "testuser", "1234567890", 25)
@@ -80,9 +44,8 @@ func TestUpdateUserNotFound(t *testing.T) {
 }
 
 func TestDeleteUserSuccess(t *testing.T) {
-	repo := &fakeUserRepository{
-		deleteFunc: func(string) (bool, error) { return true, nil },
-	}
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().Delete("test@example.com").Return(true, nil)
 	svc := NewUserService(repo)
 
 	if err := svc.DeleteUser("test@example.com"); err != nil {
@@ -92,9 +55,8 @@ func TestDeleteUserSuccess(t *testing.T) {
 
 func TestGetUserSuccess(t *testing.T) {
 	want := model.User{Email: "test@example.com", Username: "testuser", Phone: "1234567890", Age: 25}
-	repo := &fakeUserRepository{
-		findByEmailFunc: func(string) (model.User, bool, error) { return want, true, nil },
-	}
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(want, true, nil)
 	svc := NewUserService(repo)
 
 	got, err := svc.GetUser("test@example.com")
@@ -107,9 +69,8 @@ func TestGetUserSuccess(t *testing.T) {
 }
 
 func TestGetUserNotFound(t *testing.T) {
-	repo := &fakeUserRepository{
-		findByEmailFunc: func(string) (model.User, bool, error) { return model.User{}, false, nil },
-	}
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, false, nil)
 	svc := NewUserService(repo)
 
 	_, err := svc.GetUser("test@example.com")
@@ -121,9 +82,8 @@ func TestGetUserNotFound(t *testing.T) {
 
 func TestListUsersSuccess(t *testing.T) {
 	want := []model.User{{Email: "test@example.com", Username: "testuser", Phone: "1234567890", Age: 25}}
-	repo := &fakeUserRepository{
-		findAllFunc: func() ([]model.User, error) { return want, nil },
-	}
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindAll().Return(want, nil)
 	svc := NewUserService(repo)
 
 	got, err := svc.ListUsers()
@@ -136,9 +96,8 @@ func TestListUsersSuccess(t *testing.T) {
 }
 
 func TestDeleteUserNotFound(t *testing.T) {
-	repo := &fakeUserRepository{
-		deleteFunc: func(string) (bool, error) { return false, nil },
-	}
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().Delete("test@example.com").Return(false, nil)
 	svc := NewUserService(repo)
 
 	err := svc.DeleteUser("test@example.com")
@@ -150,9 +109,8 @@ func TestDeleteUserNotFound(t *testing.T) {
 
 func TestCreateUserRepositoryError(t *testing.T) {
 	repoErr := errors.New("disk failure")
-	repo := &fakeUserRepository{
-		findByEmailFunc: func(string) (model.User, bool, error) { return model.User{}, false, repoErr },
-	}
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, false, repoErr)
 	svc := NewUserService(repo)
 
 	_, err := svc.CreateUser("test@example.com", "testuser", "1234567890", 25)

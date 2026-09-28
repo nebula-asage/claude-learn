@@ -41,6 +41,8 @@ var (
 )
 
 // UserRepository はUserServiceが必要とするユーザーデータの永続化操作を定義する。
+//
+//go:generate go tool mockgen -source=user_service.go -destination=mock_user_repository_test.go -package=service
 type UserRepository interface {
 	// Save はユーザーを保存する。同じメールアドレスのユーザーが既にいる場合は上書きする。
 	Save(user model.User) error
