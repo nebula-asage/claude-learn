@@ -48,9 +48,9 @@ go run . list
 - `internal/model` — ドメインモデル（`User`）
 - `internal/repository` — データ永続化。`JSONUserRepository`（JSONファイルへの読み書き）
 - `internal/service` — 入力値のバリデーションとビジネスロジック。必要な永続化操作を `UserRepository` インターフェースとして**利用側であるこのパッケージに**定義し（Goの「インターフェースは使う側で定義する」慣習）、具象の `JSONUserRepository` には依存しない。エラーは `ErrInvalidEmail`・`ErrUserNotFound` などのセンチネルエラーを `%w` でラップして返し、呼び出し側は `errors.Is` で種別を判定する
-- `internal/command` — コマンドライン引数のパースと `UserService` の呼び出し、結果の `io.Writer` への整形出力
+- `internal/command` — コマンドライン引数のパースと `UserService` の呼び出し、結果の `io.Writer` への整形出力。`service.UserService` が必要とされる操作を `UserService` インターフェースとして**このパッケージ自身に**定義しており、`internal/service` と同じ「インターフェースは使う側で定義する」慣習を踏襲している
 
-依存の向きは `command → service`、`repository` は `service.UserRepository` を満たすだけで、両者を結び付けるのは `main.go`。`internal/greeting` は上記のユーザー管理ロジックとは独立した挨拶メッセージ生成のみを行うパッケージで、`main` パッケージには `revive` の `exported` ルール（exportされた識別子へのコメント必須）が適用されないため、コメント強制を意味あるものにする目的で分離されている。
+依存の向きは `command → service`、`repository` は `service.UserRepository` を、`service.UserService`（具象の `*service.UserService`）は `command.UserService` をそれぞれ満たすだけで、両者を結び付けるのは `main.go`。`internal/greeting` は上記のユーザー管理ロジックとは独立した挨拶メッセージ生成のみを行うパッケージで、`main` パッケージには `revive` の `exported` ルール（exportされた識別子へのコメント必須）が適用されないため、コメント強制を意味あるものにする目的で分離されている。
 
 ### 入力値の制約
 
@@ -65,9 +65,12 @@ go run . list
 
 ## モック（go.uber.org/mock）
 
-`internal/service` の単体テストでは、`UserRepository` インターフェースのモックに `go.uber.org/mock`（gomock）を使う。`go.mod` の `tool` ディレクティブでバージョンを固定しており、`go install` 等でのグローバル導入は不要（`go tool mockgen` で実行される）。
+`internal/service` と `internal/command` の単体テストでは、それぞれが自パッケージに定義したインターフェース（`service.UserRepository` / `command.UserService`）のモックに `go.uber.org/mock`（gomock）を使う。`go.mod` の `tool` ディレクティブでバージョンを固定しており、`go install` 等でのグローバル導入は不要（`go tool mockgen` で実行される）。
 
-- モックの実体は `internal/service/user_service.go` の `//go:generate` ディレクティブから生成される `internal/service/mock_user_repository_test.go`（`_test.go` のため本番ビルドには含まれない）
-- `UserRepository` にメソッドを追加・変更した場合は `just generate` で再生成すること。生成後のファイルは手編集しない（`DO NOT EDIT` ヘッダ付き）
-- テストでは `NewMockUserRepository(gomock.NewController(t))` でモックを作り、`repo.EXPECT().FindByEmail(...).Return(...)` のように呼び出しごとの戻り値を設定する。設定していないメソッドが呼ばれた場合はテストが失敗する
-- 他のパッケージ（`internal/repository` など）は具象実装のテストであり、インターフェースに対するモックは使わない
+- モックの実体は各インターフェース定義ファイルの `//go:generate` ディレクティブから生成される
+  - `internal/service/user_service.go` → `internal/service/mock_user_repository_test.go`（`MockUserRepository`）
+  - `internal/command/user_command.go` → `internal/command/mock_user_service_test.go`（`MockUserService`）
+  - いずれも `_test.go` のため本番ビルドには含まれない
+- インターフェースにメソッドを追加・変更した場合は `just generate` で再生成すること。生成後のファイルは手編集しない（`DO NOT EDIT` ヘッダ付き）
+- テストでは `NewMockXxx(gomock.NewController(t))` でモックを作り、`repo.EXPECT().FindByEmail(...).Return(...)` のように呼び出しごとの戻り値を設定する。設定していないメソッドが呼ばれた場合はテストが失敗する
+- `internal/repository` は永続化層の具象実装そのもののテストであり、モックは使わない（ファイルが存在しない・ディレクトリになっている・読み取り専用になっているといった実際のファイルシステム状態を `t.TempDir()` 配下で作ってエラー分岐を検証する）

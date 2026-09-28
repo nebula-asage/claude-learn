@@ -120,6 +120,177 @@ func TestCreateUserRepositoryError(t *testing.T) {
 	}
 }
 
+func TestCreateUserInvalidProfile(t *testing.T) {
+	repo := NewMockUserRepository(gomock.NewController(t))
+	svc := NewUserService(repo)
+
+	_, err := svc.CreateUser("test@example.com", "ab", "1234567890", 25)
+
+	if !errors.Is(err, ErrInvalidUsername) {
+		t.Errorf("err = %v, want wrapped %v", err, ErrInvalidUsername)
+	}
+}
+
+func TestCreateUserAlreadyExists(t *testing.T) {
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, true, nil)
+	svc := NewUserService(repo)
+
+	_, err := svc.CreateUser("test@example.com", "testuser", "1234567890", 25)
+
+	if !errors.Is(err, ErrUserAlreadyExists) {
+		t.Errorf("err = %v, want wrapped %v", err, ErrUserAlreadyExists)
+	}
+}
+
+func TestCreateUserSaveError(t *testing.T) {
+	repoErr := errors.New("disk failure")
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, false, nil)
+	repo.EXPECT().Save(gomock.Any()).Return(repoErr)
+	svc := NewUserService(repo)
+
+	_, err := svc.CreateUser("test@example.com", "testuser", "1234567890", 25)
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("err = %v, want wrapped %v", err, repoErr)
+	}
+}
+
+func TestUpdateUserSuccess(t *testing.T) {
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, true, nil)
+	repo.EXPECT().Save(gomock.Any()).Return(nil)
+	svc := NewUserService(repo)
+
+	got, err := svc.UpdateUser("test@example.com", "newuser", "0987654321", 30)
+	if err != nil {
+		t.Fatalf("UpdateUser returned error: %v", err)
+	}
+	want := model.User{Email: "test@example.com", Username: "newuser", Phone: "0987654321", Age: 30}
+	if got != want {
+		t.Errorf("UpdateUser = %+v, want %+v", got, want)
+	}
+}
+
+func TestUpdateUserInvalidProfile(t *testing.T) {
+	repo := NewMockUserRepository(gomock.NewController(t))
+	svc := NewUserService(repo)
+
+	_, err := svc.UpdateUser("test@example.com", "testuser", "invalid-phone", 25)
+
+	if !errors.Is(err, ErrInvalidPhone) {
+		t.Errorf("err = %v, want wrapped %v", err, ErrInvalidPhone)
+	}
+}
+
+func TestUpdateUserFindError(t *testing.T) {
+	repoErr := errors.New("disk failure")
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, false, repoErr)
+	svc := NewUserService(repo)
+
+	_, err := svc.UpdateUser("test@example.com", "testuser", "1234567890", 25)
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("err = %v, want wrapped %v", err, repoErr)
+	}
+}
+
+func TestUpdateUserSaveError(t *testing.T) {
+	repoErr := errors.New("disk failure")
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, true, nil)
+	repo.EXPECT().Save(gomock.Any()).Return(repoErr)
+	svc := NewUserService(repo)
+
+	_, err := svc.UpdateUser("test@example.com", "testuser", "1234567890", 25)
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("err = %v, want wrapped %v", err, repoErr)
+	}
+}
+
+func TestGetUserFindError(t *testing.T) {
+	repoErr := errors.New("disk failure")
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindByEmail("test@example.com").Return(model.User{}, false, repoErr)
+	svc := NewUserService(repo)
+
+	_, err := svc.GetUser("test@example.com")
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("err = %v, want wrapped %v", err, repoErr)
+	}
+}
+
+func TestListUsersFindAllError(t *testing.T) {
+	repoErr := errors.New("disk failure")
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().FindAll().Return(nil, repoErr)
+	svc := NewUserService(repo)
+
+	_, err := svc.ListUsers()
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("err = %v, want wrapped %v", err, repoErr)
+	}
+}
+
+func TestDeleteUserRepositoryError(t *testing.T) {
+	repoErr := errors.New("disk failure")
+	repo := NewMockUserRepository(gomock.NewController(t))
+	repo.EXPECT().Delete("test@example.com").Return(false, repoErr)
+	svc := NewUserService(repo)
+
+	err := svc.DeleteUser("test@example.com")
+
+	if !errors.Is(err, repoErr) {
+		t.Errorf("err = %v, want wrapped %v", err, repoErr)
+	}
+}
+
+func TestValidatePhone(t *testing.T) {
+	tests := []struct {
+		name    string
+		phone   string
+		wantErr error
+	}{
+		{"10桁の数字", "1234567890", nil},
+		{"9桁は不足", "123456789", ErrInvalidPhone},
+		{"数字以外を含む", "123456789a", ErrInvalidPhone},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validatePhone(tt.phone); !errors.Is(err, tt.wantErr) {
+				t.Errorf("validatePhone(%q) = %v, want %v", tt.phone, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateAge(t *testing.T) {
+	tests := []struct {
+		name    string
+		age     int
+		wantErr error
+	}{
+		{"下限", 0, nil},
+		{"上限", 150, nil},
+		{"下限未満", -1, ErrInvalidAge},
+		{"上限超過", 151, ErrInvalidAge},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateAge(tt.age); !errors.Is(err, tt.wantErr) {
+				t.Errorf("validateAge(%d) = %v, want %v", tt.age, err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateUsername(t *testing.T) {
 	tests := []struct {
 		name     string

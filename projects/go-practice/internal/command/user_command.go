@@ -9,17 +9,32 @@ import (
 	"strings"
 
 	"go-practice/internal/model"
-	"go-practice/internal/service"
 )
+
+// UserService はUserCommandが必要とするユーザー管理のビジネスロジックを定義する。
+//
+//go:generate go tool mockgen -source=user_command.go -destination=mock_user_service_test.go -package=command
+type UserService interface {
+	// CreateUser は新しいユーザーを作成する。
+	CreateUser(email, username, phone string, age int) (model.User, error)
+	// UpdateUser は既存のユーザー情報を更新する。
+	UpdateUser(email, username, phone string, age int) (model.User, error)
+	// GetUser は指定されたメールアドレスのユーザー情報を取得する。
+	GetUser(email string) (model.User, error)
+	// ListUsers は全てのユーザー情報を取得する。
+	ListUsers() ([]model.User, error)
+	// DeleteUser は指定されたメールアドレスのユーザーを削除する。
+	DeleteUser(email string) error
+}
 
 // UserCommand はコマンドライン操作を処理するコマンドハンドラ。
 type UserCommand struct {
-	svc *service.UserService
+	svc UserService
 	out io.Writer
 }
 
 // NewUserCommand は svc を使って処理し、結果を out に書き出す新しいUserCommandを作成する。
-func NewUserCommand(svc *service.UserService, out io.Writer) *UserCommand {
+func NewUserCommand(svc UserService, out io.Writer) *UserCommand {
 	return &UserCommand{svc: svc, out: out}
 }
 
