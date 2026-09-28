@@ -43,7 +43,7 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 
 ### テスト・カバレッジ・ドキュメント
 
-- **タスクランナーには `Makefile` ではなく just を使い、`justfile` に入口をまとめる**。`default`（レシピ一覧表示） / `lock` / `run` / `build` / `fmt` / `fmt-check` / `lint` / `test` / `doctest` / `cover` / `cover-html` / `cover-lcov` / `cover-all` / `doc` / `doc-open` / `deny` / `check` / `clean` を用意する。`check` は `fmt-check` → `lint` → `test` → `doctest` → `deny` をまとめて回す。justは単体バイナリでGitHub Releasesのtarball（`SHA256SUMS`検証込み）からユーザーローカルに導入できるためこのリポジトリのsudo不要方針に合致する
+- **タスクランナーは just で、`justfile` に入口をまとめる**。`default`（レシピ一覧表示） / `lock` / `run` / `build` / `fmt` / `fmt-check` / `lint` / `test` / `doctest` / `cover` / `cover-html` / `cover-lcov` / `cover-all` / `doc` / `doc-open` / `deny` / `check` / `clean` を用意する。`check` は `fmt-check` → `lint` → `test` → `doctest` → `deny` をまとめて回す
 - **`cargo llvm-cov` は起動のたびに `target/llvm-cov/` を作り直す**。そのため `cover-html` の後に `cover-lcov` を実行するとHTMLレポートが消える（逆も同様）。HTMLとlcovの両方が必要な場合のために、`--no-report` でテストを1回だけ実行してから `cargo llvm-cov report --lcov` / `report --html` で両形式を書き出す `cover-all` ターゲットを用意してある
 - **`just lint` は `--all-targets` と `-D warnings` を付ける**。`--all-targets` が無いと `tests/` 配下がlint対象から外れる。`-D warnings` が無いと `[lints]` で `warn` にしたルールが警告止まりになり、実質的な強制にならない
 - **ドキュメンテーションコメントの例（doctest）を書く**。`` ``` `` で囲んだコード例は `cargo test --doc` で実際にコンパイル・実行されるため、例が古くなった時点で落ちる。テンプレートの `greet` / `try_greet` には `# Examples` セクションを入れてある
@@ -74,7 +74,7 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 
 2. **未導入の場合、ユーザーローカルに導入する**
    - **これはホスト環境に実際にソフトウェアを導入する操作であり、rustupの場合はシェル設定ファイル（`~/.bashrc` 等）へのPATH追記も伴う。** ユーザーが今回の依頼で明示的にこの方法を指定していない場合は、実行前に「Rustツールチェーン/justが入っていないのでユーザーローカルに導入してよいか（sudoは使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
-   - 具体的な導入コマンド（rustup・カバレッジ計測用コンポーネント・cargo-llvm-cov・cargo-deny・just）は `references/install.md` を参照する。
+   - 具体的な導入コマンド（rustup・カバレッジ計測用コンポーネント・cargo-llvm-cov・cargo-deny・just）は `.claude/skills/rust-cargo-project/references/install.md` を参照する。
 
 3. **配置先とプロジェクト名を確認する**
    - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に1プロジェクトとして自己完結させる。
@@ -101,7 +101,7 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
    rm -rf "<配置先>/vscode"
    ```
 
-   （`templates/vscode/` はここではコピーしない。手順5で扱う。`cp -a` は権限・タイムスタンプを保ったまま
+   （`.claude/skills/rust-cargo-project/templates/vscode/` はここではコピーしない。手順5で扱う。`cp -a` は権限・タイムスタンプを保ったまま
    複製するため、個別ファイルの権限調整は不要。）
 
    コピー後、`grep -rl "__PROJECT_NAME__\|__PROJECT_NAME_SNAKE__\|__PROJECT_DESCRIPTION__" "<配置先>"`
@@ -113,17 +113,17 @@ description: Rustの練習・開発プロジェクト一式（rustup/cargo前提
 
 5. **配置先がVS Codeプロジェクトの場合、Rust向けのVS Code設定を追加する**
    - 判定は `<配置先>/.vscode/` ディレクトリ（`settings.json` または `extensions.json`）の有無で行う。存在しなければVS Code向けの設定は持たないプロジェクトとみなし、この手順はスキップする（`.vscode/` を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、`.vscode/` を新規作成したうえで以下と同じ内容を配置してよい）。
-   - **`settings.json` を配置する**: `templates/vscode/settings.json` の内容を `<配置先>/.vscode/settings.json` にマージする。既に存在する場合はEdit系ツールで直接編集し、既存のキー（言語非依存の共通設定など）を残したまま `rust-analyzer.*` / `coverage-gutters.*` 系のキーと `[rust]` / `[toml]` ブロックを追加する（同じキーが既にあれば上書きせず、内容を確認したうえでユーザーに判断を仰ぐ）。
+   - **`settings.json` を配置する**: `.claude/skills/rust-cargo-project/templates/vscode/settings.json` の内容を `<配置先>/.vscode/settings.json` にマージする。既に存在する場合はEdit系ツールで直接編集し、既存のキー（言語非依存の共通設定など）を残したまま `rust-analyzer.*` / `coverage-gutters.*` 系のキーと `[rust]` / `[toml]` ブロックを追加する（同じキーが既にあれば上書きせず、内容を確認したうえでユーザーに判断を仰ぐ）。
      - `rust-analyzer.check.command` を `clippy` にしているのは、`Cargo.toml` の `[lints]` で設定したルール違反をエディタ上に直接出すため。既定の `cargo check` のままだとclippyのルールがエディタに出ず、`just lint` で初めて気づくことになる。
      - `coverage-gutters.*` はCoverage Gutters拡張向けで、`just cover-lcov` が生成する `lcov.info` を読み、行番号横に被覆行（緑）・未被覆行（赤）を表示する。`just cover` / `just cover-html` を置き換えるものではなく、追加のレポート形式。`lcov.info` はテストのたびに再生成される成果物なのでコミット対象に含めない（テンプレートの `.gitignore` で除外済み）。
    - **拡張機能のおすすめ設定を配置する**: 配置先の判定はさらに `<配置先>/.devcontainer/devcontainer.json` の有無で分岐する（この判定も「devcontainerを構築するスキルが動いたかどうか」ではなく、あくまでファイルの有無で行う）。
-     - `devcontainer.json` が存在する場合: `.vscode/extensions.json` は使わず、`templates/vscode/extensions.json` の `recommendations` 配列の中身（拡張機能IDのみ。コメントは転記しなくてよい）を `<配置先>/.devcontainer/devcontainer.json` の `customizations.vscode.extensions` 配列にEdit系ツールで直接マージする（重複を除いて追記。既存の `customizations.vscode.settings` 等は残す）。
-     - `devcontainer.json` が存在しない場合: `templates/vscode/extensions.json` の内容を `<配置先>/.vscode/extensions.json` にマージする（既存の `recommendations` があれば重複を除いて追記し、既存の非Rust系の推奨拡張機能はそのまま残す）。
+     - `devcontainer.json` が存在する場合: `.vscode/extensions.json` は使わず、`.claude/skills/rust-cargo-project/templates/vscode/extensions.json` の `recommendations` 配列の中身（拡張機能IDのみ。コメントは転記しなくてよい）を `<配置先>/.devcontainer/devcontainer.json` の `customizations.vscode.extensions` 配列にEdit系ツールで直接マージする（重複を除いて追記。既存の `customizations.vscode.settings` 等は残す）。
+     - `devcontainer.json` が存在しない場合: `.claude/skills/rust-cargo-project/templates/vscode/extensions.json` の内容を `<配置先>/.vscode/extensions.json` にマージする（既存の `recommendations` があれば重複を除いて追記し、既存の非Rust系の推奨拡張機能はそのまま残す）。
    - `settings.json` / `extensions.json`（および `devcontainer.json`）はJSONC（コメント付きJSON）として解釈されるため、標準の `jq` に通す前にコメント行を取り除くか、目視でカンマ・かっこの対応を確認する。
 
 6. **動作確認する**
 
-   `<配置先>` に移動し、`references/verify.md` の手順に従って確認する。非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら `source "$HOME/.cargo/env"` を各コマンドの前に入れる。lintが本当に効いているかの反証（`references/counter-tests.md`）は、このスキルの`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。
+   `<配置先>` に移動し、`.claude/skills/rust-cargo-project/references/verify.md` の手順に従って確認する。非対話シェルでは `~/.bashrc` のPATH設定が効かないため、必要なら `source "$HOME/.cargo/env"` を各コマンドの前に入れる。lintが本当に効いているかの反証（`.claude/skills/rust-cargo-project/references/counter-tests.md`）は、このスキルの`templates/`を変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する手順ではない。
 
 ## このスキルの対象外
 

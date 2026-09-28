@@ -121,12 +121,10 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 - **`./gradlew check` に整形チェック・Checkstyle・SpotBugs・テスト・カバレッジ下限・Javadoc を集約する**。
   `check` に `jacocoTestReport` / `jacocoTestCoverageVerification` / `javadoc` を追加してあり、
   これ 1 つで全部回る。
-- **タスクランナーには他言語スキルと同様に just を使うが、レシピは全て `./gradlew <タスク>` を呼ぶだけの
+- **タスクランナーは just だが、レシピは全て `./gradlew <タスク>` を呼ぶだけの
   薄いラッパーに留める**（Gradle のタスク定義自体を `justfile` 側に持たせず、ロジックの二重管理はしない）。
-  狙いは go-project・rust-cargo-project・python-uv-project・pnpm-project など他言語スキルと
-  `just test` / `just lint` のような呼び方を揃えることであり、ビルドの実行順序や各タスクの中身は
-  `build.gradle.kts` 側が唯一の真実源のまま変わらない。justは単体バイナリでGitHub Releasesのtarball
-  （`SHA256SUMS`検証込み）からユーザーローカルに導入できるためこのリポジトリのsudo不要方針に合致する。
+  狙いは他の言語のプロジェクトと `just test` / `just lint` のような呼び方を揃えることであり、ビルドの実行順序や各タスクの中身は
+  `build.gradle.kts` 側が唯一の真実源のまま変わらない。
 - **カバレッジの下限は行 80%**。`jacocoTestCoverageVerification` で強制し、下回ると `check` が落ちる。
   これは下限であって目標ではない（目標にすると 80% を超えた瞬間にテストを書かなくなる）。
 - **カバレッジ計測から起動クラスを除外する**。`main()` はテストから実行されないため、含めると
@@ -182,7 +180,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
    - **これはホスト環境に実際にソフトウェアを導入する操作である。** ユーザーが今回の依頼で
      明示的にこの方法を指定していない場合は、実行前に「JDK/just が入っていないのでユーザーローカルに
      導入してよいか（sudo は使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
-   - 具体的な導入コマンド（Eclipse Temurin JDK・just）は `references/install.md` を参照する。
+   - 具体的な導入コマンド（Eclipse Temurin JDK・just）は `.claude/skills/java-springboot-project/references/install.md` を参照する。
 
 3. **配置先とプロジェクト名を確認する**
    - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に
@@ -207,7 +205,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
    `templates/` の大半（`build.gradle.kts`・`gradle.properties`・`gradlew`・`gradlew.bat`・
    `gradle/wrapper/`・`config/`・`.gitignore`・`justfile`・`README.md` など）は `<配置先>` へそのまま
-   1階層でコピーできる。一方 `templates/java/` 配下と `templates/application.yaml` だけは、最終的な配置先
+   1階層でコピーできる。一方 `.claude/skills/java-springboot-project/templates/java/` 配下と `.claude/skills/java-springboot-project/templates/application.yaml` だけは、最終的な配置先
    （`src/main/java/__BASE_PACKAGE_PATH__/...` や `src/main/resources/`）が `__BASE_PACKAGE_PATH__` の
    実際の値に依存するため、テンプレート側では平坦な仮置き構造になっている。そのため
    「一括コピー→パッケージ構造への再配置→プレースホルダ置換」の3段構成にする（`<配置先>` =
@@ -231,7 +229,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
    mv "<配置先>/application.yaml" "<配置先>/src/main/resources/application.yaml"
    ```
 
-   （`templates/vscode/` はここではコピーしない。手順6で扱う。`cp -a` は権限・タイムスタンプを保ったまま
+   （`.claude/skills/java-springboot-project/templates/vscode/` はここではコピーしない。手順6で扱う。`cp -a` は権限・タイムスタンプを保ったまま
    複製するため、`gradlew`・`gradle-wrapper.jar` を含め個別ファイルの権限調整や「バイナリなのでテキスト
    置換をかけない」といった配慮は不要——置換はこの後の grep で見つかったファイルにしか行わないため
    バイナリが誤って書き換わることもない。）
@@ -248,9 +246,9 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
 
 5. **依存をロックし、動作確認する**
 
-   `<配置先>` に移動し、`references/verify.md` の手順に従って確認する。`JAVA_HOME` と `PATH` は都度指定する
+   `<配置先>` に移動し、`.claude/skills/java-springboot-project/references/verify.md` の手順に従って確認する。`JAVA_HOME` と `PATH` は都度指定する
    （`~/.bashrc` は非対話シェルだと冒頭で早期 return するため、`source ~/.bashrc` は効かない）。
-   lint が本当に効いているかの反証（`references/counter-tests.md`）は、このスキルの`templates/`を
+   lint が本当に効いているかの反証（`.claude/skills/java-springboot-project/references/counter-tests.md`）は、このスキルの`templates/`を
    変更したときに`template-verifier`が確認する検証項目であり、プロジェクト新規作成のたびに実行する
    手順ではない。
 
@@ -259,7 +257,7 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
      存在しなければ VS Code 向けの設定は持たないプロジェクトとみなし、この手順はスキップする
      （`.vscode/` を新規に作るかどうかはこのスキルの対象外。ユーザーから明示的に依頼があった場合のみ、
      `.vscode/` を新規作成したうえで以下と同じ内容を配置してよい）。
-   - **`settings.json` を配置する**: `templates/vscode/settings.json` の内容を
+   - **`settings.json` を配置する**: `.claude/skills/java-springboot-project/templates/vscode/settings.json` の内容を
      `<配置先>/.vscode/settings.json` にマージする。既に存在する場合は Edit 系ツールで直接編集し、
      既存のキー（言語非依存の共通設定など）を残したまま `java.*` / `coverage-gutters.*` 系のキーと
      `[java]` / `[yaml]` / `[xml]` ブロックを追加する（同じキーが既にあれば上書きせず、内容を
@@ -274,11 +272,11 @@ devcontainer/コンテナ環境そのものの構築を頼まれたときは別�
      `<配置先>/.devcontainer/devcontainer.json` の有無で分岐する（この判定も「devcontainer を構築する
      スキルが動いたかどうか」ではなく、あくまでファイルの有無で行う）。
      - `devcontainer.json` が存在する場合: `.vscode/extensions.json` は使わず、
-       `templates/vscode/extensions.json` の `recommendations` 配列の中身（拡張機能 ID のみ。
+       `.claude/skills/java-springboot-project/templates/vscode/extensions.json` の `recommendations` 配列の中身（拡張機能 ID のみ。
        コメントは転記しなくてよい）を `<配置先>/.devcontainer/devcontainer.json` の
        `customizations.vscode.extensions` 配列に Edit 系ツールで直接マージする（重複を除いて追記。
        既存の `customizations.vscode.settings` 等は残す）。
-     - `devcontainer.json` が存在しない場合: `templates/vscode/extensions.json` の内容を
+     - `devcontainer.json` が存在しない場合: `.claude/skills/java-springboot-project/templates/vscode/extensions.json` の内容を
        `<配置先>/.vscode/extensions.json` にマージする（既存の `recommendations` があれば重複を
        除いて追記し、既存の非 Java 系の推奨拡張機能はそのまま残す）。
    - `settings.json` / `extensions.json`（および `devcontainer.json`）は JSONC（コメント付き JSON）

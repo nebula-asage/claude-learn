@@ -3,16 +3,17 @@
   "globs": ["**/*.md"],
   // ビルド生成物・依存パッケージ・キャッシュ配下のMarkdownは検査対象外にする
   // （cspell.jsonのignorePathsと同じ発想。markdown-cli2の"ignores"は先頭に!不要のglob配列）
+  // 先頭の**/は、サブディレクトリ配下（入れ子のnode_modules等）にも一致させるため
   "ignores": [
-    "node_modules/**", // Node.js依存パッケージ本体
-    "dist/**", // ビルド生成物（tsc等）
-    "build/**", // ビルド生成物（Gradle等）
-    "target/**", // ビルド生成物（Cargo/Rust）
-    "coverage/**", // カバレッジレポート生成物（vitest/pytest-cov等）
-    "htmlcov/**", // カバレッジHTMLレポート生成物（pytest-cov）
-    "docs/api/**", // APIドキュメント生成物（gomarkdoc等はMarkdownを直接生成するため対象外にする）
-    ".venv/**", // Python仮想環境（uv）
-    ".gradle/**" // Gradleのキャッシュ・生成物
+    "**/node_modules/**", // Node.js依存パッケージ本体
+    "**/dist/**", // ビルド生成物（tsc等）
+    "**/build/**", // ビルド生成物（Gradle等）
+    "**/target/**", // ビルド生成物（Cargo/Rust）
+    "**/coverage/**", // カバレッジレポート生成物（vitest/pytest-cov等）
+    "**/htmlcov/**", // カバレッジHTMLレポート生成物（pytest-cov）
+    "**/docs/api/**", // APIドキュメント生成物（gomarkdoc等はMarkdownを直接生成するため対象外にする）
+    "**/.venv/**", // Python仮想環境（uv）
+    "**/.gradle/**" // Gradleのキャッシュ・生成物
   ]
   // ルール設定(config)はここでは書かない。同じディレクトリの.markdownlint.jsonc
   // （VS Code拡張davidanson.vscode-markdownlintとも共有するファイル）が自動的に検出・適用される
