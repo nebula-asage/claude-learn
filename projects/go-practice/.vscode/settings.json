@@ -45,6 +45,11 @@
   // 被覆行を緑、未被覆行を赤でガター（行番号横）に表示する
   // (Coverage GuttersはGoのcoverage.out形式をネイティブ対応していないため変換が必要)
   "coverage-gutters.coverageFileNames": ["coverage.lcov"],
+  // gcov2lcovはSF:パスを「最も近いVCSルート（.git等）からの相対パス」で出力する仕様のため、
+  // このリポジトリのようにgitルート（/workspace-root）とVS CodeのworkspaceFolder（このディレクトリ自身）が
+  // 異なる場合はそのままでは一致しない。差分の "projects/go-practice/" をここで剥がして解決する
+  // (gcov2lcov自体にはVCSルート相対/絶対パスの二択しかなく、この用途の調整オプションはない)
+  "coverage-gutters.remotePathResolve": ["projects/go-practice/", ""],
   "coverage-gutters.showGutterCoverage": true,
   "coverage-gutters.showRulerCoverage": true,
   "coverage-gutters.showLineCoverage": false
