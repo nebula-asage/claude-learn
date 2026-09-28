@@ -1,29 +1,39 @@
 package command
 
 import (
-	"bytes"
 	"errors"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 
-	"go-practice/internal/repository"
+	"go-practice/internal/model"
 	"go-practice/internal/service"
+
+	"go.uber.org/mock/gomock"
 )
 
-func newTestCommand(t *testing.T) (*UserCommand, *bytes.Buffer) {
+// errWriter は常にエラーを返す io.Writer。write() のエラー分岐を確認するために使う。
+type errWriter struct{}
+
+var errWrite = errors.New("write failed")
+
+func (errWriter) Write([]byte) (int, error) {
+	return 0, errWrite
+}
+
+func newTestCommand(t *testing.T) (*UserCommand, *MockUserService, *strings.Builder) {
 	t.Helper()
-	repo := repository.NewJSONUserRepository(filepath.Join(t.TempDir(), "userdata.json"))
-	var out bytes.Buffer
-	return NewUserCommand(service.NewUserService(repo), &out), &out
+	svc := NewMockUserService(gomock.NewController(t))
+	var out strings.Builder
+	return NewUserCommand(svc, &out), svc, &out
 }
 
 func TestCreateUserCommand(t *testing.T) {
-	cmd, out := newTestCommand(t)
-	args := []string{"test@example.com", "testuser", "1234567890", "25"}
+	cmd, svc, out := newTestCommand(t)
+	want := model.User{Email: "test@example.com", Username: "testuser", Phone: "1234567890", Age: 25}
+	svc.EXPECT().CreateUser("test@example.com", "testuser", "1234567890", 25).Return(want, nil)
 
-	if err := cmd.Create(args); err != nil {
+	if err := cmd.Create([]string{"test@example.com", "testuser", "1234567890", "25"}); err != nil {
 		t.Fatalf("Create returned error: %v", err)
 	}
 	if !strings.Contains(out.String(), "User created successfully") {
@@ -32,32 +42,51 @@ func TestCreateUserCommand(t *testing.T) {
 }
 
 func TestCreateUserInvalidArgs(t *testing.T) {
-	cmd, _ := newTestCommand(t)
-	args := []string{"test@example.com"}
+	cmd, _, _ := newTestCommand(t)
 
-	if err := cmd.Create(args); err == nil {
+	if err := cmd.Create([]string{"test@example.com"}); err == nil {
 		t.Errorf("Create with invalid args returned no error")
 	}
 }
 
 func TestCreateUserInvalidAge(t *testing.T) {
-	cmd, _ := newTestCommand(t)
-	args := []string{"test@example.com", "testuser", "1234567890", "abc"}
+	cmd, _, _ := newTestCommand(t)
 
-	if err := cmd.Create(args); !errors.Is(err, strconv.ErrSyntax) {
+	err := cmd.Create([]string{"test@example.com", "testuser", "1234567890", "abc"})
+	if !errors.Is(err, strconv.ErrSyntax) {
 		t.Errorf("err = %v, want wrapped %v", err, strconv.ErrSyntax)
 	}
 }
 
-func TestUpdateUserCommand(t *testing.T) {
-	cmd, out := newTestCommand(t)
-	createArgs := []string{"test@example.com", "testuser", "1234567890", "25"}
-	if err := cmd.Create(createArgs); err != nil {
-		t.Fatalf("Create returned error: %v", err)
-	}
+func TestCreateUserServiceError(t *testing.T) {
+	cmd, svc, _ := newTestCommand(t)
+	svcErr := errors.New("already exists")
+	svc.EXPECT().CreateUser("test@example.com", "testuser", "1234567890", 25).Return(model.User{}, svcErr)
 
-	updateArgs := []string{"test@example.com", "newuser", "0987654321", "30"}
-	if err := cmd.Update(updateArgs); err != nil {
+	err := cmd.Create([]string{"test@example.com", "testuser", "1234567890", "25"})
+	if !errors.Is(err, svcErr) {
+		t.Errorf("err = %v, want wrapped %v", err, svcErr)
+	}
+}
+
+func TestCreateUserWriteError(t *testing.T) {
+	svc := NewMockUserService(gomock.NewController(t))
+	cmd := NewUserCommand(svc, errWriter{})
+	svc.EXPECT().CreateUser("test@example.com", "testuser", "1234567890", 25).
+		Return(model.User{Email: "test@example.com"}, nil)
+
+	err := cmd.Create([]string{"test@example.com", "testuser", "1234567890", "25"})
+	if !errors.Is(err, errWrite) {
+		t.Errorf("err = %v, want wrapped %v", err, errWrite)
+	}
+}
+
+func TestUpdateUserCommand(t *testing.T) {
+	cmd, svc, out := newTestCommand(t)
+	want := model.User{Email: "test@example.com", Username: "newuser", Phone: "0987654321", Age: 30}
+	svc.EXPECT().UpdateUser("test@example.com", "newuser", "0987654321", 30).Return(want, nil)
+
+	if err := cmd.Update([]string{"test@example.com", "newuser", "0987654321", "30"}); err != nil {
 		t.Fatalf("Update returned error: %v", err)
 	}
 	if !strings.Contains(out.String(), "Username: newuser") {
@@ -65,33 +94,69 @@ func TestUpdateUserCommand(t *testing.T) {
 	}
 }
 
-func TestDeleteUserCommand(t *testing.T) {
-	cmd, _ := newTestCommand(t)
-	createArgs := []string{"test@example.com", "testuser", "1234567890", "25"}
-	if err := cmd.Create(createArgs); err != nil {
-		t.Fatalf("Create returned error: %v", err)
-	}
+func TestUpdateUserInvalidArgs(t *testing.T) {
+	cmd, _, _ := newTestCommand(t)
 
-	deleteArgs := []string{"test@example.com"}
-	if err := cmd.Delete(deleteArgs); err != nil {
+	if err := cmd.Update([]string{"test@example.com"}); err == nil {
+		t.Errorf("Update with invalid args returned no error")
+	}
+}
+
+func TestUpdateUserInvalidAge(t *testing.T) {
+	cmd, _, _ := newTestCommand(t)
+
+	err := cmd.Update([]string{"test@example.com", "testuser", "1234567890", "abc"})
+	if !errors.Is(err, strconv.ErrSyntax) {
+		t.Errorf("err = %v, want wrapped %v", err, strconv.ErrSyntax)
+	}
+}
+
+func TestUpdateUserServiceError(t *testing.T) {
+	cmd, svc, _ := newTestCommand(t)
+	svc.EXPECT().UpdateUser("nobody@example.com", "testuser", "1234567890", 25).
+		Return(model.User{}, service.ErrUserNotFound)
+
+	err := cmd.Update([]string{"nobody@example.com", "testuser", "1234567890", "25"})
+	if !errors.Is(err, service.ErrUserNotFound) {
+		t.Errorf("err = %v, want wrapped %v", err, service.ErrUserNotFound)
+	}
+}
+
+func TestDeleteUserCommand(t *testing.T) {
+	cmd, svc, out := newTestCommand(t)
+	svc.EXPECT().DeleteUser("test@example.com").Return(nil)
+
+	if err := cmd.Delete([]string{"test@example.com"}); err != nil {
 		t.Errorf("Delete returned error: %v", err)
+	}
+	if !strings.Contains(out.String(), "User deleted successfully") {
+		t.Errorf("output = %q, want success message", out.String())
+	}
+}
+
+func TestDeleteUserCommandInvalidArgs(t *testing.T) {
+	cmd, _, _ := newTestCommand(t)
+
+	if err := cmd.Delete(nil); err == nil {
+		t.Errorf("Delete with invalid args returned no error")
 	}
 }
 
 func TestDeleteUserCommandNotFound(t *testing.T) {
-	cmd, _ := newTestCommand(t)
+	cmd, svc, _ := newTestCommand(t)
+	svc.EXPECT().DeleteUser("nobody@example.com").Return(service.ErrUserNotFound)
 
-	if err := cmd.Delete([]string{"nobody@example.com"}); !errors.Is(err, service.ErrUserNotFound) {
+	err := cmd.Delete([]string{"nobody@example.com"})
+	if !errors.Is(err, service.ErrUserNotFound) {
 		t.Errorf("err = %v, want wrapped %v", err, service.ErrUserNotFound)
 	}
 }
 
 func TestListUserCommand(t *testing.T) {
-	cmd, out := newTestCommand(t)
-	if err := cmd.Create([]string{"test@example.com", "testuser", "1234567890", "25"}); err != nil {
-		t.Fatalf("Create returned error: %v", err)
-	}
-	out.Reset()
+	cmd, svc, out := newTestCommand(t)
+	svc.EXPECT().ListUsers().Return([]model.User{
+		{Email: "test@example.com", Username: "testuser", Phone: "1234567890", Age: 25},
+	}, nil)
 
 	if err := cmd.List(); err != nil {
 		t.Fatalf("List returned error: %v", err)
@@ -101,12 +166,21 @@ func TestListUserCommand(t *testing.T) {
 	}
 }
 
-func TestGetUserCommand(t *testing.T) {
-	cmd, out := newTestCommand(t)
-	if err := cmd.Create([]string{"test@example.com", "testuser", "1234567890", "25"}); err != nil {
-		t.Fatalf("Create returned error: %v", err)
+func TestListUserCommandServiceError(t *testing.T) {
+	cmd, svc, _ := newTestCommand(t)
+	svcErr := errors.New("disk failure")
+	svc.EXPECT().ListUsers().Return(nil, svcErr)
+
+	err := cmd.List()
+	if !errors.Is(err, svcErr) {
+		t.Errorf("err = %v, want wrapped %v", err, svcErr)
 	}
-	out.Reset()
+}
+
+func TestGetUserCommand(t *testing.T) {
+	cmd, svc, out := newTestCommand(t)
+	svc.EXPECT().GetUser("test@example.com").Return(
+		model.User{Email: "test@example.com", Username: "testuser", Phone: "1234567890", Age: 25}, nil)
 
 	if err := cmd.Get([]string{"test@example.com"}); err != nil {
 		t.Fatalf("Get returned error: %v", err)
@@ -117,9 +191,19 @@ func TestGetUserCommand(t *testing.T) {
 }
 
 func TestGetUserCommandInvalidArgs(t *testing.T) {
-	cmd, _ := newTestCommand(t)
+	cmd, _, _ := newTestCommand(t)
 
 	if err := cmd.Get(nil); err == nil {
 		t.Errorf("Get with invalid args returned no error")
+	}
+}
+
+func TestGetUserCommandServiceError(t *testing.T) {
+	cmd, svc, _ := newTestCommand(t)
+	svc.EXPECT().GetUser("nobody@example.com").Return(model.User{}, service.ErrUserNotFound)
+
+	err := cmd.Get([]string{"nobody@example.com"})
+	if !errors.Is(err, service.ErrUserNotFound) {
+		t.Errorf("err = %v, want wrapped %v", err, service.ErrUserNotFound)
 	}
 }
