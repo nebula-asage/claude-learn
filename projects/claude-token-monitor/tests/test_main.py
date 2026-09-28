@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -1039,6 +1040,126 @@ def test_report_generates_html_file_and_prints_summary(
     assert "1 ターン分のレポートを生成しました" in flattened
 
 
+def test_sanitize_filename_component_replaces_unsafe_characters() -> None:
+    assert main._sanitize_filename_component("foo/bar baz:qux") == "foo_bar_baz_qux"
+    assert main._sanitize_filename_component("  日本語タイトル  ") == "日本語タイトル"
+
+
+def test_extract_session_title_prefers_ai_title_over_summary(tmp_path: Path) -> None:
+    session = tmp_path / "session.jsonl"
+    session.write_text(
+        _assistant_line()
+        + "\n"
+        + json.dumps({"type": "summary", "summary": "要約タイトル"})
+        + "\n"
+        + json.dumps({"type": "ai-title", "aiTitle": "AI生成タイトル"})
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert main._extract_session_title(session) == "AI生成タイトル"
+
+
+def test_extract_session_title_uses_last_ai_title_when_repeated(
+    tmp_path: Path,
+) -> None:
+    session = tmp_path / "session.jsonl"
+    session.write_text(
+        json.dumps({"type": "ai-title", "aiTitle": "古いタイトル"})
+        + "\n"
+        + json.dumps({"type": "ai-title", "aiTitle": "新しいタイトル"})
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert main._extract_session_title(session) == "新しいタイトル"
+
+
+def test_extract_session_title_falls_back_to_summary_when_no_ai_title(
+    tmp_path: Path,
+) -> None:
+    session = tmp_path / "session.jsonl"
+    session.write_text(
+        _assistant_line()
+        + "\n"
+        + json.dumps({"type": "summary", "summary": "テストタイトル"})
+        + "\n",
+        encoding="utf-8",
+    )
+
+    assert main._extract_session_title(session) == "テストタイトル"
+
+
+def test_extract_session_title_returns_none_when_absent(
+    tmp_path: Path,
+) -> None:
+    session = tmp_path / "session.jsonl"
+    session.write_text(_assistant_line() + "\n", encoding="utf-8")
+
+    assert main._extract_session_title(session) is None
+
+
+def test_default_report_filename_includes_timestamp_session_id_and_title(
+    tmp_path: Path,
+) -> None:
+    session = tmp_path / "abc-123.jsonl"
+    session.write_text(
+        _assistant_line(timestamp="2026-09-17T01:02:03.000Z")
+        + "\n"
+        + json.dumps({"type": "ai-title", "aiTitle": "重要な調査"})
+        + "\n",
+        encoding="utf-8",
+    )
+    turns = main.read_all_turns(session)
+
+    filename = main.default_report_filename(session, turns)
+
+    assert filename == "20260917_010203_abc-123_重要な調査_token-usage-report.html"
+
+
+def test_default_report_filename_omits_title_when_absent(tmp_path: Path) -> None:
+    session = tmp_path / "abc-123.jsonl"
+    session.write_text(
+        _assistant_line(timestamp="2026-09-17T01:02:03.000Z") + "\n",
+        encoding="utf-8",
+    )
+    turns = main.read_all_turns(session)
+
+    filename = main.default_report_filename(session, turns)
+
+    assert filename == "20260917_010203_abc-123_token-usage-report.html"
+
+
+def test_default_report_filename_falls_back_to_mtime_when_no_turns(
+    tmp_path: Path,
+) -> None:
+    session = tmp_path / "abc-123.jsonl"
+    session.write_text("", encoding="utf-8")
+    turns: list[main.TurnUsage] = []
+
+    filename = main.default_report_filename(session, turns)
+
+    assert filename.endswith("_abc-123_token-usage-report.html")
+    assert re.match(r"^\d{8}_\d{6}_abc-123_token-usage-report\.html$", filename)
+
+
+def test_report_uses_default_filename_when_output_omitted(tmp_path: Path) -> None:
+    session = tmp_path / "abc-123.jsonl"
+    session.write_text(
+        _assistant_line(timestamp="2026-09-17T01:02:03.000Z") + "\n",
+        encoding="utf-8",
+    )
+    original_cwd = Path.cwd()
+    os.chdir(tmp_path)
+    try:
+        main.report(session)
+    finally:
+        os.chdir(original_cwd)
+
+    expected = tmp_path / "20260917_010203_abc-123_token-usage-report.html"
+    assert expected.exists()
+
+
 def test_build_arg_parser_watch_defaults() -> None:
     parser = main.build_arg_parser()
 
@@ -1056,7 +1177,7 @@ def test_build_arg_parser_report_defaults() -> None:
     args = parser.parse_args(["report"])
 
     assert args.command == "report"
-    assert args.output == "token-usage-report.html"
+    assert args.output is None
 
 
 def test_build_arg_parser_accepts_common_options() -> None:

@@ -42,7 +42,7 @@ just watch
 just report
 ```
 
-内部では `uv run main.py report` を実行し、対象セッションの全ターンから外部ネットワーク接続なしで開けるスタンドアロンHTMLレポート（`token-usage-report.html`、積み上げ棒グラフ・累計折れ線グラフ・テーブルビュー・ダーク/ライト切替込み）を生成する。オプション付きで実行したい場合は直接 `uv run main.py report --help` を参照する。
+内部では `uv run main.py report` を実行し、対象セッションの全ターンから外部ネットワーク接続なしで開けるスタンドアロンHTMLレポート（積み上げ棒グラフ・累計折れ線グラフ・テーブルビュー・ダーク/ライト切替込み）を生成する。出力ファイル名は`--output`省略時、`<日付タイムスタンプ>_<セッションID>[_<セッションタイトル>]_token-usage-report.html`の形式で自動生成される（日付タイムスタンプはセッション内最初のターンの日時、セッションタイトルはJSONL中の`type: ai-title`行の`aiTitle`〈無ければ`type: summary`行の`summary`〉から取得できた場合のみ付与）。オプション付きで実行したい場合は直接 `uv run main.py report --help` を参照する。
 
 `just` を引数なしで実行するとレシピ一覧が確認できる。
 

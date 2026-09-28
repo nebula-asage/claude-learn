@@ -8,6 +8,7 @@ import re
 import sys
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import argcomplete
@@ -1290,7 +1291,112 @@ def _escape(s: str) -> str:
     )
 
 
-def report(path: Path, output: Path) -> None:
+_FILENAME_UNSAFE_RE = re.compile(r"[^\w\-.]+")
+
+
+def _sanitize_filename_component(s: str) -> str:
+    """文字列をファイル名の一部として安全な形に変換する。
+
+    Args:
+        s: 変換対象の文字列。
+
+    Returns:
+        英数字・アンダースコア・ハイフン・ピリオド・Unicode文字(日本語等)以外を
+        `_`に置換し、前後の`_`を取り除いた文字列。
+    """
+    return _FILENAME_UNSAFE_RE.sub("_", s).strip("_")
+
+
+def _extract_session_title(path: Path) -> str | None:
+    """セッションJSONLからセッションタイトルを取り出す。
+
+    `type: ai-title`行の`aiTitle`(履歴パネルに表示されるAI生成タイトル。手元の
+    セッションの約4割に存在する)を優先し、無い場合のみ`type: summary`行の
+    `summary`(compact等のタイミングでのみ追記され、存在するセッションはごく少ない)
+    にフォールバックする。同種の行が複数回出現する場合は最後に出現した値(最新)を
+    採用する。
+
+    Args:
+        path: 対象のセッションJSONLファイルのパス。
+
+    Returns:
+        見つかったタイトル文字列。どちらも存在しない場合はNone。
+    """
+    ai_title: str | None = None
+    summary_title: str | None = None
+    try:
+        with path.open(encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                obj_type = obj.get("type")
+                if obj_type == "ai-title":
+                    value = obj.get("aiTitle")
+                    if isinstance(value, str) and value:
+                        ai_title = value
+                elif obj_type == "summary":
+                    value = obj.get("summary")
+                    if isinstance(value, str) and value:
+                        summary_title = value
+    except OSError:
+        return None
+    return ai_title or summary_title
+
+
+def _session_start_timestamp(turns: list[TurnUsage], path: Path) -> str:
+    """レポートファイル名に使う日付タイムスタンプを決定する。
+
+    セッション内最初のターンの日時を基準にする。ターンが1件も無い場合や
+    timestampがISO形式として解釈できない場合は、JSONLファイルの更新日時に
+    フォールバックする。
+
+    Args:
+        turns: 集計済みターン一覧(timestamp昇順)。
+        path: セッションJSONLファイルのパス(フォールバック用)。
+
+    Returns:
+        `YYYYMMDD_HHMMSS`形式の文字列。
+    """
+    if turns and turns[0].timestamp:
+        try:
+            dt = datetime.fromisoformat(turns[0].timestamp.replace("Z", "+00:00"))
+            return dt.strftime("%Y%m%d_%H%M%S")
+        except ValueError:
+            pass
+    dt = datetime.fromtimestamp(path.stat().st_mtime)
+    return dt.strftime("%Y%m%d_%H%M%S")
+
+
+def default_report_filename(path: Path, turns: list[TurnUsage]) -> str:
+    """`--output`省略時のレポートファイル名を組み立てる。
+
+    `<日付タイムスタンプ>_<セッションID>[_<セッションタイトル>]_token-usage-report.html`
+    の形式にする。セッションタイトル(`_extract_session_title`参照)が取得できない
+    場合はその部分を省く。
+
+    Args:
+        path: 集計対象のセッションJSONLファイルのパス。
+        turns: 集計済みターン一覧。
+
+    Returns:
+        生成したファイル名(パスは含まないファイル名のみ)。
+    """
+    parts = [_session_start_timestamp(turns, path), path.stem]
+    title = _extract_session_title(path)
+    if title:
+        sanitized_title = _sanitize_filename_component(title)
+        if sanitized_title:
+            parts.append(sanitized_title)
+    parts.append("token-usage-report.html")
+    return "_".join(parts)
+
+
+def report(path: Path, output: Path | None = None) -> None:
     """セッションJSONLを読み込み、スタンドアロンHTMLレポートを生成する。
 
     メインセッションに加え、完了済みサブエージェントのトランスクリプト
@@ -1298,7 +1404,8 @@ def report(path: Path, output: Path) -> None:
 
     Args:
         path: 集計対象のセッションJSONLファイルのパス。
-        output: 生成したHTMLの出力先パス。
+        output: 生成したHTMLの出力先パス。Noneの場合は`default_report_filename`で
+            決定したファイル名をカレントディレクトリに生成する。
 
     Raises:
         SystemExit: `path` が存在しない場合。
@@ -1308,6 +1415,8 @@ def report(path: Path, output: Path) -> None:
         console.print(f"[red]{path} が見つかりません[/red]")
         raise SystemExit(1)
     turns = read_all_turns(path)
+    if output is None:
+        output = Path(default_report_filename(path, turns))
     html = render_report(turns, title=path.stem)
     output.write_text(html, encoding="utf-8")
     console.print(
@@ -1361,8 +1470,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     report_parser.add_argument(
         "--output",
-        default="token-usage-report.html",
-        help="出力先HTMLファイルパス(既定 token-usage-report.html)",
+        default=None,
+        help="出力先HTMLファイルパス"
+        "(既定: <日付タイムスタンプ>_<セッションID>[_<セッションタイトル>]_token-usage-report.html)",
     )
 
     return parser
@@ -1387,7 +1497,7 @@ def main() -> None:
     if args.command == "watch":
         watch(path, poll_interval=args.interval, last_n=args.last_n)
     elif args.command == "report":
-        report(path, Path(args.output))
+        report(path, Path(args.output) if args.output else None)
 
 
 if __name__ == "__main__":
