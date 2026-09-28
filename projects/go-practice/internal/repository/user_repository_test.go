@@ -2,6 +2,7 @@ package repository
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"go-practice/internal/model"
@@ -9,9 +10,7 @@ import (
 
 func newTestRepository(t *testing.T) *JSONUserRepository {
 	t.Helper()
-	dataFile := filepath.Join(t.TempDir(), "userdata.json")
-	t.Setenv("USER_DATA_FILE", dataFile)
-	return NewJSONUserRepository()
+	return NewJSONUserRepository(filepath.Join(t.TempDir(), "userdata.json"))
 }
 
 func testUser() model.User {
@@ -47,7 +46,7 @@ func TestFindAllUsers(t *testing.T) {
 	repo := newTestRepository(t)
 	user1 := testUser()
 	user2 := testUser()
-	user2.Email = "test2@example.com"
+	user2.Email = "a-test@example.com"
 
 	if err := repo.Save(user1); err != nil {
 		t.Fatalf("Save returned error: %v", err)
@@ -60,8 +59,10 @@ func TestFindAllUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindAll returned error: %v", err)
 	}
-	if len(all) != 2 {
-		t.Errorf("len(all) = %d, want 2", len(all))
+	// map由来の不定な順序ではなく、メールアドレスの昇順で返ること
+	want := []model.User{user2, user1}
+	if !slices.Equal(all, want) {
+		t.Errorf("FindAll = %+v, want %+v", all, want)
 	}
 }
 

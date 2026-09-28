@@ -2,62 +2,66 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"go-practice/internal/model"
-	"go-practice/internal/repository"
 )
 
-// UserErrorKind はUserErrorの種別を表す。
-type UserErrorKind string
+// 入力値のバリデーションに失敗した場合や、対象ユーザーの有無が期待と異なる場合に返すエラー。
+// 呼び出し側は errors.Is で種別を判定する。
+var (
+	// ErrInvalidEmail はメールアドレスの形式が不正な場合のエラー。
+	ErrInvalidEmail = errors.New("invalid email format")
+	// ErrInvalidUsername はユーザー名が不正な場合のエラー。
+	ErrInvalidUsername = fmt.Errorf("username must be at least %d characters long", minUsernameLength)
+	// ErrInvalidPhone は電話番号が不正な場合のエラー。
+	ErrInvalidPhone = fmt.Errorf("phone number must be at least %d digits", minPhoneDigits)
+	// ErrInvalidAge は年齢が不正な場合のエラー。
+	ErrInvalidAge = fmt.Errorf("age must be between %d and %d", minAge, maxAge)
+	// ErrUserNotFound はユーザーが見つからない場合のエラー。
+	ErrUserNotFound = errors.New("user not found")
+	// ErrUserAlreadyExists は既に存在するユーザーを作成しようとした場合のエラー。
+	ErrUserAlreadyExists = errors.New("user already exists")
+)
 
 const (
-	// ErrInvalidEmail はメールアドレスの形式が不正な場合の種別。
-	ErrInvalidEmail UserErrorKind = "InvalidEmail"
-	// ErrInvalidUsername はユーザー名が不正な場合の種別。
-	ErrInvalidUsername UserErrorKind = "InvalidUsername"
-	// ErrInvalidPhone は電話番号が不正な場合の種別。
-	ErrInvalidPhone UserErrorKind = "InvalidPhone"
-	// ErrInvalidAge は年齢が不正な場合の種別。
-	ErrInvalidAge UserErrorKind = "InvalidAge"
-	// ErrUserNotFound はユーザーが見つからない場合の種別。
-	ErrUserNotFound UserErrorKind = "UserNotFound"
-	// ErrUserAlreadyExists は既に存在するユーザーを作成しようとした場合の種別。
-	ErrUserAlreadyExists UserErrorKind = "UserAlreadyExists"
-	// ErrRepository はリポジトリ操作に失敗した場合の種別。
-	ErrRepository UserErrorKind = "RepositoryError"
+	minUsernameLength = 3
+	minPhoneDigits    = 10
+	minAge            = 0
+	maxAge            = 150
 )
-
-// UserError はユーザー操作に関連するエラー。
-type UserError struct {
-	Kind    UserErrorKind
-	Message string
-}
-
-// Error はerrorインターフェースを満たす。
-func (e *UserError) Error() string {
-	return fmt.Sprintf("%s(%q)", e.Kind, e.Message)
-}
-
-func newUserError(kind UserErrorKind, message string) *UserError {
-	return &UserError{Kind: kind, Message: message}
-}
 
 var (
 	emailPattern = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-	phonePattern = regexp.MustCompile(`^\d{10,}$`)
+	phonePattern = regexp.MustCompile(fmt.Sprintf(`^\d{%d,}$`, minPhoneDigits))
 )
+
+// UserRepository はUserServiceが必要とするユーザーデータの永続化操作を定義する。
+type UserRepository interface {
+	// Save はユーザーを保存する。同じメールアドレスのユーザーが既にいる場合は上書きする。
+	Save(user model.User) error
+	// FindByEmail は指定されたメールアドレスのユーザーを検索する。
+	// 見つからなかった場合は ok が false になる。
+	FindByEmail(email string) (user model.User, ok bool, err error)
+	// FindAll は全てのユーザーを取得する。
+	FindAll() ([]model.User, error)
+	// Delete は指定されたメールアドレスのユーザーを削除する。
+	// ユーザーが存在しなかった場合は existed が false になる。
+	Delete(email string) (existed bool, err error)
+}
 
 // UserService はユーザー管理のビジネスロジックを実装する。
 type UserService struct {
-	repository repository.UserRepository
+	repo UserRepository
 }
 
-// NewUserService は新しいUserServiceを作成する。
-func NewUserService(repo repository.UserRepository) *UserService {
-	return &UserService{repository: repo}
+// NewUserService は repo を永続化先とする新しいUserServiceを作成する。
+func NewUserService(repo UserRepository) *UserService {
+	return &UserService{repo: repo}
 }
 
 // CreateUser は新しいユーザーを作成する。
@@ -65,115 +69,115 @@ func (s *UserService) CreateUser(email, username, phone string, age int) (model.
 	if err := validateEmail(email); err != nil {
 		return model.User{}, err
 	}
-	if err := validateUsername(username); err != nil {
-		return model.User{}, err
-	}
-	if err := validatePhone(phone); err != nil {
-		return model.User{}, err
-	}
-	if err := validateAge(age); err != nil {
-		return model.User{}, err
-	}
-
-	if _, ok, err := s.repository.FindByEmail(email); err == nil && ok {
-		return model.User{}, newUserError(ErrUserAlreadyExists,
-			fmt.Sprintf("User with email %s already exists", email))
-	}
-
 	user := model.User{Email: email, Username: username, Phone: phone, Age: age}
-	if err := s.repository.Save(user); err != nil {
-		return model.User{}, newUserError(ErrRepository, err.Error())
+	if err := validateProfile(user); err != nil {
+		return model.User{}, err
+	}
+
+	_, ok, err := s.repo.FindByEmail(email)
+	if err != nil {
+		return model.User{}, fmt.Errorf("find user: %w", err)
+	}
+	if ok {
+		return model.User{}, fmt.Errorf("%w: %s", ErrUserAlreadyExists, email)
+	}
+
+	if err := s.repo.Save(user); err != nil {
+		return model.User{}, fmt.Errorf("save user: %w", err)
 	}
 	return user, nil
 }
 
-// UpdateUser は既存のユーザー情報を更新する。
+// UpdateUser は既存のユーザー情報を更新する。email は更新対象の特定に使う。
 func (s *UserService) UpdateUser(email, username, phone string, age int) (model.User, error) {
-	if err := validateUsername(username); err != nil {
-		return model.User{}, err
-	}
-	if err := validatePhone(phone); err != nil {
-		return model.User{}, err
-	}
-	if err := validateAge(age); err != nil {
+	user := model.User{Email: email, Username: username, Phone: phone, Age: age}
+	if err := validateProfile(user); err != nil {
 		return model.User{}, err
 	}
 
-	_, ok, err := s.repository.FindByEmail(email)
+	_, ok, err := s.repo.FindByEmail(email)
 	if err != nil {
-		return model.User{}, newUserError(ErrRepository, err.Error())
+		return model.User{}, fmt.Errorf("find user: %w", err)
 	}
 	if !ok {
-		return model.User{}, newUserError(ErrUserNotFound,
-			fmt.Sprintf("User with email %s not found", email))
+		return model.User{}, fmt.Errorf("%w: %s", ErrUserNotFound, email)
 	}
 
-	user := model.User{Email: email, Username: username, Phone: phone, Age: age}
-	if err := s.repository.Save(user); err != nil {
-		return model.User{}, newUserError(ErrRepository, err.Error())
+	if err := s.repo.Save(user); err != nil {
+		return model.User{}, fmt.Errorf("save user: %w", err)
 	}
 	return user, nil
 }
 
 // GetUser は指定されたメールアドレスのユーザー情報を取得する。
 func (s *UserService) GetUser(email string) (model.User, error) {
-	user, ok, err := s.repository.FindByEmail(email)
+	user, ok, err := s.repo.FindByEmail(email)
 	if err != nil {
-		return model.User{}, newUserError(ErrRepository, err.Error())
+		return model.User{}, fmt.Errorf("find user: %w", err)
 	}
 	if !ok {
-		return model.User{}, newUserError(ErrUserNotFound,
-			fmt.Sprintf("User with email %s not found", email))
+		return model.User{}, fmt.Errorf("%w: %s", ErrUserNotFound, email)
 	}
 	return user, nil
 }
 
 // ListUsers は全てのユーザー情報を取得する。
 func (s *UserService) ListUsers() ([]model.User, error) {
-	users, err := s.repository.FindAll()
+	users, err := s.repo.FindAll()
 	if err != nil {
-		return nil, newUserError(ErrRepository, err.Error())
+		return nil, fmt.Errorf("find users: %w", err)
 	}
 	return users, nil
 }
 
 // DeleteUser は指定されたメールアドレスのユーザーを削除する。
 func (s *UserService) DeleteUser(email string) error {
-	existed, err := s.repository.Delete(email)
+	existed, err := s.repo.Delete(email)
 	if err != nil {
-		return newUserError(ErrRepository, err.Error())
+		return fmt.Errorf("delete user: %w", err)
 	}
 	if !existed {
-		return newUserError(ErrUserNotFound,
-			fmt.Sprintf("User with email %s not found", email))
+		return fmt.Errorf("%w: %s", ErrUserNotFound, email)
 	}
 	return nil
 }
 
+// validateProfile はメールアドレス以外の、更新可能な項目を検証する。
+func validateProfile(user model.User) error {
+	if err := validateUsername(user.Username); err != nil {
+		return err
+	}
+	if err := validatePhone(user.Phone); err != nil {
+		return err
+	}
+	return validateAge(user.Age)
+}
+
 func validateEmail(email string) error {
 	if !emailPattern.MatchString(email) {
-		return newUserError(ErrInvalidEmail, fmt.Sprintf("Invalid email format: %s", email))
+		return fmt.Errorf("%w: %s", ErrInvalidEmail, email)
 	}
 	return nil
 }
 
 func validateUsername(username string) error {
-	if strings.TrimSpace(username) == "" || len(username) < 3 {
-		return newUserError(ErrInvalidUsername, "Username must be at least 3 characters long")
+	// len はバイト数を返すため、日本語などのマルチバイト文字でも「文字数」で判定できるよう rune 数を数える
+	if utf8.RuneCountInString(strings.TrimSpace(username)) < minUsernameLength {
+		return ErrInvalidUsername
 	}
 	return nil
 }
 
 func validatePhone(phone string) error {
 	if !phonePattern.MatchString(phone) {
-		return newUserError(ErrInvalidPhone, "Phone number must be at least 10 digits")
+		return ErrInvalidPhone
 	}
 	return nil
 }
 
 func validateAge(age int) error {
-	if age < 0 || age > 150 {
-		return newUserError(ErrInvalidAge, "Age must be between 0 and 150")
+	if age < minAge || age > maxAge {
+		return ErrInvalidAge
 	}
 	return nil
 }
