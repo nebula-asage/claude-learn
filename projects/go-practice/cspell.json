@@ -54,6 +54,12 @@
     "princjef", // README.md: gomarkdocの作者のGitHubユーザー名
     "pnpx", // justfile: pnpmが提供するnpx相当のパッケージ実行コマンド（cspellレシピで使用）
     "testuser", // internal/*/テストコード: テスト用ユーザー名の固定値
-    "newuser" // internal/command/user_command_test.go: 更新後のテスト用ユーザー名の固定値
+    "newuser", // internal/command/user_command_test.go: 更新後のテスト用ユーザー名の固定値
+    "gomock", // go.uber.org/mock（gomock）: モックライブラリ名
+    "mockgen", // go.uber.org/mockのモック生成ツール名
+    "isgomock", // mockgenが生成するモックの構造体フィールド名
+    "unwritable", // internal/repository/json_user_repository_test.go: 書き込み不可の状態を指すテスト内の語
+    "godoc", // TODO.md: Goのドキュメントツール名
+    "GOARCH" // TODO.md: Goの環境変数名（ビルド対象アーキテクチャ）
   ]
 }
