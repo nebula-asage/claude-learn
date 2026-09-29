@@ -384,6 +384,17 @@ def test_resolve_model_pricing_matches_exact_model_id() -> None:
     assert pricing.cache_read == pytest.approx(0.20 / 1_000_000)
 
 
+def test_resolve_model_pricing_distinguishes_sonnet_5_5_from_sonnet_5() -> None:
+    pricing = resolve_model_pricing("claude-sonnet-5-5")
+
+    assert pricing is not None
+    assert pricing.input == pytest.approx(2 / 1_000_000)
+    assert pricing.output == pytest.approx(10 / 1_000_000)
+    assert pricing.cache_write_5m == pytest.approx(2.50 / 1_000_000)
+    assert pricing.cache_write_1h == pytest.approx(4 / 1_000_000)
+    assert pricing.cache_read == pytest.approx(0.20 / 1_000_000)
+
+
 def test_resolve_model_pricing_strips_date_suffix() -> None:
     dated = resolve_model_pricing("claude-haiku-4-5-20251001")
     undated = resolve_model_pricing("claude-haiku-4-5")

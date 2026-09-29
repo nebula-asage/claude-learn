@@ -121,6 +121,7 @@ MODEL_PRICING: dict[str, ModelPricing] = {
     "claude-opus-4-5": _pricing(5, 25, 6.25, 10, 0.50),
     "claude-opus-4-1": _pricing(15, 75, 18.75, 30, 1.50),
     "claude-opus-4": _pricing(15, 75, 18.75, 30, 1.50),
+    "claude-sonnet-5-5": _pricing(2, 10, 2.50, 4, 0.20),
     "claude-sonnet-5": _pricing(2, 10, 2.50, 4, 0.20),
     "claude-sonnet-4-6": _pricing(3, 15, 3.75, 6, 0.30),
     "claude-sonnet-4-5": _pricing(3, 15, 3.75, 6, 0.30),
