@@ -17,20 +17,20 @@ usage:
 fmt:
     gofmt -l -w .
 
-# golangci-lintで静的解析する
-lint:
+# golangci-lintで静的解析する（モックが古いままにならないよう、先に generate を実行する）
+lint: generate
     golangci-lint run ./...
 
-# go testで単体テストを実行する
-test:
+# go testで単体テストを実行する（モックが古いままにならないよう、先に generate を実行する）
+test: generate
     go test ./... -v
 
 # go:generateディレクティブに従ってモック等の生成コードを再生成する
 generate:
     go generate ./...
 
-# カバレッジを計測し、関数ごとの被覆率をターミナルに表示する
-cover:
+# カバレッジを計測し、関数ごとの被覆率をターミナルに表示する（モックが古いままにならないよう、先に generate を実行する）
+cover: generate
     go test ./... -coverprofile=coverage.out
     go tool cover -func=coverage.out
 
