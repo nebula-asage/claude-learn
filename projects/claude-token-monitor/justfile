@@ -36,8 +36,15 @@ report:
 
 # コンソールスクリプト(claude-token-monitor)をeditableインストールし、bash-completionを~/.bashrcに永続化する（初回のみ実行。詳細はREADMEの「bash-completion」節を参照）
 install-completion:
+    #!/usr/bin/env bash
+    set -euo pipefail
     uv tool install --editable .
-    grep -qxF 'eval "$(register-python-argcomplete claude-token-monitor)"' ~/.bashrc || echo 'eval "$(register-python-argcomplete claude-token-monitor)"' >> ~/.bashrc
+    # register-python-argcomplete は uv tool 専用venv内にあり PATH に載らないため、絶対パスで登録する
+    reg="$(uv tool dir)/claude-token-monitor/bin/register-python-argcomplete"
+    line="eval \"\$($reg claude-token-monitor)\""
+    # 過去版が書いた PATH 依存の行（システムの python3-argcomplete を要求してしまう）を除去
+    sed -i '/^eval "\$(register-python-argcomplete claude-token-monitor)"$/d' ~/.bashrc
+    grep -qxF "$line" ~/.bashrc || echo "$line" >> ~/.bashrc
 
 # ruffでフォーマットを適用する
 fmt:
