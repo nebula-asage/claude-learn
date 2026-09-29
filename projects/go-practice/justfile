@@ -6,7 +6,7 @@ usage:
     @echo "1. fmt        - フォーマットを適用"
     @echo "2. lint        - 静的解析"
     @echo "3. test        - テスト実行"
-    @echo "4. cover       - カバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov）"
+    @echo "4. cover       - カバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov、分岐は cover-branch）"
     @echo "5. doc         - ドキュメンテーションコメントをターミナルに表示（ファイル生成は doc-report、HTMLは doc-html）"
     @echo "6. build       - バイナリ go-practice を生成"
     @echo "7. run         - アプリケーションを実行"
@@ -41,6 +41,19 @@ cover-html: cover
 # カバレッジを計測し、coverage.lcov（Coverage Gutters拡張向け）を生成する
 cover-lcov: cover
     gcov2lcov -infile=coverage.out -outfile=coverage.lcov
+
+# 条件カバレッジ（各条件式がtrue/falseの両方で評価されたか）をパッケージごとに計測し、未通過の分岐をターミナルに表示する（標準のgo testでは測れない。gobcoはgo.modのtoolで固定）
+cover-branch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # gobcoは ./... に対応せず1パッケージずつしか計測できないため、パッケージごとに実行する
+    # gobcoはインポートパスではなくディレクトリパスを要求するため、モジュール名の接頭辞を "." に置き換える
+    module=$(go list -m)
+    for pkg in $(go list ./...); do
+        dir=".${pkg#"${module}"}"
+        echo "== ${dir}"
+        go tool gobco "${dir}"
+    done
 
 # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力する
 doc:
