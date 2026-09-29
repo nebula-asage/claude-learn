@@ -7,8 +7,9 @@ usage:
     @echo "2. lint        - 静的解析"
     @echo "3. test        - テスト実行"
     @echo "4. cover       - カバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov）"
-    @echo "5. doc         - ドキュメンテーションコメントをターミナルに表示（ファイル生成は doc-report）"
-    @echo "6. run         - アプリケーションを実行"
+    @echo "5. doc         - ドキュメンテーションコメントをターミナルに表示（ファイル生成は doc-report、HTMLは doc-html）"
+    @echo "6. build       - バイナリ go-practice を生成"
+    @echo "7. run         - アプリケーションを実行"
     @echo ""
     @echo "レシピ一覧は 'just --list' を参照"
 
@@ -51,13 +52,21 @@ doc-report:
     # 波括弧を文字列リテラルとして組み立てることでリテラルの中括弧をgomarkdocに渡している
     gomarkdoc --output '{{"{{"}}.Dir{{"}}"}}/API.md' ./...
 
+# ドキュメンテーションコメントからHTML形式のAPIドキュメント api.html を生成する（gomarkdocのMarkdown出力をpnpxでmarkedに変換。断片のため文字コード宣言を前置する）
+doc-html:
+    { echo '<meta charset="utf-8">'; gomarkdoc ./... | pnpx marked --gfm; } > api.html
+
+# go buildでバイナリ go-practice を生成する
+build:
+    go build -o go-practice .
+
 # go runでアプリケーションを実行する
 run:
     go run .
 
-# カバレッジ・ドキュメント生成物を削除する
+# カバレッジ・ドキュメント・ビルド生成物を削除する
 clean:
-    rm -f coverage.out coverage.html coverage.lcov
+    rm -f coverage.out coverage.html coverage.lcov api.html go-practice
     find . -name API.md -delete
 
 # pnpxでcspellを取得し、スペルチェックを実行する（未知語が出た場合はcspell.jsonのwordsに追記して解消する）

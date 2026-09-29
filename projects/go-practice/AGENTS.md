@@ -19,8 +19,10 @@ just cover-html   # カバレッジ計測し、coverage.html にHTMLレポート
 just cover-lcov   # カバレッジ計測し、coverage.lcov（Coverage Gutters拡張向け）を生成
 just doc          # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力
 just doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
+just doc-html     # HTML形式のAPIドキュメント api.html を生成（pnpxでmarkedを取得して変換）
+just build        # バイナリ go-practice を生成
 just generate     # go:generateディレクティブに従ってモック等の生成コードを再生成
-just clean        # カバレッジ・ドキュメント生成物を削除
+just clean        # カバレッジ・ドキュメント・ビルド生成物を削除
 just cspell       # pnpxでcspellを取得し、スペルチェックを実行
 just markdownlint # pnpxでmarkdownlint-cli2を取得し、Markdownをlint
 ```
