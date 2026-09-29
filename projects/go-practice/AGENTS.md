@@ -17,6 +17,7 @@ just test         # go testで単体テスト実行（-v付き）
 just cover        # カバレッジ計測し、関数ごとの被覆率をターミナルに表示
 just cover-html   # カバレッジ計測し、coverage.html にHTMLレポートを生成
 just cover-lcov   # カバレッジ計測し、coverage.lcov（Coverage Gutters拡張向け）を生成
+just cover-branch # gobcoで条件カバレッジ（各条件式のtrue/false両方の通過）を計測し、未通過の分岐を表示
 just doc          # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力
 just doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
 just doc-html     # HTML形式のAPIドキュメント api.html を生成（pnpxでmarkedを取得して変換）
