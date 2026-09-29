@@ -2,3 +2,5 @@ coverage.out
 coverage.html
 coverage.lcov
 **/API.md
+/go-practice
+/api.html

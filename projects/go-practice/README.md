@@ -43,6 +43,7 @@ go run . create john@example.com "John Doe" 1234567890 25
 ## 開発用コマンド
 
 ```sh
+just build        # バイナリ go-practice を生成
 just run          # 実行（引数なし。Usageが表示される）
 just fmt          # gofmtでフォーマット
 just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知）
@@ -51,8 +52,9 @@ just cover        # カバレッジ計測し、ターミナルに未カバー関
 just cover-html   # カバレッジ計測し、coverage.html にHTMLレポートを生成
 just doc          # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力
 just doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
+just doc-html     # HTML形式のAPIドキュメント api.html を生成（pnpxでmarkedを取得して変換）
 just generate     # go:generateディレクティブに従ってモック等の生成コードを再生成
-just clean        # カバレッジ・ドキュメント生成物を削除
+just clean        # カバレッジ・ドキュメント・ビルド生成物を削除
 ```
 
 `just cover-html` 実行後、`coverage.html` をブラウザで開くと行単位のカバレッジが確認できる。
