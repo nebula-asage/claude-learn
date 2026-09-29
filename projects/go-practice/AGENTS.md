@@ -12,9 +12,9 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 
 ```sh
 just fmt          # gofmtでフォーマットを適用
-just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知）
-just test         # go testで単体テスト実行（-v付き）
-just cover        # カバレッジ計測し、関数ごとの被覆率をターミナルに表示
+just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知。先に generate を自動実行）
+just test         # go testで単体テスト実行（-v付き。先に generate を自動実行）
+just cover        # カバレッジ計測し、関数ごとの被覆率をターミナルに表示（先に generate を自動実行）
 just cover-html   # カバレッジ計測し、coverage.html にHTMLレポートを生成
 just cover-lcov   # カバレッジ計測し、coverage.lcov（Coverage Gutters拡張向け）を生成
 just cover-branch # gobcoで条件カバレッジ（各条件式のtrue/false両方の通過）を計測し、未通過の分岐を表示
@@ -74,6 +74,6 @@ go run . list
   - `internal/service/user_service.go` → `internal/service/mock_user_repository_test.go`（`MockUserRepository`）
   - `internal/command/user_command.go` → `internal/command/mock_user_service_test.go`（`MockUserService`）
   - いずれも `_test.go` のため本番ビルドには含まれない
-- インターフェースにメソッドを追加・変更した場合は `just generate` で再生成すること。生成後のファイルは手編集しない（`DO NOT EDIT` ヘッダ付き）
+- インターフェースにメソッドを追加・変更した場合は `just generate` で再生成すること（`just lint` / `just test` / `just cover` は先に自動で実行する）。生成後のファイルは手編集しない（`DO NOT EDIT` ヘッダ付き）
 - テストでは `NewMockXxx(gomock.NewController(t))` でモックを作り、`repo.EXPECT().FindByEmail(...).Return(...)` のように呼び出しごとの戻り値を設定する。設定していないメソッドが呼ばれた場合はテストが失敗する
 - `internal/repository` は永続化層の具象実装そのもののテストであり、モックは使わない（ファイルが存在しない・ディレクトリになっている・読み取り専用になっているといった実際のファイルシステム状態を `t.TempDir()` 配下で作ってエラー分岐を検証する）
