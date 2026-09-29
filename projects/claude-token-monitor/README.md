@@ -64,11 +64,11 @@ just report
 just install-completion
 ```
 
-内部では `uv tool install --editable .`（`~/.local/bin/claude-token-monitor` を作成。`--editable`なので`main.py`編集後に再インストール不要）と、生成された`claude-token-monitor`コマンド向け補完の`~/.bashrc`への登録（`eval "$(register-python-argcomplete claude-token-monitor)"`の追記。既に追記済みなら重複させない）を行う。登録後は `source ~/.bashrc` するか、シェルを開き直せば補完が効くようになる。
+内部では `uv tool install --editable .`（`~/.local/bin/claude-token-monitor` を作成。`--editable`なので`main.py`編集後に再インストール不要）と、生成された`claude-token-monitor`コマンド向け補完の`~/.bashrc`への登録（`eval "$(<uv toolのvenv>/bin/register-python-argcomplete claude-token-monitor)"`の追記。既に追記済みなら重複させない）を行う。`register-python-argcomplete`は依存の`argcomplete`と一緒にuv tool専用のvenvへ入る一方でPATHには載らないため、`uv tool dir`から解決した絶対パスで登録する（PATH上の名前で呼ぶと、システムに`python3-argcomplete`が無い環境で`sudo apt install python3-argcomplete`を促される）。以前のバージョンが追記したPATH依存の行は再実行時に自動で置き換わる。登録後は `source ~/.bashrc` するか、シェルを開き直せば補完が効くようになる。
 
 以後は`claude-token-monitor watch`/`claude-token-monitor report`のようにコンソールスクリプト経由で実行すればTab補完が効く（`just watch`/`just report`や`uv run main.py ...`は従来どおり補完なしで使える。どちらの呼び方でも動作は同じ）。
 
-`register-python-argcomplete`が生成するのは自己完結したbash関数定義であり、システムの`bash-completion`パッケージ（`apt-get install bash-completion`等）は不要。このホスト環境（WSL2）は`sudo`がパスワード必須で非対話導入ができない制約があるため、この「システムパッケージ不要」という性質は都合が良い。
+`register-python-argcomplete`が生成するのは自己完結したbash関数定義であり、システムの`bash-completion`パッケージ（`apt-get install bash-completion`等）や`python3-argcomplete`は不要。このホスト環境（WSL2）は`sudo`がパスワード必須で非対話導入ができない制約があるため、この「システムパッケージ不要」という性質は都合が良い。
 
 ## 依存パッケージの追加
 
