@@ -7,7 +7,7 @@
 - `internal/greeting/greeting.go` の `Greet` 関数のコメントを削ると、`exported: exported function Greet should have comment or be unexported (revive)` が `just lint` で検出される。
 - `internal/greeting/greeting.go` または `main.go` 冒頭の `// Package ... は` を削ると、`package-comments: should have a package comment (revive)` が検出される。
 - `os.Setenv(...)` のようなエラーを返す呼び出しの戻り値を受け取らずに書くと、`Error return value of ... is not checked (errcheck)` が検出される。
-- 使わない変数への再代入（例: 後で上書きされるだけの `result := "unused"`）を書くと、`ineffectual assignment to result (ineffassign)` が検出される。
+- 使わない変数への再代入を書くと、`ineffectual assignment to result (ineffassign)` が検出される。宣言しただけで一度も使わない変数は `declared and not used` というコンパイルエラーになり ineffassign の検証にならないため、`result := "a"` → `_ = result` → `result = "unused"` のように、最後の再代入だけが違反になる形にする。
 
 ## モック（gomock）が効いているかの反証
 
