@@ -60,6 +60,7 @@
     "isgomock", // mockgenが生成するモックの構造体フィールド名
     "gobco", // justfile・go.mod・AGENTS.md: Goの条件カバレッジ計測ツール名
     "rillig", // go.mod: gobcoの作者のGitHubユーザー名（モジュールパスの一部）
+    "govulncheck", // justfile・go.mod・README.md: Goの脆弱性検査ツール名
     "pipefail", // justfile: bashの `set -o pipefail` オプション名
     "unwritable", // internal/repository/json_user_repository_test.go: 書き込み不可の状態を指すテスト内の語
     "godoc", // TODO.md: Goのドキュメントツール名
