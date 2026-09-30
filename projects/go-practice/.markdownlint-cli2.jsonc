@@ -12,6 +12,7 @@
     "**/coverage/**", // カバレッジレポート生成物（vitest/pytest-cov等）
     "**/htmlcov/**", // カバレッジHTMLレポート生成物（pytest-cov）
     "**/docs/api/**", // APIドキュメント生成物（gomarkdoc等はMarkdownを直接生成するため対象外にする）
+    "**/API.md", // just doc-reportが生成するAPIドキュメント（生成物のため対象外）
     "**/.venv/**", // Python仮想環境（uv）
     "**/.gradle/**" // Gradleのキャッシュ・生成物
   ]
