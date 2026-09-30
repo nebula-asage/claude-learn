@@ -7,8 +7,9 @@ usage:
     @echo "2. lint        - 静的解析"
     @echo "3. test        - テスト実行"
     @echo "4. cover       - カバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov）"
-    @echo "5. doc         - ドキュメンテーションコメントをターミナルに表示（ファイル生成は doc-report）"
-    @echo "6. run         - アプリケーションを実行"
+    @echo "5. doc         - ドキュメンテーションコメントをターミナルに表示（ファイル生成は doc-report、HTMLは doc-html）"
+    @echo "6. build       - バイナリ __PROJECT_NAME__ を生成"
+    @echo "7. run         - アプリケーションを実行"
     @echo ""
     @echo "レシピ一覧は 'just --list' を参照"
 
@@ -16,16 +17,20 @@ usage:
 fmt:
     gofmt -l -w .
 
-# golangci-lintで静的解析する
-lint:
+# golangci-lintで静的解析する（モックが古いままにならないよう、先に generate を実行する）
+lint: generate
     golangci-lint run ./...
 
-# go testで単体テストを実行する
-test:
+# go testで単体テストを実行する（モックが古いままにならないよう、先に generate を実行する）
+test: generate
     go test ./... -v
 
-# カバレッジを計測し、関数ごとの被覆率をターミナルに表示する
-cover:
+# go:generateディレクティブに従ってモック等の生成コードを再生成する（ディレクティブが無ければ何もしない）
+generate:
+    go generate ./...
+
+# カバレッジを計測し、関数ごとの被覆率をターミナルに表示する（モックが古いままにならないよう、先に generate を実行する）
+cover: generate
     go test ./... -coverprofile=coverage.out
     go tool cover -func=coverage.out
 
@@ -47,11 +52,19 @@ doc-report:
     # 波括弧を文字列リテラルとして組み立てることでリテラルの中括弧をgomarkdocに渡している
     gomarkdoc --output '{{"{{"}}.Dir{{"}}"}}/API.md' ./...
 
+# ドキュメンテーションコメントからHTML形式のAPIドキュメント api.html を生成する（gomarkdocのMarkdown出力をpnpxでmarkedに変換。断片のため文字コード宣言を前置する）
+doc-html:
+    { echo '<meta charset="utf-8">'; gomarkdoc ./... | pnpx marked --gfm; } > api.html
+
+# go buildでバイナリ __PROJECT_NAME__ を生成する
+build:
+    go build -o __PROJECT_NAME__ .
+
 # go runでアプリケーションを実行する
 run:
     go run .
 
-# カバレッジ・ドキュメント生成物を削除する
+# カバレッジ・ドキュメント・ビルド生成物を削除する
 clean:
-    rm -f coverage.out coverage.html coverage.lcov
+    rm -f coverage.out coverage.html coverage.lcov api.html __PROJECT_NAME__
     find . -name API.md -delete

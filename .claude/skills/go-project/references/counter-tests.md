@@ -8,3 +8,10 @@
 - `internal/greeting/greeting.go` または `main.go` 冒頭の `// Package ... は` を削ると、`package-comments: should have a package comment (revive)` が検出される。
 - `os.Setenv(...)` のようなエラーを返す呼び出しの戻り値を受け取らずに書くと、`Error return value of ... is not checked (errcheck)` が検出される。
 - 使わない変数への再代入（例: 後で上書きされるだけの `result := "unused"`）を書くと、`ineffectual assignment to result (ineffassign)` が検出される。
+
+## モック（gomock）が効いているかの反証
+
+- `internal/greeting/greeting_test.go` の `TestGreetFrom` から `EXPECT().Name()` の行を削ると、想定外の呼び出しとして `just test` が落ちる。
+- 同テストの `Return("Go", nil)` を別の値に変えると、`TestGreetFrom` が落ちる。
+- `GreetFrom` の本体で `p.Name()` を呼ばないようにすると、`missing call(s) to Name()` で落ちる。
+- `GreetFrom` のドキュメントコメントを削ると、revive の `exported` が `just lint` で検出する。なおインターフェースのメソッド（`Name`）のコメントは revive の `exported` では強制されない。
