@@ -3,19 +3,32 @@ default: usage
 
 # このプロジェクトで最初に何をすべきか、レシピの実行順序を表示する
 usage:
-    @echo "1. fmt        - フォーマットを適用"
+    @echo "1. fmt        - フォーマットを適用（崩れの確認だけなら fmt-check）"
     @echo "2. lint        - 静的解析"
     @echo "3. test        - テスト実行"
     @echo "4. cover       - カバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov）"
     @echo "5. doc         - ドキュメンテーションコメントをターミナルに表示（ファイル生成は doc-report、HTMLは doc-html）"
     @echo "6. build       - バイナリ __PROJECT_NAME__ を生成"
     @echo "7. run         - アプリケーションを実行"
+    @echo "8. audit       - 依存の脆弱性を検査"
+    @echo "9. check       - フォーマット確認・lint・テスト・脆弱性検査をまとめて実行"
     @echo ""
     @echo "レシピ一覧は 'just --list' を参照"
 
 # gofmtでフォーマットを適用する
 fmt:
     gofmt -l -w .
+
+# フォーマット崩れが無いか確認する（適用はしない）
+fmt-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    unformatted=$(gofmt -l .)
+    if [ -n "$unformatted" ]; then
+        echo "gofmtが必要なファイル:"
+        echo "$unformatted"
+        exit 1
+    fi
 
 # golangci-lintで静的解析する（モックが古いままにならないよう、先に generate を実行する）
 lint: generate
@@ -63,6 +76,13 @@ build:
 # go runでアプリケーションを実行する
 run:
     go run .
+
+# 依存とソースコードの脆弱性をgovulncheck（go.modのtoolで固定）でGo脆弱性DBと照合する（実際に呼び出している脆弱な関数だけを報告する）
+audit:
+    go tool govulncheck ./...
+
+# コミット前に一通り回すためのまとめレシピ
+check: fmt-check lint test audit
 
 # カバレッジ・ドキュメント・ビルド生成物を削除する
 clean:

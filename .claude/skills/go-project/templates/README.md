@@ -21,6 +21,7 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 just build        # バイナリ __PROJECT_NAME__ を生成
 just run          # 実行
 just fmt          # gofmtでフォーマット
+just fmt-check    # フォーマット崩れの確認のみ（適用しない）
 just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知）
 just test         # go testで単体テスト
 just cover        # カバレッジ計測し、ターミナルに未カバー関数を表示
@@ -29,6 +30,8 @@ just doc          # ドキュメンテーションコメントからMarkdown形�
 just doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
 just doc-html     # HTML形式のAPIドキュメント api.html を生成（pnpxでmarkedを取得して変換）
 just generate     # go:generateディレクティブに従ってモック等の生成コードを再生成
+just audit        # 依存の脆弱性をgovulncheckで検査（ネットワークが必要）
+just check        # fmt-check・lint・test・auditをまとめて実行
 just clean        # カバレッジ・ドキュメント・ビルド生成物を削除
 ```
 

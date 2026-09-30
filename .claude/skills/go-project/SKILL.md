@@ -16,7 +16,8 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
 - Go本体・golangci-lint・gomarkdoc・gcov2lcov はユーザーローカルに導入する（sudo・`apt install golang` は使わない）
 - golangci-lint は公式 `install.sh` を使わず、GitHub Releases の tarball と checksums を自分で sha256 照合して展開する
 - golangci-lint の設定は v2 形式（`version: "2"`）
-- テスト・カバレッジは `go test` + `go tool cover`。タスクランナーは just で、`fmt`/`lint`/`test`/`generate`/`cover`/`cover-html`/`cover-lcov`/`doc`/`doc-report`/`doc-html`/`build`/`run`/`clean`を用意する（`lint`/`test`/`cover` は先に `generate` を実行する。`doc-html` は `pnpx` を使うため pnpm が必要）
+- テスト・カバレッジは `go test` + `go tool cover`。タスクランナーは just で、`fmt`/`fmt-check`/`lint`/`test`/`generate`/`cover`/`cover-html`/`cover-lcov`/`doc`/`doc-report`/`doc-html`/`build`/`run`/`audit`/`check`/`clean` を用意する（`lint`/`test`/`cover` は先に `generate` を実行する。`doc-html` は `pnpx` を使うため pnpm が必要）
+- 依存の脆弱性検査は govulncheck（`golang.org/x/vuln`）を `go.mod` の `tool` で固定し、`go tool govulncheck` で実行する（`just audit`。Go脆弱性DBへのネットワークアクセスが必要）。Goには公開直後のバージョンを避ける機能や導入時のコード実行抑制に相当する機能が無く、govulncheck は既知の脆弱性の照合のみでその代替にはならない
 - モックは `go.uber.org/mock`（gomock）を使う。`mockgen` は `go.mod` の `tool` ディレクティブで固定し、`go tool mockgen` で実行する（グローバル導入しない）。インターフェースは利用側パッケージで定義し、`//go:generate` で `mock_*_test.go` として生成する
 - ロジックは `main` パッケージに書かず `internal/<パッケージ名>/` に分離する（revive の `exported` は `main` に効かないため）
 - ドキュメンテーションコメントは revive で強制する。`rules` には `package-comments` と `exported` の両方を明示する（片方を省くとそのチェックが消える）
