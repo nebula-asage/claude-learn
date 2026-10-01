@@ -99,7 +99,14 @@ USER $USERNAME
 # go-projectスキルのホスト向け導入手順と同じ方法。タスクランナーのjustは前述の通り公式Dockerイメージから導入済み）
 ENV PATH="/home/$USERNAME/go/bin:${PATH}"
 RUN go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest \
-    && go install github.com/jandelgado/gcov2lcov@latest
+    && go install github.com/jandelgado/gcov2lcov@latest \
+    && go install github.com/posener/complete/v2/gocomplete@latest
+
+# gocomplete（goコマンドのbash補完）の有効化
+# 標準の `COMP_INSTALL=1 gocomplete` は ~/.bashrc を書き換えるため使わず、bash-completionが
+# 遅延ロードするディレクトリに `complete -C` 行を直接配置する（pnpm補完と同じ置き場）
+RUN mkdir -p /home/$USERNAME/.local/share/bash-completion/completions \
+    && echo "complete -C /home/$USERNAME/go/bin/gocomplete go" > /home/$USERNAME/.local/share/bash-completion/completions/go
 
 # pnpm（公式スタンドアロンインストーラで導入する。npm/nvm/corepackいずれにも依存しない。
 # $HOME配下にsudo不要で導入され、実行バイナリはnpmレジストリの署名とチェックサムで検証される）
