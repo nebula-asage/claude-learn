@@ -53,21 +53,21 @@ cover-html: cover
 
 # カバレッジを計測し、coverage.lcov（Coverage Gutters拡張向け）を生成する
 cover-lcov: cover
-    gcov2lcov -infile=coverage.out -outfile=coverage.lcov
+    go tool gcov2lcov -infile=coverage.out -outfile=coverage.lcov
 
 # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力する
 doc:
-    gomarkdoc ./...
+    go tool gomarkdoc ./...
 
 # 各パッケージディレクトリにAPI.mdとしてAPIドキュメントを生成する
 doc-report:
     # gomarkdoc自身の出力テンプレート構文はjustの変数展開と衝突するため、
     # 波括弧を文字列リテラルとして組み立てることでリテラルの中括弧をgomarkdocに渡している
-    gomarkdoc --output '{{"{{"}}.Dir{{"}}"}}/API.md' ./...
+    go tool gomarkdoc --output '{{"{{"}}.Dir{{"}}"}}/API.md' ./...
 
 # ドキュメンテーションコメントからHTML形式のAPIドキュメント api.html を生成する（gomarkdocのMarkdown出力をpnpxでmarkedに変換。断片のため文字コード宣言を前置する）
 doc-html:
-    { echo '<meta charset="utf-8">'; gomarkdoc ./... | pnpx marked --gfm; } > api.html
+    { echo '<meta charset="utf-8">'; go tool gomarkdoc ./... | pnpx marked --gfm; } > api.html
 
 # go buildでバイナリ __PROJECT_NAME__ を生成する
 build:

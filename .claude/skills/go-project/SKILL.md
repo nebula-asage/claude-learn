@@ -13,7 +13,7 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
 
 ## このスキルが前提とする条件（変更しない）
 
-- Go本体・golangci-lint・gomarkdoc・gcov2lcov はユーザーローカルに導入する（sudo・`apt install golang` は使わない）
+- Go本体・golangci-lint はユーザーローカルに導入する。gomarkdoc・gcov2lcov は`go.mod`の`tool`ディレクティブで固定し`go tool`で実行する（sudo・`apt install golang` は使わない）
 - golangci-lint は公式 `install.sh` を使わず、GitHub Releases の tarball と checksums を自分で sha256 照合して展開する
 - golangci-lint の設定は v2 形式（`version: "2"`）
 - テスト・カバレッジは `go test` + `go tool cover`。タスクランナーは just で、`fmt`/`fmt-check`/`lint`/`test`/`generate`/`cover`/`cover-html`/`cover-lcov`/`doc`/`doc-report`/`doc-html`/`build`/`run`/`audit`/`check`/`clean` を用意する（`lint`/`test`/`cover` は先に `generate` を実行する。`doc-html` は `pnpx` を使うため pnpm が必要）
@@ -29,17 +29,15 @@ description: Go言語の練習・開発プロジェクト一式（go.mod+main.go
 
 ## 手順
 
-1. **Go・golangci-lint・gomarkdoc・gcov2lcov・justがホストに導入済みか確認する**
+1. **Go・golangci-lint・justがホストに導入済みか確認する**（gomarkdoc・gcov2lcovはテンプレートの`go.mod`の`tool`ディレクティブで固定され`go tool`経由で実行されるため、ホストへの個別導入は不要）
    - `command -v go` と `go version` でGo本体を確認する。
    - `command -v golangci-lint` と `golangci-lint version` でgolangci-lintを確認する（v2系であることも確認する。v1系しか入っていない場合は設定ファイルの互換性に注意し、ユーザーに再導入してよいか確認する）。
-   - `command -v gomarkdoc` と `gomarkdoc --version` でgomarkdocを確認する。
-   - `command -v gcov2lcov` でgcov2lcov（Coverage Gutters拡張向けのlcov変換ツール）を確認する。
    - `command -v just` と `just --version` でjust（タスクランナー）を確認する。
    - 全て導入済みならステップ3に進んでよい。
 
 2. **未導入の場合、ユーザーローカルに導入する**
-   - **これはホスト環境に実際にソフトウェアを導入する操作であり、`~/.bashrc` へのPATH追記も伴う。** ユーザーが今回の依頼で明示的にこの方法を指定していない場合は、実行前に「Go/golangci-lint/gomarkdoc/gcov2lcov/justが入っていないのでユーザーローカルに導入してよいか（sudoは使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
-   - 具体的な導入コマンド（Go本体・golangci-lint・gomarkdoc・gcov2lcov・just）は `.claude/skills/go-project/references/install.md` を参照する。
+   - **これはホスト環境に実際にソフトウェアを導入する操作であり、`~/.bashrc` へのPATH追記も伴う。** ユーザーが今回の依頼で明示的にこの方法を指定していない場合は、実行前に「Go/golangci-lint/justが入っていないのでユーザーローカルに導入してよいか（sudoは使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
+   - 具体的な導入コマンド（Go本体・golangci-lint・just）は `.claude/skills/go-project/references/install.md` を参照する。
 
 3. **配置先とプロジェクト名を確認する**
    - このリポジトリの `projects/README.md` のルールにより、基本は `projects/<project-name>/` 配下に1プロジェクトとして自己完結させる。

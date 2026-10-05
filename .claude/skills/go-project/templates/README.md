@@ -11,7 +11,7 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 
 - Go 1.26 以上（`go version` で確認）
 - [golangci-lint](https://golangci-lint.run/) v2系（`golangci-lint version` で確認）
-- [gomarkdoc](https://github.com/princjef/gomarkdoc)（`gomarkdoc --version` で確認。`go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest` で導入）
+- [gomarkdoc](https://github.com/princjef/gomarkdoc)・[gcov2lcov](https://github.com/jandelgado/gcov2lcov)（`go.mod` の `tool` ディレクティブでバージョン固定済みのため別途導入は不要。`go tool gomarkdoc` / `go tool gcov2lcov` として実行される）
 - [just](https://just.systems/)（`just --version` で確認。GitHub ReleasesのtarballとSHA256SUMSで導入）
 - [go.uber.org/mock](https://github.com/uber-go/mock)（単体テストのモック生成。`go.mod` の `tool` ディレクティブでバージョン固定済みのため別途導入は不要。`go tool mockgen` として実行される）
 

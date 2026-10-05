@@ -1,6 +1,6 @@
 # ユーザーローカルに導入する
 
-**これはホスト環境に実際にソフトウェアを導入する操作であり、`~/.bashrc` へのPATH追記も伴う。** ユーザーが今回の依頼で明示的にこの方法を指定していない場合は、実行前に「Go/golangci-lint/gomarkdoc/gcov2lcov/justが入っていないのでユーザーローカルに導入してよいか（sudoは使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
+**これはホスト環境に実際にソフトウェアを導入する操作であり、`~/.bashrc` へのPATH追記も伴う。** ユーザーが今回の依頼で明示的にこの方法を指定していない場合は、実行前に「Go/golangci-lint/justが入っていないのでユーザーローカルに導入してよいか（sudoは使わない）」を確認する。すでに指定・許可されている場合はそのまま進めてよい。
 
 **Go本体:**
 
@@ -51,25 +51,10 @@
 
 - 一時ファイル（`/tmp/golangci-lint*`）は導入後に削除する。
 
-**gomarkdoc:**
+**gomarkdoc・gcov2lcov:**
 
-- `go install` で導入する。Goのモジュールシステムが標準でチェックサム検証（GOSUMDB）を行うため、golangci-lintのような追加の手動検証は不要。
-
-  ```bash
-  go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
-  ```
-
-- `$(go env GOPATH)/bin/gomarkdoc` に配置される。多数の間接依存（cobra/viper等）を取得するため初回はやや時間がかかる点に留意する。
-
-**gcov2lcov:**
-
-- `go install` で導入する。gomarkdocと同様、GOSUMDBによるチェックサム検証があるため追加の手動検証は不要。
-
-  ```bash
-  go install github.com/jandelgado/gcov2lcov@latest
-  ```
-
-- `$(go env GOPATH)/bin/gcov2lcov` に配置される。
+- ホストへの個別導入は不要。テンプレートの `go.mod` に `tool` ディレクティブとして固定されており、`go tool gomarkdoc` / `go tool gcov2lcov` で実行される（初回実行時にビルドされる）。依存のチェックサムは `go.sum` とGOSUMDBで検証される。
+- 既存プロジェクトに追加する場合は `go get -tool github.com/princjef/gomarkdoc/cmd/gomarkdoc github.com/jandelgado/gcov2lcov` を実行する。
 
 **just:**
 
