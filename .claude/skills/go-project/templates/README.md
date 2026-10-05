@@ -12,6 +12,7 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 - Go 1.26 以上（`go version` で確認）
 - [golangci-lint](https://golangci-lint.run/) v2系（`golangci-lint version` で確認）
 - [gomarkdoc](https://github.com/princjef/gomarkdoc)・[gcov2lcov](https://github.com/jandelgado/gcov2lcov)（`go.mod` の `tool` ディレクティブでバージョン固定済みのため別途導入は不要。`go tool gomarkdoc` / `go tool gcov2lcov` として実行される）
+- [goimports](https://pkg.go.dev/golang.org/x/tools/cmd/goimports)（`just fmt` でimportの整理・並べ替えに使う。同じく `go.mod` の `tool` で固定済みで、`go tool goimports` として実行される）
 - [just](https://just.systems/)（`just --version` で確認。GitHub ReleasesのtarballとSHA256SUMSで導入）
 - [go.uber.org/mock](https://github.com/uber-go/mock)（単体テストのモック生成。`go.mod` の `tool` ディレクティブでバージョン固定済みのため別途導入は不要。`go tool mockgen` として実行される）
 
@@ -20,7 +21,7 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 ```sh
 just build        # バイナリ __PROJECT_NAME__ を生成
 just run          # 実行
-just fmt          # gofmtでフォーマット
+just fmt          # gofmt・goimportsでフォーマットとimport整理を適用
 just fmt-check    # フォーマット崩れの確認のみ（適用しない）
 just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知）
 just test         # go testで単体テスト

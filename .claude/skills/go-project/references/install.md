@@ -51,10 +51,10 @@
 
 - 一時ファイル（`/tmp/golangci-lint*`）は導入後に削除する。
 
-**gomarkdoc・gcov2lcov:**
+**gomarkdoc・gcov2lcov・goimports:**
 
-- ホストへの個別導入は不要。テンプレートの `go.mod` に `tool` ディレクティブとして固定されており、`go tool gomarkdoc` / `go tool gcov2lcov` で実行される（初回実行時にビルドされる）。依存のチェックサムは `go.sum` とGOSUMDBで検証される。
-- 既存プロジェクトに追加する場合は `go get -tool github.com/princjef/gomarkdoc/cmd/gomarkdoc github.com/jandelgado/gcov2lcov` を実行する。
+- ホストへの個別導入は不要。テンプレートの `go.mod` に `tool` ディレクティブとして固定されており、`go tool gomarkdoc` / `go tool gcov2lcov` / `go tool goimports` で実行される（初回実行時にビルドされる）。依存のチェックサムは `go.sum` とGOSUMDBで検証される。
+- 既存プロジェクトに追加する場合は `go get -tool github.com/princjef/gomarkdoc/cmd/gomarkdoc github.com/jandelgado/gcov2lcov golang.org/x/tools/cmd/goimports` を実行する。
 
 **just:**
 

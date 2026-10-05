@@ -32,8 +32,8 @@ echo "=== clean ==="; just clean
 - `just --list`: レシピ一覧が表示される
 - `build`: バイナリ `<プロジェクト名>` が生成される
 - `run`（`go run .`）: 正常に動作する
-- `fmt`（`gofmt -l -w .`）: フォーマットが適用される
-- `fmt-check`: 整形済みなら無出力で終了する。崩れたファイルがあると一覧を出して失敗する
+- `fmt`（`gofmt -l -w .` と `go tool goimports -l -w .`）: フォーマットとimport整理が適用される
+- `fmt-check`: 整形済みなら無出力で終了する。gofmt/goimportsのどちらかで崩れたファイルがあると一覧を出して失敗する
 - `audit`: `No vulnerabilities found.` で終了する（Go脆弱性DBへのネットワークアクセスが必要）
 - `check`: `fmt-check`・`lint`・`test`・`audit` が続けて通る
 - `lint`（`golangci-lint run ./...`）: `0 issues.` で終了する。`main.go`・`internal/greeting/greeting.go` にパッケージコメント／関数コメントが入っているかもここで再確認する
