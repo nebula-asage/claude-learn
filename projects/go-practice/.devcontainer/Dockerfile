@@ -94,13 +94,12 @@ RUN golangci-lint completion bash > /etc/bash_completion.d/golangci-lint
 
 USER $USERNAME
 
-# gomarkdoc・gcov2lcovはgo installで導入する
+# gomarkdoc・gcov2lcovはgo.modのtoolディレクティブで固定し`go tool`で実行するため、ここでは導入しない。
+# gocompleteだけはプロジェクトの依存ではなくシェル補完の仕組みなのでgo installで導入する
 # （Goモジュールの標準機能であるGOSUMDBによるチェックサム検証が効くため、追加の手動検証は不要。
-# go-projectスキルのホスト向け導入手順と同じ方法。タスクランナーのjustは前述の通り公式Dockerイメージから導入済み）
+# タスクランナーのjustは前述の通り公式Dockerイメージから導入済み）
 ENV PATH="/home/$USERNAME/go/bin:${PATH}"
-RUN go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest \
-    && go install github.com/jandelgado/gcov2lcov@latest \
-    && go install github.com/posener/complete/v2/gocomplete@latest
+RUN go install github.com/posener/complete/v2/gocomplete@latest
 
 # gocomplete（goコマンドのbash補完）の有効化
 # 標準の `COMP_INSTALL=1 gocomplete` は ~/.bashrc を書き換えるため使わず、bash-completionが
