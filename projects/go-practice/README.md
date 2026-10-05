@@ -45,7 +45,7 @@ go run . create john@example.com "John Doe" 1234567890 25
 ```sh
 just build        # バイナリ go-practice を生成
 just run          # 実行（引数なし。Usageが表示される）
-just fmt          # gofmtでフォーマット
+just fmt          # gofmt・goimportsでフォーマットとimport整理を適用
 just fmt-check    # フォーマット崩れの確認のみ（適用しない）
 just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知）
 just test         # go testで単体テスト

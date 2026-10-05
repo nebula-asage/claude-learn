@@ -11,7 +11,7 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 `just` タスクランナーを使う。引数なしで `just` を実行すると推奨の実行順序が表示される。
 
 ```sh
-just fmt          # gofmtでフォーマットを適用
+just fmt          # gofmt・goimportsでフォーマットとimport整理を適用
 just fmt-check    # フォーマット崩れの確認のみ（適用しない）
 just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知。先に generate を自動実行）
 just test         # go testで単体テスト実行（-v付き。先に generate を自動実行）

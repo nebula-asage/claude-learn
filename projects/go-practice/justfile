@@ -15,17 +15,18 @@ usage:
     @echo ""
     @echo "レシピ一覧は 'just --list' を参照"
 
-# gofmtでフォーマットを適用する
+# gofmtでフォーマットを適用し、goimports（go.modのtoolで固定）でimportの整理・並べ替えも行う
 fmt:
     gofmt -l -w .
+    go tool goimports -l -w .
 
 # フォーマット崩れが無いか確認する（適用はしない）
 fmt-check:
     #!/usr/bin/env bash
     set -euo pipefail
-    unformatted=$(gofmt -l .)
+    unformatted=$(gofmt -l .; go tool goimports -l .)
     if [ -n "$unformatted" ]; then
-        echo "gofmtが必要なファイル:"
+        echo "gofmt/goimportsが必要なファイル:"
         echo "$unformatted"
         exit 1
     fi
