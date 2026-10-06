@@ -185,6 +185,29 @@ def classify(diff_lines: list[str]) -> str:
     return f"追記のみ: プロジェクト固有の拡張の可能性が高い（+{added}）"
 
 
+def similarity(a: str, b: str) -> float:
+    """2つのテキストの類似度を返す。
+
+    通常の類似度（`SequenceMatcher.ratio`）は長さが大きく違うと低く出る。テンプレートに
+    コメントや設定を大量に追記した直後は、未反映の配置済みファイルが「別物」と誤判定されて
+    検査から漏れるため、短い方がどれだけ長い方に含まれているか（包含率）も併せて見て、
+    大きい方を採用する。
+
+    Args:
+        a: 比較するテキスト。
+        b: 比較するテキスト。
+
+    Returns:
+        0.0〜1.0 の類似度。
+    """
+    matcher = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    shorter = min(len(a), len(b))
+    if shorter == 0:
+        return matcher.ratio()
+    matched = sum(block.size for block in matcher.get_matching_blocks())
+    return max(matcher.ratio(), matched / shorter)
+
+
 def read(path: Path) -> str | None:
     """テキストファイルを読む。バイナリや読み取り不能なら None を返す。
 
@@ -297,7 +320,7 @@ def main() -> int:
                 if deployed_text is None:
                     continue
                 expected = substitute(template_text, derive_placeholders(deployed))
-                ratio = difflib.SequenceMatcher(None, expected, deployed_text).ratio()
+                ratio = similarity(expected, deployed_text)
                 if ratio < args.min_similarity:
                     # 別スキル由来・別用途のファイルにたまたま名前が一致しただけとみなす
                     continue
