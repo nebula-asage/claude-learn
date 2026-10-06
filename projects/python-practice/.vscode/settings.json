@@ -25,13 +25,6 @@
   },
   // Code Spell Checker拡張機能が読み込む設定ファイルを明示する（配置先直下のcspell.jsonを自動検出に頼らず固定する）
   "cSpell.files": ["${workspaceFolder}/cspell.json"],
-  // JSON/JSONC（コメント付きJSON）はVS Code組み込みフォーマッタで完結するため、保存時に自動整形する
-  "[json]": {
-    "editor.formatOnSave": true
-  },
-  "[jsonc]": {
-    "editor.formatOnSave": true
-  },
   // uvが作る仮想環境(.venv)をPythonインタプリタとして使う
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   // ターミナルを開いたときに仮想環境を自動で有効化する

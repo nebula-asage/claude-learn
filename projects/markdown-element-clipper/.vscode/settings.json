@@ -25,13 +25,6 @@
   },
   // Code Spell Checker拡張機能が読み込む設定ファイルを明示する（配置先直下のcspell.jsonを自動検出に頼らず固定する）
   "cSpell.files": ["${workspaceFolder}/cspell.json"],
-  // JSON/JSONC（コメント付きJSON）はVS Code組み込みフォーマッタで完結するため、保存時に自動整形する
-  "[json]": {
-    "editor.formatOnSave": true
-  },
-  "[jsonc]": {
-    "editor.formatOnSave": true
-  },
   // ESLint(flat config: eslint.config.js)は拡張機能側が自動検出するため追加設定は不要
   // フォーマットはPrettierに統一し、保存時に自動フォーマットする
   "[typescript]": {
