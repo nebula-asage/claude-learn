@@ -64,6 +64,47 @@
     "pipefail", // justfile: bashの `set -o pipefail` オプション名
     "unwritable", // internal/repository/json_user_repository_test.go: 書き込み不可の状態を指すテスト内の語
     "godoc", // TODO.md: Goのドキュメントツール名
-    "GOARCH" // TODO.md: Goの環境変数名（ビルド対象アーキテクチャ）
+    "GOARCH", // TODO.md: Goの環境変数名（ビルド対象アーキテクチャ）
+    "goimports", // AGENTS.md・justfile・README.md・go.mod: import整理ツール名
+    // 以下はgo.modの間接依存のモジュールパス（GitHubユーザー名・リポジトリ名・ドメインパス）の一部
+    "jandelgado", // go.mod: gcov2lcovの作者のGitHubユーザー名
+    "winio", // go.mod: Microsoft/go-winio
+    "ewma", // go.mod: VividCortex/ewma
+    "cheggaaa", // go.mod: cheggaaa/pb
+    "emirpasic", // go.mod: emirpasic/gods
+    "fatih", // go.mod: fatih/color
+    "fsnotify", // go.mod: fsnotify/fsnotify
+    "gcfg", // go.mod: gopkg.in/gcfg
+    "imdario", // go.mod: imdario/mergo
+    "mergo", // go.mod: imdario/mergo
+    "inconshreveable", // go.mod: inconshreveable/mousetrap
+    "jbenet", // go.mod: jbenet/go-context
+    "kevinburke", // go.mod: kevinburke/ssh_config
+    "logrusorgru", // go.mod: logrusorgru/aurora
+    "magiconair", // go.mod: magiconair/properties
+    "mattn", // go.mod: mattn/go-isatty・go-runewidth等
+    "isatty", // go.mod: mattn/go-isatty
+    "runewidth", // go.mod: mattn/go-runewidth
+    "mgutz", // go.mod: mgutz/ansi
+    "mitchellh", // go.mod: mitchellh/go-homedir・mapstructure
+    "mapstructure", // go.mod: mitchellh/mapstructure
+    "mageutil", // go.mod: モジュールパスの一部
+    "termdiff", // go.mod: モジュールパスの一部
+    "rivo", // go.mod: rivo/uniseg
+    "uniseg", // go.mod: rivo/uniseg
+    "russross", // go.mod: russross/blackfriday
+    "blackfriday", // go.mod: russross/blackfriday
+    "sergi", // go.mod: sergi/go-diff
+    "sirupsen", // go.mod: sirupsen/logrus
+    "logrus", // go.mod: sirupsen/logrus
+    "afero", // go.mod: spf13/afero
+    "jwalterweatherman", // go.mod: spf13/jwalterweatherman
+    "pflag", // go.mod: spf13/pflag
+    "subosito", // go.mod: subosito/gotenv
+    "gotenv", // go.mod: subosito/gotenv
+    "xanzy", // go.mod: xanzy/ssh-agent
+    "gopkg", // go.mod: gopkg.in/...
+    "mvdan", // go.mod: mvdan.cc/xurls
+    "xurls" // go.mod: mvdan.cc/xurls
   ]
 }
