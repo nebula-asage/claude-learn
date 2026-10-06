@@ -14,11 +14,11 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 just fmt          # gofmt・goimportsでフォーマットとimport整理を適用
 just fmt-check    # フォーマット崩れの確認のみ（適用しない）
 just lint         # golangci-lintで静的解析（exportされた識別子のドキュメントコメント欠落もここで検知。先に generate を自動実行）
-just test         # go testで単体テスト実行（-v付き。先に generate を自動実行）
-just cover        # カバレッジ計測し、関数ごとの被覆率をターミナルに表示（先に generate を自動実行）
+just test         # go testで単体テスト実行（-v付き。先に generate を自動実行）。対象・フラグ指定可: just test ./internal/service -run TestCreate
+just cover        # カバレッジ計測し、関数ごとの被覆率をターミナルに表示（先に generate を自動実行）。対象指定可: just cover ./internal/service
 just cover-html   # カバレッジ計測し、coverage.html にHTMLレポートを生成
 just cover-lcov   # カバレッジ計測し、coverage.lcov（Coverage Gutters拡張向け）を生成
-just cover-branch # gobcoで条件カバレッジ（各条件式のtrue/false両方の通過）を計測し、未通過の分岐を表示
+just cover-branch # gobcoで条件カバレッジ（各条件式のtrue/false両方の通過）を計測し、未通過の分岐を表示。対象指定可: just cover-branch ./internal/service
 just doc          # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力
 just doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
 just doc-html     # HTML形式のAPIドキュメント api.html を生成（pnpxでmarkedを取得して変換）

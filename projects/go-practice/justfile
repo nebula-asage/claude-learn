@@ -5,7 +5,7 @@ default: usage
 usage:
     @echo "1. fmt        - フォーマットを適用（崩れの確認だけなら fmt-check）"
     @echo "2. lint        - 静的解析"
-    @echo "3. test        - テスト実行"
+    @echo "3. test        - テスト実行（対象指定: just test ./internal/service -run TestCreate）"
     @echo "4. cover       - カバレッジ計測（HTMLは cover-html、Coverage Gutters向けは cover-lcov、分岐は cover-branch）"
     @echo "5. doc         - ドキュメンテーションコメントをターミナルに表示（ファイル生成は doc-report、HTMLは doc-html）"
     @echo "6. build       - バイナリ go-practice を生成"
@@ -35,17 +35,17 @@ fmt-check:
 lint: generate
     golangci-lint run ./...
 
-# go testで単体テストを実行する（モックが古いままにならないよう、先に generate を実行する）
-test: generate
-    go test ./... -v
+# go testで単体テストを実行する（モックが古いままにならないよう、先に generate を実行する）。対象パッケージと追加フラグを指定できる（例: just test ./internal/service -run TestCreate）
+test pkg='./...' *flags: generate
+    go test {{pkg}} -v {{flags}}
 
 # go:generateディレクティブに従ってモック等の生成コードを再生成する
 generate:
     go generate ./...
 
-# カバレッジを計測し、関数ごとの被覆率をターミナルに表示する（モックが古いままにならないよう、先に generate を実行する）
-cover: generate
-    go test ./... -coverprofile=coverage.out
+# カバレッジを計測し、関数ごとの被覆率をターミナルに表示する（モックが古いままにならないよう、先に generate を実行する）。対象パッケージと追加フラグを指定できる（例: just cover ./internal/service）
+cover pkg='./...' *flags: generate
+    go test {{pkg}} {{flags}} -coverprofile=coverage.out
     go tool cover -func=coverage.out
 
 # カバレッジを計測し、coverage.html にHTMLレポートを生成する
@@ -56,15 +56,20 @@ cover-html: cover
 cover-lcov: cover
     go tool gcov2lcov -infile=coverage.out -outfile=coverage.lcov
 
-# 条件カバレッジ（各条件式がtrue/falseの両方で評価されたか）をパッケージごとに計測し、未通過の分岐をターミナルに表示する（標準のgo testでは測れない。gobcoはgo.modのtoolで固定）
-cover-branch:
+# 条件カバレッジ（各条件式がtrue/falseの両方で評価されたか）をパッケージごとに計測し、未通過の分岐をターミナルに表示する（標準のgo testでは測れない。gobcoはgo.modのtoolで固定）。対象のパッケージディレクトリを複数指定できる（例: just cover-branch ./internal/service）。省略時は全パッケージ
+cover-branch *dirs:
     #!/usr/bin/env bash
     set -euo pipefail
     # gobcoは ./... に対応せず1パッケージずつしか計測できないため、パッケージごとに実行する
     # gobcoはインポートパスではなくディレクトリパスを要求するため、モジュール名の接頭辞を "." に置き換える
-    module=$(go list -m)
-    for pkg in $(go list ./...); do
-        dir=".${pkg#"${module}"}"
+    dirs=({{dirs}})
+    if [ ${#dirs[@]} -eq 0 ]; then
+        module=$(go list -m)
+        for pkg in $(go list ./...); do
+            dirs+=(".${pkg#"${module}"}")
+        done
+    fi
+    for dir in "${dirs[@]}"; do
         echo "== ${dir}"
         go tool gobco "${dir}"
     done
