@@ -10,5 +10,13 @@ export default defineConfig({
     // 事前の `pnpm run build` が必須なため `pnpm test` からは除外し、
     // `pnpm run test:e2e`（vitest.e2e.config.ts）で別途実行する。
     exclude: [...configDefaults.exclude, "test/e2e/**"],
+    // coverage.include を明示しないと、テストから一度もimportされなかったsrc配下のファイルは
+    // カバレッジレポートに一切現れない（0/0で「対象ファイル無し」に見えてしまう）。
+    // include を指定すると、未テストのファイルも0%として一覧に出るため、
+    // 「まだテストが無い」ことがレポート上で分かるようになる。
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+    },
   },
 });
