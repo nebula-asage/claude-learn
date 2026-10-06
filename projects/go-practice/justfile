@@ -56,15 +56,20 @@ cover-html: cover
 cover-lcov: cover
     go tool gcov2lcov -infile=coverage.out -outfile=coverage.lcov
 
-# 条件カバレッジ（各条件式がtrue/falseの両方で評価されたか）をパッケージごとに計測し、未通過の分岐をターミナルに表示する（標準のgo testでは測れない。gobcoはgo.modのtoolで固定）
-cover-branch:
+# 条件カバレッジ（各条件式がtrue/falseの両方で評価されたか）をパッケージごとに計測し、未通過の分岐をターミナルに表示する（標準のgo testでは測れない。gobcoはgo.modのtoolで固定）。対象のパッケージディレクトリを複数指定できる（例: just cover-branch ./internal/service）。省略時は全パッケージ
+cover-branch *dirs:
     #!/usr/bin/env bash
     set -euo pipefail
     # gobcoは ./... に対応せず1パッケージずつしか計測できないため、パッケージごとに実行する
     # gobcoはインポートパスではなくディレクトリパスを要求するため、モジュール名の接頭辞を "." に置き換える
-    module=$(go list -m)
-    for pkg in $(go list ./...); do
-        dir=".${pkg#"${module}"}"
+    dirs=({{dirs}})
+    if [ ${#dirs[@]} -eq 0 ]; then
+        module=$(go list -m)
+        for pkg in $(go list ./...); do
+            dirs+=(".${pkg#"${module}"}")
+        done
+    fi
+    for dir in "${dirs[@]}"; do
         echo "== ${dir}"
         go tool gobco "${dir}"
     done
