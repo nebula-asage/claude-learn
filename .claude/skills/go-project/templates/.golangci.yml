@@ -1,22 +1,38 @@
+# golangci-lint 設定（v2形式）
 version: "2"
 
 linters:
+  # standard = errcheck / govet / ineffassign / staticcheck / unused
   default: standard
   enable:
+    # エラーの戻り値の確認漏れを検出する
     - errcheck
+    # 標準の静的解析（Printfの書式不一致など）
     - govet
+    # 代入したのに使われない変数を検出する
     - ineffassign
+    # 高機能な静的解析（非推奨APIの使用、バグの温床になる書き方など）
     - staticcheck
+    # 未使用の定数・関数・型・フィールドを検出する
     - unused
+    # スタイル・ドキュメンテーションコメントの規約チェック（下のsettings参照）
     - revive
+    # 可読性・性能・バグ傾向を見る多目的な診断
     - gocritic
+    # コメント内の TODO / FIXME / BUG などのキーワードを検出する
+    # （残したままコミットされるのを防ぐ。godoxの既定キーワードは TODO, BUG, FIXME）
+    - godox
   settings:
     revive:
       rules:
+        # パッケージにドキュメンテーションコメントがあるか
         - name: package-comments
+        # エクスポートされる識別子にコメントがあるか、形式が正しいか
         - name: exported
 
 formatters:
   enable:
+    # 標準のコード整形
     - gofmt
+    # gofmt + importの並べ替え・未使用importの削除
     - goimports
