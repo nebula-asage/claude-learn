@@ -10,6 +10,8 @@ Goの練習用プロジェクト。リンター・フォーマッター・単体
 - `internal/repository/` — ユーザーデータの永続化（JSONファイル）
 - `internal/service/` — 入力値のバリデーションとビジネスロジック
 - `internal/command/` — コマンドライン操作の実装
+- `internal/logger/` — `log/slog`ベースのロガー。メッセージIDでメッセージファイルの文言を出力する
+- `messages.properties` — ログメッセージの定義ファイル（key=value形式）
 - `internal/greeting/` — 挨拶メッセージを組み立てるロジック（`main`パッケージには`revive`の`exported`ルール（exportされた識別子にコメント必須）が適用されないため、コメント強制を意味あるものにするためにロジックを別パッケージへ分離している）
 
 ## 前提
@@ -39,6 +41,42 @@ go run . create john@example.com "John Doe" 1234567890 25
 
 引数付きでCLIを実行する場合、`just run`は空白入りの引数（ユーザー名等）を正しく渡せないため、
 上記のように`go run .`を直接使う。
+
+## ログ
+
+コマンドの開始・終了・失敗を`log/slog`で出力する。1回の実行ごとに`request_id`を自動で付与する。
+設定は環境変数で行う。
+
+| 環境変数 | 値 | 既定 |
+| --- | --- | --- |
+| `LOG_OUTPUT` | `stdout` / `file` / `syslog` | `stdout` |
+| `LOG_FILE` | `LOG_OUTPUT=file`のときの出力先 | `go-practice.log` |
+| `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | `info` |
+| `LOG_FORMAT` | `text` / `json` | `text` |
+| `LOG_SOURCE` | `true`で呼び出し元の関数名・ファイル名・行番号を出力 | `false` |
+| `LOG_MESSAGES_FILE` | メッセージファイルのパス | `messages.properties` |
+
+- `LOG_OUTPUT=stdout`のときは、コマンド本来の出力（`list`の表など）と混ざらないよう標準エラー出力へ書く
+- メッセージファイルの既定パスはカレントディレクトリからの相対パス。別のディレクトリから実行する場合は`LOG_MESSAGES_FILE`を指定する
+- シスログへは全て`INFO`の優先度で送る（レベルごとの優先度分けはしていない）
+
+```sh
+LOG_FORMAT=json LOG_SOURCE=true go run . list
+LOG_OUTPUT=file LOG_FILE=app.log go run . list
+```
+
+メッセージファイルは`key=value`形式で、`#`で始まる行と空行は無視する。値には`fmt`書式のプレースホルダ（`%s`・`%d`・`%v`）を書ける。
+
+```properties
+app.failed=command failed: %s
+```
+
+コード側ではメッセージIDとパラメータを渡す。`With`で共通属性を付けた派生ロガーは、複数のgoroutineから同時に使っても安全。
+
+```go
+log = log.With("request_id", id)
+log.Error("app.failed", err)
+```
 
 ## 開発用コマンド
 
