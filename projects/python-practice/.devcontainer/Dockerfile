@@ -4,9 +4,31 @@
 # 最初のFROMより前（グローバルスコープ）で宣言したARGしか使えない（BuildKitの制約）ため、
 # ここで宣言してjust-binステージのFROMに渡し、本体では名前付きステージからCOPYする
 ARG JUST_VERSION=1.58.0
+# just-lsp（justfile用LSPサーバー）のバージョン。取得専用ステージ(just-lsp-bin)で使うためここで宣言する
+ARG JUST_LSP_VERSION=0.8.0
 FROM ghcr.io/casey/just:${JUST_VERSION} AS just-bin
 
-FROM ubuntu:24.04
+# ---- just-lsp取得ステージ ----
+# just本体と違い公式Dockerイメージが無いため、GitHubリリースからバイナリを直接ダウンロードする。
+# 公開されているSHA256SUMSで改竄がないことを検証してから展開する。
+# 最終イメージのapt-get等と依存関係がないため、BuildKitが並列にビルドする。
+# 検証済みバイナリだけを最終ステージにコピーするので、curlの作業ファイルは最終イメージに残らない
+FROM ubuntu:24.04 AS just-lsp-bin
+ARG JUST_LSP_VERSION
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
+WORKDIR /tmp/dl
+RUN ARCHIVE="just-lsp-${JUST_LSP_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+    && curl -fsSLO "https://github.com/terror/just-lsp/releases/download/${JUST_LSP_VERSION}/${ARCHIVE}" \
+    && curl -fsSLO "https://github.com/terror/just-lsp/releases/download/${JUST_LSP_VERSION}/SHA256SUMS" \
+    && sha256sum --ignore-missing -c SHA256SUMS \
+    && tar xzf "$ARCHIVE"
+
+# ---- 共通ベースステージ ----
+# OSパッケージ・ロケール・just・非rootユーザーまで。以降のツール導入ステージはここから分岐する
+FROM ubuntu:24.04 AS base
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -80,29 +102,25 @@ RUN if getent group $USER_GID >/dev/null; then \
 #   USER切り替え後（vscode権限）で導入するツールの場合は、下のpnpm補完のように
 #   /home/$USERNAME/.local/share/bash-completion/completions/ に配置する（root権限ディレクトリに書けないため）
 
-# uv本体を導入する（公式配布イメージからバイナリをコピーするAstral推奨の方法）
-# このプロジェクトの主目的であるPythonバージョン管理はuvに任せる（`uv python install`で3.12を導入）。
-# OS標準のpython3（apt-get、上記のパッケージリスト参照）はdevcontainer-ubuntu-jaスキルの標準搭載として
-# 別途共存させており、uv管理のPythonとは独立したシステムPythonという位置づけ
+# ---- Python(uv)導入ステージ ----
+# uvにPython 3.12を導入させる（distro提供のpython3には依存しない）。node-tools・claude-cliと並列にビルドされる
+FROM base AS python-tools
+ARG USERNAME=vscode
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-# uvはbash補完サブコマンドを持つため、生成物を配置して有効化する（root権限で実施）
-RUN uv generate-shell-completion bash > /etc/bash_completion.d/uv
-
-USER $USERNAME
-
 # `uv python install` が導入する実行ファイルへのシンボリックリンク置き場をPATHに追加する
 ENV PATH="/home/$USERNAME/.local/bin:$PATH"
-
-# uvにPython 3.12を導入させる（distro提供のpython3には依存しない）
+USER $USERNAME
 RUN uv python install 3.12
+
+# ---- Node.js系ツール導入ステージ（pnpm / Node.js / Playwright Chromium本体）----
+# claude-cliステージと互いに依存しないため並列にビルドされ、片方の変更でもう片方のキャッシュは無効化されない。
+# OS依存ライブラリ(apt)だけは最終ステージで導入する（aptの成果物はステージ間でコピーできないため）
+FROM base AS node-tools
+ARG USERNAME=vscode
+USER $USERNAME
 
 # pnpm（公式スタンドアロンインストーラで導入する。npm/nvm/corepackいずれにも依存しない。
 # $HOME配下にsudo不要で導入され、実行バイナリはnpmレジストリの署名とチェックサムで検証される）
-# 言語ランタイムは本来devcontainer-ubuntu-jaスキルの対象外だが、Playwrightでのブラウザ自動操作・
-# スクリーンショット取得を標準機能として持たせるための例外としてNode.jsを導入する
-# （Python3はNode.jsと同様の例外としてdevcontainer-ubuntu-jaが標準搭載。このプロジェクトの主目的である
-# Pythonバージョン管理はuv管理のまま、Node.jsはPlaywright専用の付随物という位置づけ）
 ARG PNPM_VERSION=12
 ENV PNPM_HOME=/home/$USERNAME/.local/share/pnpm
 ENV PATH="$PNPM_HOME/bin:$PATH"
@@ -119,38 +137,73 @@ RUN mkdir -p /home/$USERNAME/.config/pnpm \
     && printf 'ignoreScripts: true\nminimumReleaseAge: 10080\n' > /home/$USERNAME/.config/pnpm/config.yaml
 
 # Node.js（distro提供のnodejsパッケージやnvmには依存せず、pnpm自身のruntime機能で導入・管理する）
+# 言語ランタイムは本来このスキルの対象外だが、Playwrightでのブラウザ自動操作・スクリーンショット取得を
+# 標準機能として持たせるための例外としてNode.jsを導入する（Python3はapt-getで別途標準搭載済み。
+# Goなど他言語ランタイムは対象外のまま）。
 RUN pnpm runtime set node lts -g
 
-# Playwright(Chromium)の導入
-# ブラウザ本体を /opt/ms-playwright に固定する（既定のままだと$HOME配下に入り、
-# 他ユーザーや将来のUID変更で読めなくなる可能性があるため。ENVでコンテナ全体に伝播させる）
-# OS依存ライブラリの導入(`install --with-deps`)はvscodeユーザーのNOPASSWD sudo経由で行われる
+# Playwright(Chromium)のブラウザ本体の導入
+# 本体を /opt/ms-playwright に固定する（既定のままだと$HOME配下に入り、
+# 他ユーザーや将来のUID変更で読めなくなる可能性があるため。ENVでコンテナ全体に伝播させる）。
+# このステージではOS依存ライブラリは入れない（--with-depsなし）。
+# ダウンロードしたブラウザはpnpmのストアキャッシュ等と別に /opt に置かれるため、そのまま最終ステージへコピーできる
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
-    sudo mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" \
+RUN sudo mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" \
     && sudo chown $USERNAME:$USERNAME "$PLAYWRIGHT_BROWSERS_PATH" \
     && pnpm add -g playwright \
-    && pnpm dlx playwright install --with-deps chromium \
-    && sudo apt-get install -y --no-install-recommends fonts-noto-cjk \
+    && pnpm dlx playwright install chromium \
     && sudo chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
 
-# Claude Code CLI の導入
+# ---- Claude Code CLI 導入ステージ ----
 # 公式ネイティブインストーラを使う（Node.jsに依存せず、$HOME配下にsudo不要で導入される。
 # チェックサム検証込み。CLI自身が自動更新する設計のため、Dockerfileではバージョン固定しない）
+FROM base AS claude-cli
+ARG USERNAME=vscode
+USER $USERNAME
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# just-lsp（justfile用LSPサーバー）の導入
-# just本体と違い公式Dockerイメージが無いため、GitHubリリースからバイナリを直接ダウンロードして配置する。
-# 公開されているSHA256SUMSで改竄がないことを検証してから展開する（$HOME配下にsudo不要で導入。
-# PATHは上記のuv導入時に設定済みの/home/$USERNAME/.local/binをそのまま使う）
-ARG JUST_LSP_VERSION=0.8.0
-RUN cd /tmp \
-    && ARCHIVE="just-lsp-${JUST_LSP_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
-    && curl -fsSLO "https://github.com/terror/just-lsp/releases/download/${JUST_LSP_VERSION}/${ARCHIVE}" \
-    && curl -fsSLO "https://github.com/terror/just-lsp/releases/download/${JUST_LSP_VERSION}/SHA256SUMS" \
-    && sha256sum --ignore-missing -c SHA256SUMS \
-    && tar xzf "$ARCHIVE" \
-    && mkdir -p /home/$USERNAME/.local/bin \
-    && mv just-lsp /home/$USERNAME/.local/bin/ \
-    && rm -f "$ARCHIVE" SHA256SUMS
+# ---- 最終ステージ ----
+# baseに各ステージの成果物をコピーして組み立てる。
+# 変更頻度の低いもの（node-tools）から順にCOPYし、頻繁に変わるもの（claude-cli）を後ろに置く
+FROM base AS final
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+# Playwright(Chromium)のOS依存ライブラリと日本語フォント
+# OS依存ライブラリの導入(`install-deps`)はNOPASSWD sudo経由で行う（node-toolsからコピーしたplaywrightを使う）
+ENV PNPM_HOME=/home/$USERNAME/.local/share/pnpm
+ENV PATH="/home/$USERNAME/.local/bin:$PNPM_HOME/bin:$PATH"
+ENV PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright
+COPY --from=node-tools --chown=$USERNAME:$USER_GID /home/$USERNAME/.local/share/pnpm /home/$USERNAME/.local/share/pnpm
+COPY --from=node-tools --chown=$USERNAME:$USER_GID /home/$USERNAME/.local/share/bash-completion /home/$USERNAME/.local/share/bash-completion
+COPY --from=node-tools --chown=$USERNAME:$USER_GID /home/$USERNAME/.config/pnpm /home/$USERNAME/.config/pnpm
+COPY --from=node-tools /opt/ms-playwright /opt/ms-playwright
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked \
+    apt-get update \
+    && playwright install-deps chromium \
+    && apt-get install -y --no-install-recommends fonts-noto-cjk
+
+# uv本体を導入する（公式配布イメージからバイナリをコピーするAstral推奨の方法）
+# このプロジェクトの主目的であるPythonバージョン管理はuvに任せる（python-toolsステージで3.12を導入済み）。
+# OS標準のpython3（apt-get、baseステージ参照）はdevcontainer-ubuntu-jaスキルの標準搭載として
+# 別途共存させており、uv管理のPythonとは独立したシステムPythonという位置づけ
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# uvはbash補完サブコマンドを持つため、生成物を配置して有効化する
+RUN uv generate-shell-completion bash > /etc/bash_completion.d/uv
+COPY --from=python-tools --chown=$USERNAME:$USER_GID /home/$USERNAME/.local/share/uv /home/$USERNAME/.local/share/uv
+COPY --from=python-tools --chown=$USERNAME:$USER_GID /home/$USERNAME/.local/bin /home/$USERNAME/.local/bin
+
+# Claude Code CLI
+# ~/.local/bin/claude は ~/.local/share/claude/versions/<ver> とのハードリンクだが、COPYではハードリンクが
+# 保持されず約250MBが二重になるため、実体(versions/)だけコピーしてシンボリックリンクを張り直す
+COPY --from=claude-cli --chown=$USERNAME:$USER_GID /home/$USERNAME/.local/share/claude /home/$USERNAME/.local/share/claude
+RUN mkdir -p /home/$USERNAME/.local/bin \
+    && ln -s "$(ls -d /home/$USERNAME/.local/share/claude/versions/* | head -n 1)" /home/$USERNAME/.local/bin/claude \
+    && chown -h $USERNAME:$USER_GID /home/$USERNAME/.local/bin /home/$USERNAME/.local/bin/claude
+
+# just-lsp
+COPY --from=just-lsp-bin --chown=$USERNAME:$USER_GID /tmp/dl/just-lsp /home/$USERNAME/.local/bin/just-lsp
+
+USER $USERNAME
