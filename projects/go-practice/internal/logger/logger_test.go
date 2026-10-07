@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -223,6 +224,36 @@ func TestOpenWriterErrors(t *testing.T) {
 	}
 	if _, _, err := NewFromConfig(Config{Output: "bogus"}, io.Discard, nil); err == nil {
 		t.Error("NewFromConfig must propagate error")
+	}
+}
+
+// TestConcurrentUse は複数goroutineから同じロガー（および With で派生したロガー）を
+// 同時に使っても、データ競合が起きず、ログが1行ずつ壊れずに出力されることを確認する。
+// データ競合の検出には go test -race で実行する。
+func TestConcurrentUse(t *testing.T) {
+	const goroutines, perGoroutine = 16, 50
+
+	var buf bytes.Buffer
+	base := newJSONLogger(t, &buf, slog.LevelDebug)
+
+	var wg sync.WaitGroup
+	for g := range goroutines {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			l := base.With("request_id", g)
+			for i := range perGoroutine {
+				l.Info("hello", "user", i)
+				l.Warn("no.such.id")
+				l.With("n", i).Error("plain")
+				l.Debug("debug", "i", i)
+			}
+		}()
+	}
+	wg.Wait()
+
+	if got, want := len(decode(t, &buf)), goroutines*perGoroutine*4; got != want {
+		t.Errorf("got %d logs, want %d", got, want)
 	}
 }
 

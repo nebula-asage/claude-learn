@@ -10,6 +10,9 @@ import (
 
 // Messages はメッセージIDからメッセージテンプレートへの対応表。
 // テンプレートは fmt.Sprintf と同じ書式のプレースホルダ（%s, %d, %v など）を含められる。
+//
+// 読み取り（Format）は複数のgoroutineから同時に行えるが、map のため書き込みとの同時実行は安全でない。
+// ロガーに渡した後は変更しないこと。
 type Messages map[string]string
 
 // ParseMessages は key=value 形式のメッセージ定義を r から読み込む。

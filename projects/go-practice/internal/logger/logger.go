@@ -16,6 +16,11 @@ const (
 
 // Logger はアプリケーションが依存するロガーのインターフェース。
 // テストでは差し替え可能な実装（記録用のフェイクなど）を渡せる。
+//
+// New / NewFromConfig が返す実装は、複数のgoroutineから同時に呼び出して安全である。
+// 実装は構築後に変更されず、With は元のロガーを変更せず新しいロガーを返す。
+// 出力時の排他制御は slog のハンドラが行い、With で派生したロガー同士も同じ出力先を安全に共有する。
+// params に渡した値を別のgoroutineが書き換えている場合の安全性は、呼び出し側の責任とする。
 type Logger interface {
 	// Debug は開発用の自由文メッセージを出力する。args は slog と同じ key, value の並び。
 	Debug(msg string, args ...any)
