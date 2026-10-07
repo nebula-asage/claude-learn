@@ -67,6 +67,7 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
 - タイムゾーン: `Asia/Tokyo`
 - 非rootユーザー `vscode`（UID/GID 1000、パスワードなしsudo）。ベースイメージに同じUID/GIDが既にある場合はリネームして再利用する（`useradd`の重複エラー回避）
 - 導入パッケージ: `locales` `tzdata` `sudo` `git` `curl` `ca-certificates` `bash-completion` `vim` `less` `jq` `python3` `python3-venv` `python3-pip`（すべて必須。ビルドツールチェーン（`build-essential`）はこのスキルの対象外なので含めない。必要な場合は配置後の`Dockerfile`にユーザー自身が追記する。`bash-completion` を外さない）
+- **Dockerfileはマルチステージ構成。** `just-bin` / `just-lsp-bin`（取得専用）、`base`（apt・ロケール・just・非rootユーザー）、`node-tools`（pnpm・Node.js・Playwright本体）、`claude-cli`（Claude Code）の各ステージを互いに独立に並列ビルドし、`final`で`COPY --from`して組み立てる。狙いは、ツール1つの更新で他のキャッシュを無効化しないことと、取得用の作業ファイルを最終イメージに残さないこと。Playwrightのブラウザ本体は`node-tools`で入れるが、OS依存ライブラリ（apt）はステージ間でコピーできないため`final`で`playwright install-deps chromium`を実行する。Claude Codeの`~/.local/bin/claude`は`versions/`配下とのハードリンクでCOPYすると容量が二重になるため、`versions/`だけコピーしてシンボリックリンクを張り直している
 - `apt-get install` はBuildKitのキャッシュマウント（`RUN --mount=type=cache,target=/var/cache/apt` 等）でパッケージキャッシュを永続化する前提。`Dockerfile` 先頭の `# syntax=docker/dockerfile:1` は外さない。追記するRUN命令でパッケージを追加インストールする場合も、同様にキャッシュマウントを使う
 - **pnpm（`PNPM_VERSION` ARGで指定、既定12系。公式スタンドアロンインストーラで導入し、npm/nvm/corepackいずれにも依存しない）とNode.js（pnpm自身の`runtime`機能で導入・管理、既定LTS）、Playwright（Chromium、`playwright install --with-deps` によるOS依存ライブラリ込み）を標準搭載する。** Node.js/Playwrightの搭載自体は「言語ランタイムは対象外」という下記の原則に対する明示的な例外で、ブラウザ自動操作・HTML成果物のスクリーンショット確認をコンテナ内で追加導入なしに行えるようにするためのもの。ブラウザ本体は `PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright` に固定し、非rootユーザー`vscode`からも読めるようパーミッションを揃えてある
   - devcontainer内でヘッドレスブラウザとして日本語を含むページを正確に描画確認したい場合、CJKフォント（`fonts-noto-cjk`、これも標準搭載）が必要（未導入だと文字が豆腐化する）
@@ -75,7 +76,7 @@ Ubuntu 24.04 / `ja_JP.UTF-8` / `Asia/Tokyo` 固定構成の devcontainer 一式�
 - **just（タスクランナー）とjust-lsp（justfile用LSPサーバー）を標準搭載する。**
   - `just`は公式Dockerイメージ（`ghcr.io/casey/just`、`JUST_VERSION` ARGで指定、既定1.58.0）から`COPY --from`でバイナリをコピーする公式手順を使う（https://github.com/casey/just#docker）。`/usr/local/bin/`に配置されるため全ユーザーから使え、bash補完も`just --completions bash`の出力を`/etc/bash_completion.d/just`に配置済み
     - **`COPY --from=ghcr.io/casey/just:${JUST_VERSION}`のように外部イメージ参照の中でARGを変数展開する場合、そのARGは最初の`FROM`より前（グローバルスコープ）で宣言したものでなければならない**（BuildKitの制約。ステージ内で`ARG JUST_VERSION=...`と宣言してもCOPY --from側では展開されず`variable expansion is not supported for --from`で即座にビルド失敗する。実機のdocker build検証で判明した）。そのため`Dockerfile`冒頭で`ARG JUST_VERSION=1.58.0`を宣言し、`FROM ghcr.io/casey/just:${JUST_VERSION} AS just-bin`という名前付きステージを立て、本体側では`COPY --from=just-bin /just /usr/local/bin/`のようにステージ名で参照する。このテンプレートを改変する際、ARGをうっかりステージ内に戻すと同じエラーで壊れるので注意する
-  - `just-lsp`は公式Dockerイメージが無いため、GitHubリリース（`JUST_LSP_VERSION` ARGで指定、既定0.8.0）からLinux x86_64向けバイナリ（`x86_64-unknown-linux-gnu`）をダウンロードし、公開されている`SHA256SUMS`で検証してから`/home/$USERNAME/.local/bin/`に配置する
+  - `just-lsp`は公式Dockerイメージが無いため、GitHubリリース（`JUST_LSP_VERSION` ARGで指定、既定0.8.0）からLinux x86_64向けバイナリ（`x86_64-unknown-linux-gnu`）をダウンロードし、公開されている`SHA256SUMS`で検証してから`/home/$USERNAME/.local/bin/`に配置する。取得・検証は専用ステージ`just-lsp-bin`で行い、最終ステージには検証済みバイナリだけを`COPY --from`する。`JUST_LSP_VERSION`もステージ内で`ARG JUST_LSP_VERSION`と再宣言して使うため、ファイル冒頭（最初の`FROM`より前）で宣言する
   - どちらもバージョンは`ARG`で固定しており、更新する場合はそれぞれのGitHubリリースページで最新版を確認してARGの既定値を変更する
 
 Node.js・Python以外の言語ランタイム（Goなど）はこのスキルの対象外。プロジェクト固有の依存関係が必要な場合は、配置後の `Dockerfile` にユーザー自身が追記する。ただし追記したプログラムがbash補完に対応する場合は、上記手順6に従って有効化すること。
