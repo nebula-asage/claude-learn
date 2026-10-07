@@ -58,6 +58,18 @@ go run . list
 
 依存の向きは `command → service`、`repository` は `service.UserRepository` を、`service.UserService`（具象の `*service.UserService`）は `command.UserService` をそれぞれ満たすだけで、両者を結び付けるのは `main.go`。`internal/greeting` は上記のユーザー管理ロジックとは独立した挨拶メッセージ生成のみを行うパッケージで、`main` パッケージには `revive` の `exported` ルール（exportされた識別子へのコメント必須）が適用されないため、コメント強制を意味あるものにする目的で分離されている。
 
+### ロガー（`internal/logger`）
+
+`log/slog` をラップした `Logger` インターフェースを提供する。アプリのコードは具象ではなくこのインターフェースに依存し、テストでは記録用のフェイクに差し替えられる。
+
+- `Info` / `Warn` / `Error` はメッセージID（`messages.properties` のキー）とパラメータを受け取り、`fmt` 書式のプレースホルダを埋めて出力する。IDは `msg_id` 属性にも付く。未定義のIDはID自体をメッセージにして `msg_missing=true` を付けて出力する（ログを失わない）。`Debug` だけは自由文
+- メッセージは `key=value` 形式のファイルから読み込む（`ParseMessages` / `LoadMessages`）。新しいメッセージを使うときは `messages.properties` にキーを追加する
+- `With("request_id", ...)` で共通属性を持つ派生ロガーを作る。元のロガーは変更されない
+- 出力先は `Config.Output` で stdout / file / syslog を選ぶ。`NewFromConfig` が返す `closeFn` を終了前に呼ぶこと
+- `Config.AddSource`（環境変数 `LOG_SOURCE=true`）で呼び出し元の関数名・ファイル名・行番号を出力する。位置は `runtime.Callers` で取得しており、`callerPC` は `Debug`/`Info`/`Warn`/`Error` から直接呼ぶ前提（呼び出し段数を変えると位置がずれる）
+- 構築後は不変で、複数goroutineから同時に使える（`TestConcurrentUse`、`go test -race` で確認）。ただし `Messages`（map）はロガーに渡した後に変更しないこと
+- 環境変数による設定（`LOG_OUTPUT` / `LOG_FILE` / `LOG_LEVEL` / `LOG_FORMAT` / `LOG_SOURCE` / `LOG_MESSAGES_FILE`）の読み取りは `main.go` の `newLogger` に集めている。詳細は README の「ログ」を参照
+
 ### 入力値の制約
 
 - メールアドレス: 標準的なメール形式（`internal/service/user_service.go` の `emailPattern`）

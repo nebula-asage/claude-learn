@@ -56,12 +56,12 @@ func LoadMessages(path string) (Messages, error) {
 // Format は id のテンプレートに params を埋め込んだメッセージを返す。
 // id が未定義の場合は id をそのまま返し、found は false になる。
 func (m Messages) Format(id string, params ...any) (msg string, found bool) {
-	tmpl, ok := m[id]
+	template, ok := m[id]
 	if !ok {
 		return id, false
 	}
 	if len(params) == 0 {
-		return tmpl, true
+		return template, true
 	}
-	return fmt.Sprintf(tmpl, params...), true
+	return fmt.Sprintf(template, params...), true
 }

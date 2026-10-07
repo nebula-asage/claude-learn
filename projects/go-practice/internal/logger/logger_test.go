@@ -217,7 +217,7 @@ func TestOpenWriterErrors(t *testing.T) {
 	}
 	bad := filepath.Join(t.TempDir(), "no-dir", "app.log")
 	if _, _, err := OpenWriter(Config{Output: OutputFile, FilePath: bad}, io.Discard); err == nil {
-		t.Error("want error for unopenable file")
+		t.Error("want error for file in missing directory")
 	}
 	if _, _, err := OpenWriter(Config{Output: "bogus"}, io.Discard); err == nil {
 		t.Error("want error for unknown output")
