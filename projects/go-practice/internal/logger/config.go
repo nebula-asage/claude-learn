@@ -51,6 +51,8 @@ type Config struct {
 	Level slog.Level
 	// JSON が true なら JSON 形式、false ならテキスト形式で出力する。
 	JSON bool
+	// AddSource が true なら、ログを出力した呼び出し元の関数名・ファイル名・行番号を source として出力する。
+	AddSource bool
 }
 
 // openSyslog はシスログへの接続を開く。テストで差し替える。
@@ -95,7 +97,7 @@ func NewFromConfig(cfg Config, stdout io.Writer, msgs Messages) (l Logger, close
 	if err != nil {
 		return nil, nil, err
 	}
-	opts := &slog.HandlerOptions{Level: cfg.Level}
+	opts := &slog.HandlerOptions{Level: cfg.Level, AddSource: cfg.AddSource}
 	var h slog.Handler = slog.NewTextHandler(w, opts)
 	if cfg.JSON {
 		h = slog.NewJSONHandler(w, opts)

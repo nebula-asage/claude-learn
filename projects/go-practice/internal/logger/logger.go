@@ -4,6 +4,8 @@ package logger
 import (
 	"context"
 	"log/slog"
+	"runtime"
+	"time"
 )
 
 // 構造化ログに付与する属性キー。
@@ -45,19 +47,29 @@ func New(handler slog.Handler, msgs Messages) Logger {
 }
 
 func (s *slogLogger) Debug(msg string, args ...any) {
-	s.l.Debug(msg, args...)
+	s.log(callerPC(), slog.LevelDebug, msg, args)
 }
 
 func (s *slogLogger) Info(id string, params ...any) {
-	s.logByID(slog.LevelInfo, id, params)
+	s.logByID(callerPC(), slog.LevelInfo, id, params)
 }
 
 func (s *slogLogger) Warn(id string, params ...any) {
-	s.logByID(slog.LevelWarn, id, params)
+	s.logByID(callerPC(), slog.LevelWarn, id, params)
 }
 
 func (s *slogLogger) Error(id string, params ...any) {
-	s.logByID(slog.LevelError, id, params)
+	s.logByID(callerPC(), slog.LevelError, id, params)
+}
+
+// callerPC は Debug/Info/Warn/Error を呼び出した側のプログラムカウンタを返す。
+// ラッパー内部ではなく呼び出し元の位置をログの source（AddSource）に記録するために、
+// 公開メソッドから直接呼ぶこと（スキップするフレーム数がこの呼び出し位置を前提にしている）。
+func callerPC() uintptr {
+	var pcs [1]uintptr
+	// 0: runtime.Callers, 1: callerPC, 2: Debug/Info/Warn/Error, 3: 呼び出し元
+	runtime.Callers(3, pcs[:])
+	return pcs[0]
 }
 
 func (s *slogLogger) With(args ...any) Logger {
@@ -66,11 +78,22 @@ func (s *slogLogger) With(args ...any) Logger {
 
 // logByID はメッセージを解決して出力する。IDが未定義のときはIDをメッセージとして出力し、
 // ログを失わないようにしつつ KeyMessageMissing で気付けるようにする。
-func (s *slogLogger) logByID(level slog.Level, id string, params []any) {
+func (s *slogLogger) logByID(pc uintptr, level slog.Level, id string, params []any) {
 	msg, found := s.msgs.Format(id, params...)
 	attrs := []any{KeyMessageID, id}
 	if !found {
 		attrs = append(attrs, KeyMessageMissing, true)
 	}
-	s.l.Log(context.Background(), level, msg, attrs...)
+	s.log(pc, level, msg, attrs)
+}
+
+// log は pc を呼び出し位置として記録を作り、ハンドラに渡す。
+func (s *slogLogger) log(pc uintptr, level slog.Level, msg string, args []any) {
+	ctx := context.Background()
+	if !s.l.Enabled(ctx, level) {
+		return
+	}
+	r := slog.NewRecord(time.Now(), level, msg, pc)
+	r.Add(args...)
+	_ = s.l.Handler().Handle(ctx, r)
 }

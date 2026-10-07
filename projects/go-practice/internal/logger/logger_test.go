@@ -227,6 +227,35 @@ func TestOpenWriterErrors(t *testing.T) {
 	}
 }
 
+// TestSourceIsCaller は AddSource 有効時に、ラッパー内部ではなく呼び出し元の
+// 関数名・ファイル名・行番号が記録されることを確認する。
+func TestSourceIsCaller(t *testing.T) {
+	var buf bytes.Buffer
+	l := New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true}), testMessages(t))
+
+	l.Info("plain")
+	l.Warn("plain")
+	l.Error("plain")
+	l.Debug("d")
+	l.With("k", "v").Info("plain")
+
+	for i, log := range decode(t, &buf) {
+		src, ok := log["source"].(map[string]any)
+		if !ok {
+			t.Fatalf("log %d: no source: %v", i, log)
+		}
+		if file, _ := src["file"].(string); filepath.Base(file) != "logger_test.go" {
+			t.Errorf("log %d: file = %v, want logger_test.go", i, src["file"])
+		}
+		if fn, _ := src["function"].(string); !strings.HasSuffix(fn, ".TestSourceIsCaller") {
+			t.Errorf("log %d: function = %v", i, src["function"])
+		}
+		if line, _ := src["line"].(float64); line == 0 {
+			t.Errorf("log %d: line = %v", i, src["line"])
+		}
+	}
+}
+
 // TestConcurrentUse は複数goroutineから同じロガー（および With で派生したロガー）を
 // 同時に使っても、データ競合が起きず、ログが1行ずつ壊れずに出力されることを確認する。
 // データ競合の検出には go test -race で実行する。

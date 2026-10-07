@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"go-practice/internal/command"
 	"go-practice/internal/logger"
@@ -60,6 +61,7 @@ func envOr(key, def string) string {
 //   - LOG_FILE: LOG_OUTPUT=file のときの出力先（既定 go-practice.log）
 //   - LOG_LEVEL: debug / info（既定）/ warn / error
 //   - LOG_FORMAT: text（既定）/ json
+//   - LOG_SOURCE: true にすると呼び出し元の関数名・ファイル名・行番号を出力（既定 false）
 //   - LOG_MESSAGES_FILE: メッセージファイル（既定 messages.properties）
 //
 // ログが標準出力に混ざらないよう、LOG_OUTPUT=stdout のときは標準エラー出力へ書く。
@@ -76,11 +78,14 @@ func newLogger() (logger.Logger, func() error, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	addSource, _ := strconv.ParseBool(os.Getenv("LOG_SOURCE"))
 	cfg := logger.Config{
 		Output:   output,
 		FilePath: envOr("LOG_FILE", defaultLogFile),
 		Level:    level,
 		JSON:     os.Getenv("LOG_FORMAT") == "json",
+		// 値は strconv.ParseBool が受け付ける形式（1, true など）。不正な値は無効として扱う。
+		AddSource: addSource,
 	}
 	return logger.NewFromConfig(cfg, os.Stderr, msgs)
 }
