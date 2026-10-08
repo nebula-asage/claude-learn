@@ -54,8 +54,10 @@
   "files.eol": "\n",
   // ファイルの文字エンコーディングを内容から自動推測する
   "files.autoGuessEncoding": true,
-  // インデント幅・タブ/スペースをファイルの内容から自動検出する
-  "editor.detectIndentation": true,
+  // インデント幅・タブ/スペースをファイルの内容から自動検出しない（下のtabSizeを常に適用する）
+  "editor.detectIndentation": false,
+  // タブ1つ分のインデント幅を常に4にする
+  "editor.tabSize": 4,
   // 差分表示で行頭・行末の空白の違いも差分として表示する
   "diffEditor.ignoreTrimWhitespace": false,
   // ソース管理ビューでファイルをツリー表示にする
