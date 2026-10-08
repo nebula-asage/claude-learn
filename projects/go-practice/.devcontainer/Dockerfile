@@ -111,10 +111,12 @@ ENV PATH="/usr/local/go/bin:/home/$USERNAME/go/bin:${PATH}"
 USER $USERNAME
 
 # gomarkdoc・gcov2lcovはgo.modのtoolディレクティブで固定し`go tool`で実行するため、ここでは導入しない。
-# gocompleteだけはプロジェクトの依存ではなくシェル補完の仕組みなのでgo installで導入する
+# gocompleteはプロジェクトの依存ではなくシェル補完の仕組み、goplsはエディタ（VS Code）用の
+# 言語サーバーでプロジェクトの依存ではないため、どちらもgo installで導入する
 # （Goモジュールの標準機能であるGOSUMDBによるチェックサム検証が効くため、追加の手動検証は不要。
 # タスクランナーのjustは公式Dockerイメージから導入済み）
-RUN go install github.com/posener/complete/v2/gocomplete@latest
+RUN go install github.com/posener/complete/v2/gocomplete@latest \
+    && go install golang.org/x/tools/gopls@latest
 
 # gocomplete（goコマンドのbash補完）の有効化
 # 標準の `COMP_INSTALL=1 gocomplete` は ~/.bashrc を書き換えるため使わず、bash-completionが
