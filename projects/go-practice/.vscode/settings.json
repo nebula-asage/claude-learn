@@ -32,8 +32,13 @@
     "editor.defaultFormatter": "golang.go",
     "editor.formatOnSave": true
   },
-  // lintはgolangci-lint（.golangci.ymlのv2設定を読み込む）に統一する
-  "go.lintTool": "golangci-lint",
+  // lintはgolangci-lint v2（.golangci.ymlのv2設定を読み込む）に統一する
+  // v2系は専用の "golangci-lint-v2" を指定する（"golangci-lint" はv1向けの起動引数になる）
+  "go.lintTool": "golangci-lint-v2",
+  // 実行ファイルのパスは適用先環境に合わせる（devcontainerのDockerfileが配置する場所）
+  "go.alternateTools": {
+    "golangci-lint-v2": "/usr/local/bin/golangci-lint"
+  },
   "go.lintOnSave": "workspace",
   // カバレッジの可視化（Coverage Gutters拡張）: `just cover-lcov` で
   // coverage.out をgcov2lcovでlcov形式に変換したcoverage.lcovを読み込み、
