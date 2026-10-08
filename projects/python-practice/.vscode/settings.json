@@ -7,8 +7,10 @@
   "files.eol": "\n",
   // ファイルの文字エンコーディングを内容から自動推測する
   "files.autoGuessEncoding": true,
-  // インデント幅・タブ/スペースをファイルの内容から自動検出する
-  "editor.detectIndentation": true,
+  // インデント幅・タブ/スペースをファイルの内容から自動検出しない（下のtabSizeを常に適用する）
+  "editor.detectIndentation": false,
+  // タブ1つ分のインデント幅を常に4にする
+  "editor.tabSize": 4,
   // 桁の目安となる縦線を表示する（80桁・120桁）
   "editor.rulers": [80, 120],
   // 選択範囲に関わらず、空白文字を常に可視化する
