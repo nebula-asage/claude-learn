@@ -21,14 +21,14 @@ just cover-lcov   # カバレッジ計測し、coverage.lcov（Coverage Gutters�
 just cover-branch # gobcoで条件カバレッジ（各条件式のtrue/false両方の通過）を計測し、未通過の分岐を表示。対象指定可: just cover-branch ./internal/service
 just doc          # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力
 just doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
-just doc-html     # HTML形式のAPIドキュメント api.html を生成（pnpxでmarkedを取得して変換）
+just doc-html     # HTML形式のAPIドキュメント api.html を生成（markedで変換）
 just build        # バイナリ go-practice を生成
 just generate     # go:generateディレクティブに従ってモック等の生成コードを再生成
 just audit        # 依存の脆弱性をgovulncheckで検査（ネットワークが必要）
 just check        # fmt-check・lint・test・auditをまとめて実行
 just clean        # カバレッジ・ドキュメント・ビルド生成物を削除
-just cspell       # pnpxでcspellを取得し、スペルチェックを実行
-just markdownlint # pnpxでmarkdownlint-cli2を取得し、Markdownをlint
+just cspell       # cspellでスペルチェックを実行
+just markdownlint # markdownlint-cli2でMarkdownをlint
 ```
 
 単体テストのみ実行する場合は `go test` を直接使う。
