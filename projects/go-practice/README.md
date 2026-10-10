@@ -91,7 +91,7 @@ just cover        # カバレッジ計測し、ターミナルに未カバー関
 just cover-html   # カバレッジ計測し、coverage.html にHTMLレポートを生成
 just doc          # ドキュメンテーションコメントからMarkdown形式のAPIドキュメントをターミナルに出力
 just doc-report   # 各パッケージディレクトリに API.md としてAPIドキュメントを生成
-just doc-html     # HTML形式のAPIドキュメント api.html を生成（pnpxでmarkedを取得して変換）
+just doc-html     # HTML形式のAPIドキュメント api.html を生成（markedで変換）
 just generate     # go:generateディレクティブに従ってモック等の生成コードを再生成
 just audit        # 依存の脆弱性をgovulncheckで検査（ネットワークが必要）
 just check        # fmt-check・lint・test・auditをまとめて実行

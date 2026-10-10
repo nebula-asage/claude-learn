@@ -84,9 +84,9 @@ doc-report:
     # 波括弧を文字列リテラルとして組み立てることでリテラルの中括弧をgomarkdocに渡している
     go tool gomarkdoc --output '{{"{{"}}.Dir{{"}}"}}/API.md' ./...
 
-# ドキュメンテーションコメントからHTML形式のAPIドキュメント api.html を生成する（gomarkdocのMarkdown出力をpnpxでmarkedに変換。断片のため文字コード宣言を前置する）
+# ドキュメンテーションコメントからHTML形式のAPIドキュメント api.html を生成する（gomarkdocのMarkdown出力をmarkedに変換。断片のため文字コード宣言を前置する）
 doc-html:
-    { echo '<meta charset="utf-8">'; go tool gomarkdoc ./... | pnpx marked --gfm; } > api.html
+    { echo '<meta charset="utf-8">'; go tool gomarkdoc ./... | marked --gfm; } > api.html
 
 # go buildでバイナリ go-practice を生成する
 build:
@@ -108,10 +108,10 @@ clean:
     rm -f coverage.out coverage.html coverage.lcov api.html go-practice
     find . -name API.md -delete
 
-# pnpxでcspellを取得し、スペルチェックを実行する（未知語が出た場合はcspell.jsonのwordsに追記して解消する）
+# cspell（devcontainerに導入済み）でスペルチェックを実行する（未知語が出た場合はcspell.jsonのwordsに追記して解消する）
 cspell:
-    pnpx cspell --no-progress .
+    cspell --no-progress .
 
-# pnpxでmarkdownlint-cli2を取得し、Markdownの構文・スタイルをlintする
+# markdownlint-cli2（devcontainerに導入済み）でMarkdownの構文・スタイルをlintする
 markdownlint:
-    pnpx markdownlint-cli2 "**/*.md"
+    markdownlint-cli2 "**/*.md"

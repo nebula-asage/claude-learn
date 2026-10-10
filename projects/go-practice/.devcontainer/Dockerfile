@@ -166,6 +166,12 @@ RUN sudo mkdir -p "$PLAYWRIGHT_BROWSERS_PATH" \
     && pnpm dlx playwright install chromium \
     && sudo chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
 
+# justfileから使うCLIツール（cspell・markdownlint-cli2・marked）のグローバル導入
+# justfileのレシピ（cspell / markdownlint / doc-html）が毎回pnpxで取得しないよう、ビルド時に導入しておく。
+# 上で書いたグローバル設定（minimumReleaseAge・ignoreScripts）がそのまま効くため、
+# サプライチェーン攻撃対策は pnpx 利用時と同じ水準を保つ。バイナリは $PNPM_HOME/bin に入りPATHに乗る
+RUN pnpm add -g cspell markdownlint-cli2 marked
+
 # ---- Claude Code CLI 導入ステージ ----
 # 公式ネイティブインストーラを使う（Node.jsに依存せず、$HOME配下にsudo不要で導入される。
 # チェックサム検証込み。CLI自身が自動更新する設計のため、Dockerfileではバージョン固定しない）
