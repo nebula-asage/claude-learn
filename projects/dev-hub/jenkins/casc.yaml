@@ -1,0 +1,15 @@
+jenkins:
+  # nginx が Redmine で認証したユーザー名を X-Forwarded-User で受け取る
+  securityRealm:
+    reverseProxy:
+      forwardedUser: "X-Forwarded-User"
+      headerGroups: ""
+      headerGroupsDelimiter: ""
+      inhibitInferRootDN: true
+      disableLdapEmailResolver: true
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+unclassified:
+  location:
+    url: "http://localhost:8080/jenkins/"
