@@ -1,0 +1,93 @@
+# nginx(リバースプロキシ + Redmine認証) / Redmine + PostgreSQL / Jenkins / Subversion
+# 公開ポートは nginx の 1 つだけ。他のサービスは内部ネットワークのみ。
+name: dev-hub
+
+services:
+  nginx:
+    image: nginx:1.28-alpine
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - redmine
+      - jenkins
+      - svn
+    restart: unless-stopped
+
+  postgresql:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: redmine
+      POSTGRES_PASSWORD: ${DB_PASS:?DB_PASS を .env に設定してください}
+      POSTGRES_DB: redmine_production
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U redmine -d redmine_production"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redmine:
+    image: sameersbn/redmine:7.0.2
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      DB_ADAPTER: postgresql
+      DB_HOST: postgresql
+      DB_NAME: redmine_production
+      DB_USER: redmine
+      DB_PASS: ${DB_PASS}
+      REDMINE_RELATIVE_URL_ROOT: /redmine
+      REDMINE_SECRET_TOKEN: ${REDMINE_SECRET_TOKEN:?REDMINE_SECRET_TOKEN を .env に設定してください}
+      TZ: Asia/Tokyo
+    volumes:
+      - redmine-data:/home/redmine/data
+    restart: unless-stopped
+
+  # nginx の auth_request は Redmine REST API (Basic認証) を使うため、
+  # Redmine 初回セットアップ完了後に「REST APIを有効にする」設定を DB へ投入する。
+  redmine-enable-rest-api:
+    image: postgres:16-alpine
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      PGHOST: postgresql
+      PGUSER: redmine
+      PGPASSWORD: ${DB_PASS}
+      PGDATABASE: redmine_production
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until psql -tAc "select 1 from settings limit 1" >/dev/null 2>&1; do sleep 5; done
+        psql -v ON_ERROR_STOP=1 -c "
+          update settings set value='1', updated_on=now() where name='rest_api_enabled';
+          insert into settings (name, value, updated_on)
+            select 'rest_api_enabled', '1', now()
+            where not exists (select 1 from settings where name='rest_api_enabled');"
+    restart: "no"
+
+  jenkins:
+    build: ./jenkins
+    environment:
+      JENKINS_OPTS: --prefix=/jenkins
+      JAVA_OPTS: -Duser.timezone=Asia/Tokyo -Djenkins.install.runSetupWizard=false
+    volumes:
+      - jenkins-home:/var/jenkins_home
+    restart: unless-stopped
+
+  svn:
+    build: ./svn
+    volumes:
+      - svn-repos:/svn
+    restart: unless-stopped
+
+volumes:
+  postgresql-data:
+  redmine-data:
+  jenkins-home:
+  svn-repos:
