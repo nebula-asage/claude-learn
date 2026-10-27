@@ -55,6 +55,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     vim \
     less \
     jq \
+    iputils-ping \
+    iproute2 \
     python3 \
     python3-venv \
     python3-pip \
