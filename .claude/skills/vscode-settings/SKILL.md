@@ -60,6 +60,13 @@ description: リポジトリやprojects/<name>/配下に、VS Code用の`.vscode
    - `cspell.json`は`<配置先>`で`just cspell`（`just`が無い環境では直接`pnpx cspell --no-progress .`）を実行し、`Issues found: 0`になることまで確認する（未知語が残ったまま完了にしない）。
    - `.markdownlint.jsonc`/`.markdownlint-cli2.jsonc`は`<配置先>`で`just markdownlint`（`just`が無い環境では直接`pnpx markdownlint-cli2 "**/*.md"`）を実行し、指摘が残っていないことまで確認する（指摘を残したまま完了にしない）。
 
+9. **ユーザー設定（拡張機能の自動アップデート）を確認する**
+   - `extensions.autoUpdate`と`extensions.autoUpdateDelay`はVS Code 1.125以降の設定で、どちらもAPPLICATIONスコープ（ソース上「デフォルトプロファイルのユーザー設定でのみ設定可能」）。そのため`.vscode/settings.json`や`devcontainer.json`の`customizations.vscode.settings`（リモート側のMachine設定に書かれる）に書いても無視される。**テンプレートや配置先には入れない**。
+   - 代わりにホスト側のVS Codeのユーザー設定`settings.json`に次の2つが入っているか確認し、無ければ追記する（サプライチェーン攻撃対策の「リリース直後のバージョンを使わない（猶予7日）」を拡張機能にも適用するもの）。
+     - `"extensions.autoUpdate": "on"`
+     - `"extensions.autoUpdateDelay": 168`（単位は時間。168時間=7日。既定値は12）
+   - 場所の例: WSL2上でWindowsのVS Codeを使う場合は`/mnt/c/Users/<ユーザー名>/AppData/Roaming/Code/User/settings.json`、Linuxネイティブなら`~/.config/Code/User/settings.json`。ホスト環境に残る変更なので、書き換える前にユーザーへ確認する。
+
 ## おすすめ設定・拡張機能・スペルチェック設定の内容（特定言語に依存しない共通項目のみ）
 
 - `settings.json`: 保存時の最終改行付与・行末空白除去・改行コード統一・文字エンコーディング自動推測、インデント自動検出の無効化とタブ幅4の固定（`editor.detectIndentation: false` / `editor.tabSize: 4`）、ルーラー表示（80桁・120桁）、空白の可視化、差分表示での空白差分の表示、ソース管理ビューのツリー表示、VS Code組み込みAI機能（`chat.disableAIFeatures`）の無効化など。言語別ブロック（`[json]`/`[jsonc]`/`[go]`/`[python]`など）や`go.*`/`python.*`設定のような言語固有の設定は含めない。
@@ -72,6 +79,7 @@ description: リポジトリやprojects/<name>/配下に、VS Code用の`.vscode
 
 ## このスキルの対象外
 
+- `extensions.autoUpdate`/`extensions.autoUpdateDelay`を`.vscode/settings.json`やテンプレートへ入れること（APPLICATIONスコープのため効かない。手順9の通りユーザー設定で扱う）。
 - devcontainer環境そのものの構築（`Dockerfile`・`devcontainer.json`の新規作成）は対象外。既に存在する`devcontainer.json`への追記のみを行う。
 - 言語ごとのプロジェクト一式（lint/test/ドキュメンテーション環境）の構築は対象外。特定言語のフォーマッタ・リンター設定が必要な場合は、各プロジェクト側の設定で対応する。このスキルが配置する`justfile`も`cspell`/`markdownlint`レシピ限定で、`fmt`/`lint`/`test`等のタスクランナー機能を追加することは対象外。
 - `cspell.json`・`.markdownlint.jsonc`・`.markdownlint-cli2.jsonc`をプロジェクトのpackage.json（や同等のビルド設定）に恒久的に組み込むこと（devDependency化・専用スクリプトの追加・Git hooksでの強制等）は対象外。このスキルは設定ファイルの配置とVS Code拡張機能上での動作確認までを担当し、CIやコミット時に強制する仕組みが要る場合は各プロジェクト側で対応する。
