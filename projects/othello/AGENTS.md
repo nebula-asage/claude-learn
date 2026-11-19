@@ -40,4 +40,4 @@ just --list         # レシピ一覧
 
 ## サプライチェーン対策
 
-`.npmrc` に `ignore-scripts=true` と `minimum-release-age`(7日)を設定済み。この結果 `pnpm install` では `prepare` スクリプト(Husky有効化)も自動実行されないため、**初回は `just prepare` を手動実行する必要がある**。
+`pnpm-workspace.yaml` に `ignoreScripts: true` と `minimumReleaseAge: 10080`(7日)を設定済み。この結果 `pnpm install` では `prepare` スクリプト(Husky有効化)も自動実行されないため、**初回は `just prepare` を手動実行する必要がある**。

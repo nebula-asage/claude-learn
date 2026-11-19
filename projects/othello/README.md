@@ -18,7 +18,7 @@ React(UI) + Tauri(デスクトップアプリ化)で作ったオセロ(リバー
     libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
   ```
 
-`.npmrc` にサプライチェーン攻撃対策として `ignore-scripts=true` と `min-release-age`/`minimum-release-age`(7日)を設定済み。
+`pnpm-workspace.yaml` にサプライチェーン攻撃対策として `ignoreScripts: true` と `minimumReleaseAge: 10080`(7日)を設定済み。
 
 ## 実行方法
 
