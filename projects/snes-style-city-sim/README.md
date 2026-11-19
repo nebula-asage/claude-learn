@@ -59,7 +59,7 @@ pnpm run dev        # 開発サーバを起動し、表示されたURLをブラ�
 | `pnpm run docs`          | TypeDoc のAPIリファレンスを `docs/api/` に生成する |
 
 初回のみ、Git hooks（コミット時の自動lint/format）を有効化するために以下を実行する。
-`.npmrc` の `ignore-scripts=true` により `pnpm install` では自動実行されない。
+`pnpm-workspace.yaml` の `ignoreScripts: true` により `pnpm install` では自動実行されない。
 
 ```bash
 pnpm run prepare
